@@ -110,7 +110,7 @@ export default function Home() {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-bold text-lg">2023 Toyota GR86</h3>
+                          <h3 className="font-bold text-lg text-white">2023 Toyota GR86</h3>
                           <p className="text-gray-400 text-sm">Modified by @user{i}</p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -119,13 +119,13 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs text-white">
                           Tuned
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs text-white">
                           Track
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs text-white">
                           JDM
                         </Badge>
                       </div>

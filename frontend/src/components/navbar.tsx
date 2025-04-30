@@ -1,13 +1,11 @@
-"use client"
-
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { Link, useLocation } from "react-router-dom"
 import { Button } from "./ui/button"
 import { Car, Compass, User, Home, Trophy, Users } from "lucide-react"
 import { cn } from "./lib/utils"
 
 export function Navbar() {
-  const pathname = usePathname()
+  const location = useLocation()
+  const pathname = location.pathname
 
   const routes = [
     { name: "Home", path: "/", icon: Home },
@@ -21,18 +19,18 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full bg-black/90 backdrop-blur-sm border-b border-gray-800">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <Car className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">Bench Racers</span>
+            <span className="text-xl font-bold text-white">Bench Racers</span>
           </Link>
           <div className="hidden md:flex items-center gap-1">
             {routes.map((route) => {
               const Icon = route.icon
               return (
-                <Link key={route.path} href={route.path}>
+                <Link key={route.path} to={route.path}>
                   <Button
                     variant="ghost"
-                    className={cn("flex items-center gap-1", pathname === route.path && "bg-secondary text-white")}
+                    className={cn("flex items-center gap-1 text-white", pathname === route.path && "bg-[#DD1C49] text-white")}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{route.name}</span>
@@ -43,7 +41,7 @@ export function Navbar() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/auth">
+          <Link to="/auth">
             <Button variant="outline" className="hidden sm:flex items-center gap-1">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -64,7 +62,7 @@ export function Navbar() {
               <span>Login</span>
             </Button>
           </Link>
-          <Link href="/auth?signup=true">
+          <Link to="/auth?signup=true">
             <Button className="hidden sm:inline-flex">Sign Up</Button>
           </Link>
           <Button variant="ghost" size="icon" className="md:hidden">

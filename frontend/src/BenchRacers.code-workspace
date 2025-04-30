@@ -1,11 +1,9 @@
 {
 	"folders": [
 		{
-			"name": "BenchRacers",
 			"path": "../.."
 		},
 		{
-			"name": "bench-racers",
 			"path": "../../../Desktop/bench-racers"
 		}
 	],

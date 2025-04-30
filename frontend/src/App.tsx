@@ -1,7 +1,16 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from "framer-motion";
 import Home from './components/home';
+import AboutPage from './components/about/page';
+import CarDetailPage from './components/car/page';
+import ExplorePage from './components/explore/page';
+import FollowingPage from './components/following/page';
+import GaragePage from './components/garage/page';
+import RankingsPage from './components/rankings/page';
+import AuthPage from './components/auth/page';
+import StatsPage from './components/stats/page';
+import UploadPage from './components/upload/page';
 
 
 const AnimatedRoutes = () => {
@@ -11,6 +20,16 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/following" element={<FollowingPage />} />
+        <Route path="/garage" element={<GaragePage />} />
+        <Route path="/rankings" element={<RankingsPage />} />
+        <Route path="/stats" element={<StatsPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/login" element={<Navigate to="/auth" replace />} />
+        <Route path="/signup" element={<Navigate to="/auth?signup=true" replace />} />
+        <Route path="/upload" element={<UploadPage/>} />
       </Routes>
     </AnimatePresence>
   );
