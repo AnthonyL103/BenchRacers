@@ -8,11 +8,16 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Car, Github, ChromeIcon as Google } from "lucide-react"
+import { useUser, UserActionTypes } from '../context';
+import { getUserRegion } from '../getLocation';
 
 export default function AuthPage() {
   // Use React Router's useSearchParams hook
+  const { isLoading, error, dispatch } = useUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); 
   
   // Get the signup parameter from the URL
   const showSignup = searchParams.get("signup") === "true";
@@ -26,6 +31,116 @@ export default function AuthPage() {
       navigate("/auth", { replace: true });
     }
   }, [activeTab, navigate]);
+  
+  // Clear error when switching tabs
+  useEffect(() => {
+    dispatch({ type: UserActionTypes.CLEAR_ERROR });
+  }, [activeTab, dispatch]);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // First dispatch LOGIN_REQUEST to set loading state
+    dispatch({ type: UserActionTypes.LOGIN_REQUEST });
+    
+    try {
+      // Get form data
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+      
+      // Make API call
+      const response = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+      
+      // Handle successful login
+      const userData = await response.json();
+      
+      // Dispatch LOGIN_SUCCESS with the user data
+      dispatch({ 
+        type: UserActionTypes.LOGIN_SUCCESS, 
+        payload: userData 
+      });
+      
+      // Optionally store JWT token if your API returns one
+      if (userData.token) {
+        localStorage.setItem('token', userData.token);
+      }
+      
+      // Navigate to dashboard on successful login
+      navigate('/dashboard');
+      
+    } catch (error) {
+      // Dispatch LOGIN_FAILURE with the error message
+      dispatch({ 
+        type: UserActionTypes.LOGIN_FAILURE, 
+        payload: error instanceof Error ? error.message : 'An unknown error occurred'
+      });
+    }
+  };
+  
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    dispatch({ type: UserActionTypes.REGISTER_REQUEST });
+    
+    if (password !== confirmPassword) {
+      dispatch({ 
+        type: UserActionTypes.REGISTER_FAILURE, 
+        payload: "Passwords do not match" 
+      });
+      return;
+    }
+    
+    try {
+      // Get form data
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('signup-email') as string;
+      const name = formData.get('name') as string;
+      
+      // Get user's region
+      const region = await getUserRegion();
+      
+      // Make API call with region included
+      const response = await fetch('/api/users/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, name, password, region }),
+      });
+    
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Signup failed');
+      }
+      
+      const userData = await response.json();
+      dispatch({ 
+        type: UserActionTypes.REGISTER_SUCCESS, 
+        payload: userData 
+      });
+      
+      // Navigate to dashboard on successful signup
+      navigate('/dashboard');
+      
+    } catch (error) {
+      dispatch({ 
+        type: UserActionTypes.REGISTER_FAILURE, 
+        payload: error instanceof Error ? error.message : 'An unknown error occurred'
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -56,11 +171,15 @@ export default function AuthPage() {
               </Tabs>
             </CardHeader>
             <CardContent className="space-y-4">
+              {error && (
+                <p className="text-red-500 text-sm font-medium mb-2">{error}</p>
+              )}
+              
               {activeTab === "login" ? (
-                <div className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="your@email.com" />
+                    <Input id="email" name="email" type="email" placeholder="your@email.com" required />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -69,33 +188,57 @@ export default function AuthPage() {
                         Forgot password?
                       </Link>
                     </div>
-                    <Input id="password" type="password" />
+                    <Input id="password" name="password" type="password" required />
                   </div>
-                </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Logging in..." : "Login"}
+                  </Button>
+                </form>
               ) : (
-                <div className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" placeholder="John Doe" />
+                    <Input id="name" name="name" placeholder="John Doe" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
-                    <Input id="signup-email" type="email" placeholder="your@email.com" />
+                    <Input 
+                      id="signup-email" 
+                      name="signup-email" 
+                      type="email" 
+                      placeholder="your@email.com" 
+                      required 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input id="signup-password" type="password" />
+                    <Input 
+                      id="signup-password" 
+                      name="signup-password"
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      type="password" 
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input id="confirm-password" type="password" />
+                    <Input 
+                      id="confirm-password" 
+                      name="confirm-password"
+                      value={confirmPassword} 
+                      onChange={(e) => setConfirmPassword(e.target.value)} 
+                      type="password" 
+                      required
+                    />
                   </div>
-                </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Creating Account..." : "Create Account"}
+                  </Button>
+                </form>
               )}
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button className="w-full">{activeTab === "login" ? "Login" : "Create Account"}</Button>
-
               <div className="relative w-full">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-700"></div>
@@ -106,11 +249,11 @@ export default function AuthPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" type="button">
                   <Google className="h-4 w-4" />
                   Google
                 </Button>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" type="button">
                   <Github className="h-4 w-4" />
                   GitHub
                 </Button>
