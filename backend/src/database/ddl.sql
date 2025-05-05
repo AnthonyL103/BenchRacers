@@ -29,6 +29,10 @@ CREATE TABLE Users (
     userIndex INT AUTO_INCREMENT UNIQUE,
     totalEntries INT NOT NULL DEFAULT 0,
     region VARCHAR(20) NOT NULL,
+    isVerified BOOLEAN NOT NULL DEFAULT FALSE,
+    verificationtoken VARCHAR(64),
+    resetToken VARCHAR(64),
+    resetTokenExpiration DATETIME,
     isEditor BOOLEAN NOT NULL DEFAULT FALSE
 );
 

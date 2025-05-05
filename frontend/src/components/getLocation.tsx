@@ -1,3 +1,6 @@
+
+const OPENCAGEKEY = import.meta.env.VITE_OPENCAGEKEY;
+
 export function getLocation() {
     return new Promise<{latitude: number, longitude: number}>((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -22,7 +25,7 @@ export function getLocation() {
     try {
       // Using OpenCage Geocoder API - replace with your API key
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_OPENCAGE_API_KEY`
+        `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${OPENCAGEKEY}`
       );
       
       const data = await response.json();

@@ -1,15 +1,11 @@
 {
     "compilerOptions": {
-      "target": "ES2018",
+      "target": "es2016",
       "module": "commonjs",
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
       "esModuleInterop": true,
-      "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true,
-      "resolveJsonModule": true
-    },
-    "include": ["src/**/*", "ecosystem.config.ts"],
-    "exclude": ["node_modules", "**/*.spec.ts"]
-  }
+      "strict": true,
+      "skipLibCheck": true,
+      "types": ["node", "express"]
+    }
+}

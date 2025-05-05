@@ -8,7 +8,7 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Car, Github, ChromeIcon as Google } from "lucide-react"
-import { useUser, UserActionTypes } from '../context';
+import { useUser, UserActionTypes } from '../usercontext';
 import { getUserRegion } from '../getLocation';
 
 export default function AuthPage() {
@@ -18,6 +18,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState(""); 
+  const [errorMessage, setErrorMessage] = useState("");
   
   // Get the signup parameter from the URL
   const showSignup = searchParams.get("signup") === "true";
@@ -99,6 +100,8 @@ export default function AuthPage() {
         type: UserActionTypes.REGISTER_FAILURE, 
         payload: "Passwords do not match" 
       });
+      setErrorMessage("Passwords do not match");
+      
       return;
     }
     
@@ -110,6 +113,7 @@ export default function AuthPage() {
       
       // Get user's region
       const region = await getUserRegion();
+      console.log(region);
       
       // Make API call with region included
       const response = await fetch('/api/users/signup', {
@@ -132,6 +136,7 @@ export default function AuthPage() {
       });
       
       // Navigate to dashboard on successful signup
+      setErrorMessage("");
       navigate('/dashboard');
       
     } catch (error) {
@@ -171,17 +176,15 @@ export default function AuthPage() {
               </Tabs>
             </CardHeader>
             <CardContent className="space-y-4">
-              {error && (
-                <p className="text-red-500 text-sm font-medium mb-2">{error}</p>
-              )}
+              
               
               {activeTab === "login" ? (
                 <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white">
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" name="email" type="email" placeholder="your@email.com" required />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
                       <Link to="/forgot-password" className="text-xs text-primary hover:underline">
@@ -196,11 +199,11 @@ export default function AuthPage() {
                 </form>
               ) : (
                 <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white">
                     <Label htmlFor="name">Full Name</Label>
                     <Input id="name" name="name" placeholder="John Doe" required />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input 
                       id="signup-email" 
@@ -210,28 +213,36 @@ export default function AuthPage() {
                       required 
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white">
                     <Label htmlFor="signup-password">Password</Label>
                     <Input 
                       id="signup-password" 
                       name="signup-password"
                       value={password} 
+                      className="text-black"
                       onChange={(e) => setPassword(e.target.value)} 
                       type="password" 
                       required
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white">
                     <Label htmlFor="confirm-password">Confirm Password</Label>
                     <Input 
                       id="confirm-password" 
                       name="confirm-password"
                       value={confirmPassword} 
+                      className="text-black"
                       onChange={(e) => setConfirmPassword(e.target.value)} 
                       type="password" 
                       required
                     />
                   </div>
+                  <div className="flex items-center"> 
+                  {errorMessage && (
+                    <p className="text-red-500 text-sm font-medium mb-2">{errorMessage}</p>
+                    )}
+                  </div>
+                 
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Creating Account..." : "Create Account"}
                   </Button>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Navbar } from "../navbar"
@@ -11,90 +11,122 @@ import { Badge } from "../ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Input } from "../ui/input"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
-
-// Mock data for demonstration
-const mockCars = [
-  {
-    id: "1",
-    name: "Nissan Skyline GT-R R34",
-    owner: "godzilla",
-    image: "/placeholder.svg?height=1200&width=800",
-    likes: 1024,
-    tags: ["JDM", "Turbo", "Track"],
-    description:
-      "Fully built RB26DETT pushing 650whp with a single Garrett GTX3582R turbo. Full Nismo aero kit and TE37 wheels. This Bayside Blue R34 has been my dream build for over 5 years.",
-  },
-  {
-    id: "2",
-    name: "BMW M4 Competition",
-    owner: "bmwfanatic",
-    image: "/placeholder.svg?height=1200&width=800",
-    likes: 876,
-    tags: ["European", "Tuned", "Track"],
-    description:
-      'FBO with downpipes, custom tune, and KW V3 coilovers. Running 20" BBS FI-R wheels with Michelin PS4S tires. Pushing 550whp and 560wtq on 93 octane.',
-  },
-  {
-    id: "3",
-    name: "Toyota Supra MK4",
-    owner: "2jzpower",
-    image: "/placeholder.svg?height=1200&width=800",
-    likes: 756,
-    tags: ["JDM", "Turbo", "Classic"],
-    description:
-      "Single turbo 2JZ build with 800whp. Full Ridox aero kit and custom titanium exhaust. Completely rebuilt bottom end with Titan Motorsports rods and CP pistons.",
-  },
-  {
-    id: "4",
-    name: "Honda Civic Type R",
-    owner: "vtecjunkie",
-    image: "/placeholder.svg?height=1200&width=800",
-    likes: 645,
-    tags: ["JDM", "Hot Hatch", "Daily"],
-    description:
-      "K20C1 with bolt-ons and custom ECU tune. Functional aero upgrades and Advan Racing GT wheels. Daily driven but track ready with Öhlins coilovers.",
-  },
-  {
-    id: "5",
-    name: "Ford Mustang GT",
-    owner: "musclecar",
-    image: "/placeholder.svg?height=1200&width=800",
-    likes: 589,
-    tags: ["American", "Muscle", "V8"],
-    description:
-      "Supercharged Coyote 5.0 with full exhaust and suspension upgrades. Whipple Gen 3 supercharger pushing 750whp. Custom interior with Recaro seats and roll cage.",
-  },
-]
+import { useCarState, useCarDispatch, CarActionTypes } from "../carlistcontext" // Import your car context
 
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState("swipe")
   const [currentCarIndex, setCurrentCarIndex] = useState(0)
   const [swipedCars, setSwipedCars] = useState<string[]>([])
   const [likedCars, setLikedCars] = useState<string[]>([])
+  
+  // Use your car context
+  const { cars, isLoading, error } = useCarState()
+  const dispatch = useCarDispatch()
+  
+  useEffect(() => {
+    // Fetch cars from the server when the component mounts
+    if (cars.length === 0) {
+      fetchCars()
+    }
+  }, [cars.length])
+  
+  const fetchCars = async () => {
+    try {
+      // Dispatch loading state
+      dispatch({
+        type: CarActionTypes.FETCH_CARS_REQUEST
+      })
+      
+      const response = await fetch('http://getcarroute', {
+        method: 'POST', // Changed to POST since you're sending data
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ swipedCars, likedCars })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const newCars = await response.json();
+      
+      // Update state with new cars
+      dispatch({
+        type: CarActionTypes.FETCH_CARS_SUCCESS,
+        payload: newCars
+      });
+    } catch (error) {
+      dispatch({
+        type: CarActionTypes.FETCH_CARS_FAILURE,
+        payload: error instanceof Error ? error.message : 'An unknown error occurred'
+      });
+    }
+  };
 
   const handleLike = (carId: string) => {
-    setLikedCars([...likedCars, carId])
-    setSwipedCars([...swipedCars, carId])
+    setLikedCars(prev => [...prev, carId])
+    setSwipedCars(prev => [...prev, carId])
     goToNextCar()
   }
 
   const handlePass = (carId: string) => {
-    setSwipedCars([...swipedCars, carId])
+    setSwipedCars(prev => [...prev, carId])
     goToNextCar()
   }
 
   const goToNextCar = () => {
-    if (currentCarIndex < mockCars.length - 1) {
+    if (currentCarIndex < cars.length - 1) {
       setCurrentCarIndex(currentCarIndex + 1)
     } else {
-      // Reset to first car or show "no more cars" message
+      // Out of cars, fetch more
+      fetchCars()
+      // Reset index
       setCurrentCarIndex(0)
-      setSwipedCars([])
     }
   }
 
-  const currentCar = mockCars[currentCarIndex]
-  const remainingCars = mockCars.length - swipedCars.length
+  // If there are no cars or loading, show loading state
+  if (isLoading && cars.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-1 flex justify-center items-center">
+          <div>Loading cars...</div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+  
+  // If there's an error, show error message
+  if (error && cars.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-1 flex justify-center items-center">
+          <div>Error loading cars: {error}. <Button onClick={fetchCars}>Retry</Button></div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+  
+  // If we have no cars even after trying to load, show empty state
+  if (cars.length === 0) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-1 flex justify-center items-center">
+          <div>No cars found. <Button onClick={fetchCars}>Refresh</Button></div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  const currentCar = cars[currentCarIndex]
+  const remainingCars = cars.length - swipedCars.length
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -138,31 +170,37 @@ export default function ExplorePage() {
 
             <TabsContent value="grid" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mockCars.map((car, i) => (
-                  <Link href={`/car/${car.id}`} key={i}>
+                {cars.map((car, i) => (
+                  <Link href={`/car/${car.entryID}`} key={car.entryID}>
                     <Card className="overflow-hidden bg-gray-900 border-gray-800 swipe-card car-card-shadow">
                       <div className="relative h-64">
-                        <Image src={car.image || "/placeholder.svg"} alt={car.name} fill className="object-cover" />
+                        <Image src={car.s3ContentID || "/placeholder.svg"} alt={car.carName} fill className="object-cover" />
                       </div>
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-bold text-lg text-white">{car.name}</h3>
-                            <p className="text-gray-400 text-sm">By @{car.owner}</p>
+                            <h3 className="font-bold text-lg text-white">{car.carName}</h3>
+                            <p className="text-gray-400 text-sm">By @{car.userID}</p>
                           </div>
                           <div className="flex items-center gap-1">
                             <Heart
-                              className={`h-4 w-4 ${likedCars.includes(car.id) ? "text-primary fill-primary" : "text-gray-400"}`}
+                              className={`h-4 w-4 ${likedCars.includes(car.entryID?.toString() || "") ? "text-primary fill-primary" : "text-gray-400"}`}
                             />
-                            <span className="text-sm">{car.likes}</span>
+                            <span className="text-sm">{car.upvotes}</span>
                           </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {car.tags.map((tag, j) => (
-                            <Badge key={j} variant="outline" className="text-xs text-white">
-                              {tag}
+                          <Badge variant="outline" className="text-xs text-white">
+                            {car.carMake}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs text-white">
+                            {car.region}
+                          </Badge>
+                          {car.carColor && (
+                            <Badge variant="outline" className="text-xs text-white">
+                              {car.carColor}
                             </Badge>
-                          ))}
+                          )}
                         </div>
                         <div className="mt-4 flex justify-between">
                           <div className="flex gap-3">
@@ -194,8 +232,8 @@ export default function ExplorePage() {
                   <Card className="overflow-hidden bg-gray-900 border-gray-800 car-card-shadow swipe-card-large text-white">
                     <div className="relative h-[70vh] md:h-[80vh]">
                       <Image
-                        src={currentCar.image || "/placeholder.svg"}
-                        alt={currentCar.name}
+                        src={currentCar.s3ContentID || "/placeholder.svg"}
+                        alt={currentCar.carName}
                         fill
                         className="object-cover"
                         priority
@@ -203,7 +241,7 @@ export default function ExplorePage() {
                       <div className="absolute inset-0 car-image-gradient" />
 
                       <Link
-                        href={`/car/${currentCar.id}`}
+                        href={`/car/${currentCar.entryID}`}
                         className="absolute top-4 right-4 bg-black/60 rounded-full p-2 hover:bg-black/80 z-10"
                       >
                         <Info className="h-5 w-5" />
@@ -212,19 +250,25 @@ export default function ExplorePage() {
                       <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
                         <div className="flex flex-col gap-2">
                           <div className="flex justify-between items-start">
-                            <h3 className="font-bold text-2xl">{currentCar.name}</h3>
+                            <h3 className="font-bold text-2xl">{currentCar.carName}</h3>
                             <div className="flex items-center gap-1 bg-black/60 rounded-full px-3 py-1">
                               <Heart className="h-4 w-4 text-primary" fill="currentColor" />
-                              <span className="text-sm">{currentCar.likes}</span>
+                              <span className="text-sm">{currentCar.upvotes}</span>
                             </div>
                           </div>
-                          <p className="text-gray-300">By @{currentCar.owner}</p>
+                          <p className="text-gray-300">By @{currentCar.userID}</p>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {currentCar.tags.map((tag, i) => (
-                              <Badge key={i} variant="outline" className="text-xs text-white">
-                                {tag}
+                            <Badge variant="outline" className="text-xs text-white">
+                              {currentCar.carMake}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs text-white">
+                              {currentCar.region}
+                            </Badge>
+                            {currentCar.carColor && (
+                              <Badge variant="outline" className="text-xs text-white">
+                                {currentCar.carColor}
                               </Badge>
-                            ))}
+                            )}
                           </div>
                           <p className="text-sm text-gray-300 mt-2 line-clamp-3">{currentCar.description}</p>
                         </div>
@@ -236,7 +280,7 @@ export default function ExplorePage() {
                           variant="outline"
                           size="lg"
                           className="flex-1 text-black"
-                          onClick={() => handlePass(currentCar.id)}
+                          onClick={() => handlePass(currentCar.entryID?.toString() || "")}
                         >
                           <X className="h-5 w-5 mr-2 text-gray-500" />
                           Pass
@@ -245,7 +289,7 @@ export default function ExplorePage() {
                           variant="outline"
                           size="lg"
                           className="flex-1 text-black"
-                          onClick={() => handleLike(currentCar.id)}
+                          onClick={() => handleLike(currentCar.entryID?.toString() || "")}
                         >
                           <Heart className="h-5 w-5 mr-2 text-red-500" fill="currentColor" />
                           Like
