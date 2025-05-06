@@ -28,6 +28,12 @@ data "aws_subnets" "default" {
   }
 }
 
+data "aws_security_group" "default" {
+  name   = "default"
+  vpc_id = data.aws_vpc.default.id
+}
+
+
 resource "aws_s3_bucket" "benchracers_photos" {
   bucket = "benchracers-photos"
 
