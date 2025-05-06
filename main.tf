@@ -106,7 +106,7 @@ resource "aws_launch_template" "benchracers_template" {
   name_prefix   = "benchracers-template"
   image_id      = "ami-07b0c09aab6e66ee9"  # Amazon Linux 2 AMI
   instance_type = "t2.small"
-  key_name      = "benchracers-key"
+  key_name      = "BenchWarmersEc2Key"
 
   vpc_security_group_ids = [aws_security_group.alb_sg.id]
 
@@ -244,22 +244,43 @@ resource "aws_autoscaling_group" "benchracers_asg" {
 
 
 
+# Get list of subnet IDs in the default VPC
+data "aws_subnet_ids" "default" {
+  vpc_id = data.aws_vpc.default.id
+}
+
+# Fetch subnet details for filtering by AZ
+data "aws_subnet" "selected" {
+  for_each = toset(data.aws_subnet_ids.default.ids)
+  id       = each.value
+}
+
+# ALB using only one subnet per availability zone
 resource "aws_lb" "benchracers_alb" {
   name               = "benchracers-alb"
   internal           = false
   load_balancer_type = "application"
 
-  depends_on = [aws_security_group.alb_sg]
+  security_groups = [aws_security_group.alb_sg.id]
 
-  security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = data.aws_subnets.default.ids
+  subnets = [
+    for s in data.aws_subnet.selected :
+    s.id
+    if length([
+      for other in data.aws_subnet.selected : other
+      if other.availability_zone == s.availability_zone
+    ]) == 1
+  ]
 
   enable_deletion_protection = false
 
   tags = {
     Name = "BenchRacers-ALB"
   }
+
+  depends_on = [aws_security_group.alb_sg]
 }
+
 
 
 resource "aws_lb_target_group" "benchracers_target_group" {
