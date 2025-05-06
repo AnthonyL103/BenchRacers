@@ -17,10 +17,6 @@ data "aws_db_instance" "benchracers_rds" {
   db_instance_identifier = "database-1"
 }
 
-data "aws_amplify_app" "benchracers_amplify" {
-  app_id = "d3bmjlq8fmb7xr"
-}
-
 resource "aws_cloudwatch_log_group" "benchracers_api_logs" {
   name              = "/benchracers/api/calls"
   retention_in_days = 14
