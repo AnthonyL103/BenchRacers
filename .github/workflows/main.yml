@@ -1,3 +1,13 @@
+name: Deploy BenchRacers Infrastructure
+
+on:
+  push:
+    branches:
+      - main  
+  pull_request:
+    branches:
+      - main  
+
 jobs:
   terraform:
     name: Apply Terraform Changes
