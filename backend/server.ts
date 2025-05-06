@@ -13,9 +13,14 @@ app.use(express.json());
 app.use('/api/users', authRoutes);
 
 const PORT = process.env.PORT || 3000;
+app.get('/health', (req, res) => {
+  res.status(200).send('healthy');
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
 //test
 process.on('SIGINT', () => {
   console.log('Shutting down gracefully');
