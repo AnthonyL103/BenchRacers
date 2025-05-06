@@ -28,8 +28,6 @@ data "aws_subnets" "default" {
   }
 }
 
-
-
 resource "aws_cloudwatch_log_group" "benchracers_api_logs" {
   name              = "/benchracers/api/calls"
   retention_in_days = 14
@@ -57,6 +55,9 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_cloudwatch_role.name
 }
 
+# Removed custom VPC, Internet Gateway, and Security Groups to rely on AWS default networking
+# Make sure your instances and load balancer use the default VPC and subnets with open access if necessary
+
 
 
 resource "aws_launch_template" "benchracers_template" {
@@ -66,9 +67,8 @@ resource "aws_launch_template" "benchracers_template" {
   key_name      = "benchracers-key"  # Your SSH key name
   
   # Include both the new security group and your existing EC2-RDS security groups
-  vpc_security_group_ids = [
-    aws_security_group.benchracers_ec2_sg.id,
-  ]
+  vpc_security_group_ids = [data.aws_vpc.default.default_security_group_id]
+
 
   # Add the IAM instance profile for CloudWatch
   iam_instance_profile {
@@ -291,7 +291,8 @@ resource "aws_lb" "benchracers_alb" {
   load_balancer_type = "application"
   
   # Use the security group
-  security_groups    = [aws_security_group.benchracers_alb_sg.id]
+  security_groups = [data.aws_vpc.default.default_security_group_id]
+
   
   # Use the subnets
   subnets = data.aws_subnets.default.ids
@@ -359,44 +360,6 @@ resource "aws_lb_listener" "benchracers_http_listener" {
   }
 }
 
-resource "aws_autoscaling_group" "benchracers_asg" {
-  name                 = "benchracers-asg"
-  desired_capacity     = 1
-  max_size             = 3
-  min_size             = 1
-  
-  # Use the new subnets
-  vpc_zone_identifier = data.aws_subnets.default.ids
-
-
-  launch_template {
-    id      = aws_launch_template.benchracers_template.id
-    version = "$Latest"
-  }
-
-  target_group_arns = [aws_lb_target_group.benchracers_target_group.arn]
-
-  lifecycle {
-    create_before_destroy = true  
-  }
-
-  tag {
-    key                 = "Name"
-    value               = "BenchRacers-ASG-Instance"
-    propagate_at_launch = true
-  }
-}
-
-
-# S3 bucket for storing photos/images
-resource "aws_s3_bucket" "benchracers_photos" {
-  bucket = "benchracers-photos"  # This needs to be globally unique
-  
-  tags = {
-    Name = "BenchRacers Photos"
-    Environment = "Production"
-  }
-}
 
 # S3 bucket ownership controls
 resource "aws_s3_bucket_ownership_controls" "benchracers_photos_ownership" {
