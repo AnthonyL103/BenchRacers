@@ -17,6 +17,19 @@ data "aws_db_instance" "benchracers_rds" {
   db_instance_identifier = "database-1"
 }
 
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+
+
 resource "aws_cloudwatch_log_group" "benchracers_api_logs" {
   name              = "/benchracers/api/calls"
   retention_in_days = 14
@@ -44,77 +57,6 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_cloudwatch_role.name
 }
 
-resource "aws_vpc" "benchracers_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-  tags = { Name = "BenchRacers-VPC" }
-}
-
-resource "aws_internet_gateway" "benchracers_igw" {
-  vpc_id = aws_vpc.benchracers_vpc.id
-  tags = { Name = "BenchRacers-IGW" }
-}
-
-resource "aws_security_group" "benchracers_alb_sg" {
-  name        = "benchracers-alb-sg"
-  description = "Security group for BenchRacers ALB"
-  vpc_id      = aws_vpc.benchracers_vpc.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "BenchRacers-ALB-SG"
-  }
-}
-
-resource "aws_security_group" "benchracers_ec2_sg" {
-  name        = "benchracers-ec2-sg"
-  description = "Security group for BenchRacers EC2 instances"
-  vpc_id      = aws_vpc.benchracers_vpc.id
-
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.benchracers_alb_sg.id]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "BenchRacers-EC2-SG" }
-}
 
 
 resource "aws_launch_template" "benchracers_template" {
@@ -352,12 +294,8 @@ resource "aws_lb" "benchracers_alb" {
   security_groups    = [aws_security_group.benchracers_alb_sg.id]
   
   # Use the subnets
-  subnets            = [
-    aws_subnet.benchracers_subnet_1.id,
-    aws_subnet.benchracers_subnet_2.id,
-    aws_subnet.benchracers_subnet_3.id,
-    aws_subnet.benchracers_subnet_4.id
-  ]
+  subnets = data.aws_subnets.default.ids
+
 
   enable_deletion_protection = false
 
@@ -372,7 +310,7 @@ resource "aws_lb_target_group" "benchracers_target_group" {
   protocol    = "HTTP"
   
   # Use the VPC
-  vpc_id      = aws_vpc.benchracers_vpc.id
+  vpc_id = data.aws_vpc.default.id
   target_type = "instance"
 
   health_check {
@@ -428,12 +366,8 @@ resource "aws_autoscaling_group" "benchracers_asg" {
   min_size             = 1
   
   # Use the new subnets
-  vpc_zone_identifier  = [
-    aws_subnet.benchracers_subnet_1.id,
-    aws_subnet.benchracers_subnet_2.id,
-    aws_subnet.benchracers_subnet_3.id,
-    aws_subnet.benchracers_subnet_4.id
-  ]
+  vpc_zone_identifier = data.aws_subnets.default.ids
+
 
   launch_template {
     id      = aws_launch_template.benchracers_template.id

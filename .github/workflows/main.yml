@@ -44,12 +44,6 @@ jobs:
           import_if_not_exists aws_security_group.benchracers_ec2_sg sg-099124eb86f720f70
           import_if_not_exists aws_security_group.benchracers_alb_sg sg-070f2136a77d18b05
           import_if_not_exists aws_iam_policy.s3_access_policy arn:aws:iam::060795900722:policy/benchracers-s3-access-policy
-          import_if_not_exists aws_vpc.benchracers_vpc vpc-02c40b65ea5d2299b
-          import_if_not_exists aws_subnet.benchracers_subnet_1 subnet-0f7c4d8fbf2120098 
-          import_if_not_exists aws_subnet.benchracers_subnet_2 subnet-091aeac6690bec0e8 
-          import_if_not_exists aws_subnet.benchracers_subnet_3 subnet-05d4f20360b99ba7a
-          import_if_not_exists aws_subnet.benchracers_subnet_4 subnet-06d60fb0cf107ea8b
-          import_if_not_exists aws_internet_gateway.benchracers_igw igw-0201c4b37e2725866
 
 
       - name: Terraform Plan
