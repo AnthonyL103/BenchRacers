@@ -31,12 +31,31 @@ jobs:
 
       - name: Import existing resources
         run: |
-          terraform import aws_cloudwatch_log_group.benchracers_api_logs /benchracers/api/calls
-          terraform import aws_iam_role.ec2_cloudwatch_role benchracers-ec2-cloudwatch-role
-          terraform import aws_iam_instance_profile.ec2_profile benchracers-ec2-cloudwatch-profile
-          terraform import aws_lb.benchracers_alb arn:aws:elasticloadbalancing:us-west-2:060795900722:loadbalancer/app/benchracers-alb/15ceb11f83ee29de
-          terraform import aws_lb_target_group.benchracers_target_group arn:aws:elasticloadbalancing:us-west-2:060795900722:targetgroup/benchracers-tg/d7e98fbfcb93876c
-          terraform import aws_s3_bucket.benchracers_photos benchracers-photos
+          import_if_not_exists() {
+            terraform state show "$1" >/dev/null 2>&1 || terraform import "$@"
+          }
+
+          import_if_not_exists aws_cloudwatch_log_group.benchracers_api_logs /benchracers/api/calls
+          import_if_not_exists aws_iam_role.ec2_cloudwatch_role benchracers-ec2-cloudwatch-role
+          import_if_not_exists aws_iam_instance_profile.ec2_profile benchracers-ec2-cloudwatch-profile
+          import_if_not_exists aws_lb.benchracers_alb arn:aws:elasticloadbalancing:us-west-2:060795900722:loadbalancer/app/benchracers-alb/15ceb11f83ee29de
+          import_if_not_exists aws_lb_target_group.benchracers_target_group arn:aws:elasticloadbalancing:us-west-2:060795900722:targetgroup/benchracers-tg/d7e98fbfcb93876c
+          import_if_not_exists aws_s3_bucket.benchracers_photos benchracers-photos
+          import_if_not_exists aws_security_group.benchracers_ec2_sg sg-099124eb86f720f70
+          import_if_not_exists aws_security_group.benchracers_alb_sg sg-070f2136a77d18b05
+          import_if_not_exists aws_iam_policy.s3_access_policy arn:aws:iam::060795900722:policy/benchracers-s3-access-policy
+          import_if_not_exists aws_vpc.benchracers_vpc vpc-02c40b65ea5d2299b
+          import_if_not_exists aws_subnet.benchracers_subnet_1 subnet-0f7c4d8fbf2120098 
+          import_if_not_exists aws_subnet.benchracers_subnet_2 subnet-091aeac6690bec0e8 
+          import_if_not_exists aws_subnet.benchracers_subnet_3 subnet-05d4f20360b99ba7a
+          import_if_not_exists aws_subnet.benchracers_subnet_4 subnet-06d60fb0cf107ea8b
+          import_if_not_exists aws_internet_gateway.benchracers_igw igw-0201c4b37e2725866
+          import_if_not_exists aws_route_table.benchracers_rt rtb-0323ca1bcbb5b50a2
+          import_if_not_exists aws_route_table_association.a rtbassoc-0f9f65d19e559759c
+          import_if_not_exists aws_route_table_association.b rtbassoc-0f355e3573bfd4191
+          import_if_not_exists aws_route_table_association.c rtbassoc-031774373edcb95d3
+          import_if_not_exists aws_route_table_association.d rtbassoc-0da4bee4e8c5012ca 
+
 
       - name: Terraform Plan
         run: terraform plan
