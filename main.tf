@@ -82,7 +82,12 @@ resource "aws_internet_gateway" "benchracers_igw" {
 
 resource "aws_route_table" "benchracers_rt" {
   vpc_id = aws_vpc.benchracers_vpc.id
-  route { cidr_block = "0.0.0.0/0", gateway_id = aws_internet_gateway.benchracers_igw.id }
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.benchracers_igw.id
+  }
+
   tags = { Name = "BenchRacers-RT" }
 }
 
@@ -111,9 +116,27 @@ resource "aws_security_group" "benchracers_alb_sg" {
   description = "Security group for BenchRacers ALB"
   vpc_id      = aws_vpc.benchracers_vpc.id
 
-  ingress { from_port = 80, to_port = 80, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 443, to_port = 443, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
-  egress  { from_port = 0, to_port = 0, protocol = "-1", cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = { Name = "BenchRacers-ALB-SG" }
 }
 
@@ -122,9 +145,26 @@ resource "aws_security_group" "benchracers_ec2_sg" {
   description = "Security group for BenchRacers EC2 instances"
   vpc_id      = aws_vpc.benchracers_vpc.id
 
-  ingress { from_port = 80, to_port = 80, protocol = "tcp", security_groups = [aws_security_group.benchracers_alb_sg.id] }
-  ingress { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] }
-  egress  { from_port = 0, to_port = 0, protocol = "-1", cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.benchracers_alb_sg.id]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = { Name = "BenchRacers-EC2-SG" }
 }
