@@ -13,7 +13,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1">
-        {/* Hero Section */}
+        {/* Hero Sectionf*/}
         <section className="relative h-[80vh] flex items-center">
           <div className="absolute inset-0 z-0">
             <Image
