@@ -84,37 +84,6 @@ resource "aws_internet_gateway" "benchracers_igw" {
   tags = { Name = "BenchRacers-IGW" }
 }
 
-resource "aws_route_table" "benchracers_rt" {
-  vpc_id = aws_vpc.benchracers_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.benchracers_igw.id
-  }
-
-  tags = { Name = "BenchRacers-RT" }
-}
-
-resource "aws_route_table_association" "a" {
-  subnet_id      = aws_subnet.benchracers_subnet_1.id
-  route_table_id = aws_route_table.benchracers_rt.id
-}
-
-resource "aws_route_table_association" "b" {
-  subnet_id      = aws_subnet.benchracers_subnet_2.id
-  route_table_id = aws_route_table.benchracers_rt.id
-}
-
-resource "aws_route_table_association" "c" {
-  subnet_id      = aws_subnet.benchracers_subnet_3.id
-  route_table_id = aws_route_table.benchracers_rt.id
-}
-
-resource "aws_route_table_association" "d" {
-  subnet_id      = aws_subnet.benchracers_subnet_4.id
-  route_table_id = aws_route_table.benchracers_rt.id
-}
-
 resource "aws_security_group" "benchracers_alb_sg" {
   name        = "benchracers-alb-sg"
   description = "Security group for BenchRacers ALB"
@@ -146,7 +115,6 @@ resource "aws_security_group" "benchracers_alb_sg" {
   }
 }
 
-
 resource "aws_security_group" "benchracers_ec2_sg" {
   name        = "benchracers-ec2-sg"
   description = "Security group for BenchRacers EC2 instances"
@@ -175,6 +143,7 @@ resource "aws_security_group" "benchracers_ec2_sg" {
 
   tags = { Name = "BenchRacers-EC2-SG" }
 }
+
 
 resource "aws_launch_template" "benchracers_template" {
   name_prefix   = "benchracers-template"
