@@ -185,8 +185,6 @@ resource "aws_launch_template" "benchracers_template" {
   # Include both the new security group and your existing EC2-RDS security groups
   vpc_security_group_ids = [
     aws_security_group.benchracers_ec2_sg.id,
-    "sg-0ea3c922ba9f4df17",  # ec2-rds-3
-    "sg-043fe2ac5228b6fd3"   # launch-wizard-2
   ]
 
   # Add the IAM instance profile for CloudWatch
