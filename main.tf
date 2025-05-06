@@ -261,15 +261,12 @@ resource "aws_lb" "benchracers_alb" {
   internal           = false
   load_balancer_type = "application"
 
-  security_groups = [aws_security_group.alb_sg.id]
+  security_groups    = [aws_security_group.alb_sg.id]
 
+  # Replace these with *exact* subnet IDs from different AZs
   subnets = [
-    for s in data.aws_subnet.selected :
-    s.id
-    if length([
-      for other in data.aws_subnet.selected : other
-      if other.availability_zone == s.availability_zone
-    ]) == 1
+    "subnet-0fa3bbd6a9b398729",  # e.g., us-west-2a
+    "subnet-03b8554a7dd4aeec8"   # e.g., us-west-2b
   ]
 
   enable_deletion_protection = false
