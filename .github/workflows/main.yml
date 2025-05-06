@@ -31,8 +31,6 @@ jobs:
 
       - name: Import Existing Resources
         run: |
-          terraform import aws_db_instance.benchracers_rds database-1
-          terraform import aws_amplify_app.benchracers_amplify d3bmjlq8fmb7xr
           terraform import aws_cloudwatch_log_group.benchracers_api_logs /benchracers/api/calls
           terraform import aws_iam_role.ec2_cloudwatch_role benchracers-ec2-cloudwatch-role
           terraform import aws_iam_instance_profile.ec2_profile benchracers-ec2-cloudwatch-profile
