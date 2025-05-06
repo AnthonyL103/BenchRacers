@@ -83,7 +83,8 @@ resource "aws_launch_template" "benchracers_template" {
   key_name      = "benchracers-key"  # Your SSH key name
   
   # Include both the new security group and your existing EC2-RDS security groups
-  vpc_security_group_ids = [data.aws_vpc.default.default_security_group_id]
+  vpc_security_group_ids = [data.aws_security_group.default.id]
+
 
 
   # Add the IAM instance profile for CloudWatch
@@ -307,7 +308,7 @@ resource "aws_lb" "benchracers_alb" {
   load_balancer_type = "application"
   
   # Use the security group
-  security_groups = [data.aws_vpc.default.default_security_group_id]
+  security_groups = [data.aws_security_group.default.id]
 
   
   # Use the subnets
