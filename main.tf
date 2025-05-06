@@ -51,34 +51,6 @@ resource "aws_vpc" "benchracers_vpc" {
   tags = { Name = "BenchRacers-VPC" }
 }
 
-resource "aws_subnet" "benchracers_subnet_1" {
-  vpc_id                  = aws_vpc.benchracers_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-west-2a"
-  tags = { Name = "BenchRacers-Subnet-1" }
-}
-
-resource "aws_subnet" "benchracers_subnet_2" {
-  vpc_id            = aws_vpc.benchracers_vpc.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "us-west-2b"
-  tags = { Name = "BenchRacers-Subnet-2" }
-}
-
-resource "aws_subnet" "benchracers_subnet_3" {
-  vpc_id            = aws_vpc.benchracers_vpc.id
-  cidr_block        = "10.0.3.0/24"
-  availability_zone = "us-west-2c"
-  tags = { Name = "BenchRacers-Subnet-3" }
-}
-
-resource "aws_subnet" "benchracers_subnet_4" {
-  vpc_id            = aws_vpc.benchracers_vpc.id
-  cidr_block        = "10.0.4.0/24"
-  availability_zone = "us-west-2d"
-  tags = { Name = "BenchRacers-Subnet-4" }
-}
-
 resource "aws_internet_gateway" "benchracers_igw" {
   vpc_id = aws_vpc.benchracers_vpc.id
   tags = { Name = "BenchRacers-IGW" }
