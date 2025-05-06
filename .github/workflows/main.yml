@@ -38,8 +38,6 @@ jobs:
           import_if_not_exists aws_cloudwatch_log_group.benchracers_api_logs /benchracers/api/calls
           import_if_not_exists aws_iam_role.ec2_cloudwatch_role benchracers-ec2-cloudwatch-role
           import_if_not_exists aws_iam_instance_profile.ec2_profile benchracers-ec2-cloudwatch-profile
-          import_if_not_exists aws_lb.benchracers_alb arn:aws:elasticloadbalancing:us-west-2:060795900722:loadbalancer/app/benchracers-alb/15ceb11f83ee29de
-          import_if_not_exists aws_lb_target_group.benchracers_target_group arn:aws:elasticloadbalancing:us-west-2:060795900722:targetgroup/benchracers-tg/883671be5f5d71a6
           import_if_not_exists aws_s3_bucket.benchracers_photos benchracers-photos
           import_if_not_exists aws_iam_policy.s3_access_policy arn:aws:iam::060795900722:policy/benchracers-s3-access-policy
 
