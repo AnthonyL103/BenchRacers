@@ -130,7 +130,7 @@ yum remove -y curl-minimal || true
 yum install -y curl
 
 # Update system and install packages
-yum update -y
+yum update -y --skip-broken
 yum install -y nginx git gcc-c++ make
 
 # Configure Nginx
