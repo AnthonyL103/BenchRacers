@@ -126,8 +126,8 @@ set -e
 exec > /var/log/user-data.log 2>&1
 
 # Swap curl-minimal to curl to avoid conflicts
-yum remove -y curl-minimal || true
-yum install -y curl
+yum install -y --allowerasing curl
+
 
 # Update system and install packages
 yum update -y --skip-broken
