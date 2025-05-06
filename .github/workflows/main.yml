@@ -25,6 +25,16 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_DEFAULT_REGION=us-west-2" >> $GITHUB_ENV
+          
+      - name: Import existing resources
+        run: |
+          terraform import aws_cloudwatch_log_group.benchracers_api_logs /benchracers/api/calls
+          terraform import aws_iam_role.ec2_cloudwatch_role benchracers-ec2-cloudwatch-role
+          terraform import aws_iam_instance_profile.ec2_profile benchracers-ec2-cloudwatch-profile
+          terraform import aws_lb.benchracers_alb arn:aws:elasticloadbalancing:us-west-2:060795900722:loadbalancer/app/benchracers-alb/15ceb11f83ee29de
+          terraform import aws_lb_target_group.benchracers_target_group arn:aws:elasticloadbalancing:us-west-2:060795900722:targetgroup/benchracers-tg/d7e98fbfcb93876c
+          terraform import aws_s3_bucket.benchracers_photos benchracers-photos
+
 
       - name: Terraform Init
         run: terraform init
