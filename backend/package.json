@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "db:init": "ts-node src/database/dbinit.ts"
+    "db:init": "ts-node src/database/dbinit.ts",
+    "build":"tsc",
+    "start":"node dist/server.js"
+
   },
   "keywords": [],
   "author": "",
