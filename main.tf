@@ -119,34 +119,6 @@ resource "aws_route_table_association" "d" {
   route_table_id = aws_route_table.benchracers_rt.id
 }
 
-resource "aws_security_group" "benchracers_alb_sg" {
-  name        = "benchracers-alb-sg"
-  description = "Security group for BenchRacers ALB"
-  vpc_id      = aws_vpc.benchracers_vpc.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "BenchRacers-ALB-SG" }
-}
 
 resource "aws_security_group" "benchracers_ec2_sg" {
   name        = "benchracers-ec2-sg"
@@ -545,15 +517,6 @@ resource "aws_autoscaling_group" "benchracers_asg" {
   }
 }
 
-# Reference existing RDS instance
-data "aws_db_instance" "benchracers_rds" {
-  db_instance_identifier = "database-1"  # Verify this is your actual RDS identifier
-}
-
-# Reference existing Amplify app
-data "aws_amplify_app" "benchracers_amplify" {
-  app_id = "d3bmjlq8fmb7xr"  # Verify this is your actual Amplify app ID
-}
 
 # S3 bucket for storing photos/images
 resource "aws_s3_bucket" "benchracers_photos" {
