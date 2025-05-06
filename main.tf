@@ -28,10 +28,37 @@ data "aws_subnets" "default" {
   }
 }
 
-data "aws_security_group" "default" {
-  name   = "default"
-  vpc_id = data.aws_vpc.default.id
+resource "aws_security_group" "alb_sg" {
+  name        = "benchracers-alb-sg"
+  description = "Allow HTTP and HTTPS traffic"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "BenchRacers ALB SG"
+  }
 }
+
 
 
 resource "aws_s3_bucket" "benchracers_photos" {
@@ -303,17 +330,12 @@ EOF
 }
 
 resource "aws_lb" "benchracers_alb" {
-  name               = "benchracers-alb" 
+  name               = "benchracers-alb"
   internal           = false
   load_balancer_type = "application"
-  
-  # Use the security group
-  security_groups = [data.aws_security_group.default.id]
 
-  
-  # Use the subnets
-  subnets = data.aws_subnets.default.ids
-
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = data.aws_subnets.default.ids
 
   enable_deletion_protection = false
 
@@ -321,6 +343,7 @@ resource "aws_lb" "benchracers_alb" {
     Name = "BenchRacers-ALB"
   }
 }
+
 
 resource "aws_lb_target_group" "benchracers_target_group" {
   name        = "benchracers-tg"
@@ -389,7 +412,10 @@ resource "aws_s3_bucket_ownership_controls" "benchracers_photos_ownership" {
 
 # S3 bucket ACL
 resource "aws_s3_bucket_acl" "benchracers_photos_acl" {
-  depends_on = [aws_s3_bucket_ownership_controls.benchracers_photos_ownership]
+  depends_on = [
+    aws_lb_listener.benchracers_http_listener,
+    aws_lb_listener.benchracers_https_listener
+  ]
   
   bucket = aws_s3_bucket.benchracers_photos.id
   acl    = "private"  # Makes the bucket private by default
