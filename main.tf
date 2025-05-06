@@ -149,36 +149,6 @@ resource "aws_security_group" "benchracers_ec2_sg" {
   tags = { Name = "BenchRacers-EC2-SG" }
 }
 
-
-resource "aws_security_group" "benchracers_ec2_sg" {
-  name        = "benchracers-ec2-sg"
-  description = "Security group for BenchRacers EC2 instances"
-  vpc_id      = aws_vpc.benchracers_vpc.id
-
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.benchracers_alb_sg.id]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "BenchRacers-EC2-SG" }
-}
-
 resource "aws_launch_template" "benchracers_template" {
   name_prefix   = "benchracers-template"
   image_id      = "ami-07b0c09aab6e66ee9"  # Amazon Linux 2 AMI - update as needed
