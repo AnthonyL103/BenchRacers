@@ -18,7 +18,7 @@ const dbConfig = {
   multipleStatements: true // Enable multiple statements
 };
 
-// Create connection pool
+// Create connection poolff
 const pool = mysql.createPool(dbConfig);
 
 // Function to initialize database
