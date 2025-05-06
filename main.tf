@@ -102,49 +102,40 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # Make sure your instances and load balancer use the default VPC and subnets with open access if necessary
 
 
-
 resource "aws_launch_template" "benchracers_template" {
   name_prefix   = "benchracers-template"
-  image_id      = "ami-07b0c09aab6e66ee9"  # Amazon Linux 2 AMI - update as needed
+  image_id      = "ami-07b0c09aab6e66ee9"  # Amazon Linux 2 AMI
   instance_type = "t2.small"
-  key_name      = "benchracers-key"  # Your SSH key name
-  
-  # Include both the new security group and your existing EC2-RDS security groups
+  key_name      = "benchracers-key"
+
   vpc_security_group_ids = [aws_security_group.alb_sg.id]
 
-
-
-
-
-  # Add the IAM instance profile for CloudWatch
   iam_instance_profile {
-    arn = aws_iam_instance_profile.ec2_profile.arn
+    name = aws_iam_instance_profile.ec2_profile.name
   }
 
   user_data = base64encode(<<EOF
 #!/bin/bash
-set -e  # Stop script on error
-exec > /var/log/user-data.log 2>&1  # Log output for debugging
+set -e
+exec > /var/log/user-data.log 2>&1
 
-echo "Starting user data script at $(date)"  # Forces Terraform to detect changes
+# Update system and install packages
+yum update -y
+yum install -y nginx git curl
 
-# Update system and install dependencies (Amazon Linux commands)
-echo "Updating system packages..."
-sudo yum update -y
-sudo yum install -y nginx git curl 
-
+# Configure Nginx (merged config)
 cat > /etc/nginx/conf.d/benchracers.conf <<EOT
 server {
     listen 80;
-    server_name _;
-    
+    server_name api.benchracers.com;
+
     location /health {
         return 200 'healthy';
         add_header Content-Type text/plain;
     }
 
     location / {
-        if ($request_method = 'OPTIONS') {
+        if (\$request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' 'https://www.benchracershq.com' always;
             add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
             add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
@@ -161,21 +152,28 @@ server {
 }
 EOT
 
-sudo systemctl restart nginx
+systemctl restart nginx
 
-# Install Node.js on Amazon Linux
-echo "Installing Node.js..."
-curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash -
-sudo yum install -y nodejs gcc-c++ make
+# Node.js & app setup
+curl -sL https://rpm.nodesource.com/setup_16.x | bash -
+yum install -y nodejs gcc-c++ make
 
-# Install CloudWatch agent for Amazon Linux
-echo "Installing CloudWatch agent..."
-sudo yum install -y amazon-cloudwatch-agent
+# Clone backend repo
+cd /home/ec2-user
+git clone https://github.com/AnthonyL103/BenchRacers.git || true
+cd BenchRacers/backend
+npm install
 
-# Configure CloudWatch agent
-echo "Configuring CloudWatch agent..."
-sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
-sudo cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'EOT'
+# Setup PM2
+npm install -g pm2
+pm2 start server.js --name benchracers-api
+pm2 save
+pm2 startup
+
+# CloudWatch
+yum install -y amazon-cloudwatch-agent
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<EOT
 {
   "agent": {
     "metrics_collection_interval": 60,
@@ -204,137 +202,54 @@ sudo cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'
 }
 EOT
 
-# Start CloudWatch agent
-echo "Starting CloudWatch agent..."
-sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-sudo systemctl enable amazon-cloudwatch-agent
-sudo systemctl start amazon-cloudwatch-agent
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
-# Create log directories
-sudo mkdir -p /var/log/benchracers-api
-sudo chmod 755 /var/log/benchracers-api
-sudo mkdir -p /home/ec2-user/BenchRacers/backend/logs
-sudo chmod 755 /home/ec2-user/BenchRacers/backend/logs
-
-# Clone backend repo if not already present
-cd /home/ec2-user
-if [ ! -d "BenchRacers/backend" ]; then
-  echo "Cloning BenchRacers backend repo..."
-  git clone https://github.com/AnthonyL103/BenchRacers.git
-else
-  echo "BenchRacers backend repo already exists, pulling latest changes..."
-  cd BenchRacers/backend
-  sudo chown -R ec2-user:ec2-user .  
-  export HOME=/home/ec2-user
-  sudo -u ec2-user git config --global --add safe.directory /home/ec2-user/BenchRacers/backend
-  sudo -u ec2-user git reset --hard origin/main  
-  sudo -u ec2-user git pull origin main
-  
-  cd ..
-
-  find . -mindepth 1 -maxdepth 1 -not -name "backend" -exec rm -rf {} \;
-fi
-
-# Note: Environment variables should be configured separately to avoid
-# storing secrets in version control
-# You can use one of these approaches instead:
-# 1. AWS Systems Manager Parameter Store
-# 2. AWS Secrets Manager 
-# 3. Manual configuration after deployment
-# 4. CI/CD pipeline secrets injection
-
-# Ensure dependencies are installed
-echo "Installing Node.js dependencies..."
-cd /home/ec2-user/BenchRacers/backend
-npm install
-npm install --save bcrypt express cors dotenv uuid @sendgrid/mail jsonwebtoken winston winston-daily-rotate-file aws-sdk multer multer-s3
-
-# Ensure no stale processes are running
-echo "Killing old processes..."
-for port in 3000 3001 3002 3003; do
-  sudo fuser -k $port/tcp || true
-done
-sudo pkill -f node || true
-sudo pkill -f pm2 || true
-
-# Install PM2 and start processes
-echo "Starting PM2 processes..."
-cd /home/ec2-user/BenchRacers/backend
-
-# Update PM2 to ensure consistent version
-npm install pm2@latest -g
-
-# Force PM2 to update
-pm2 update
-
-# Clear any existing PM2 processes
-pm2 delete all || true
-
-# Create pm2 ecosystem file if it doesn't exist
-if [ ! -f "ecosystem.config.js" ]; then
-  cat > ecosystem.config.js <<EOT
-module.exports = {
-  apps: [{
-    name: "benchracers-api",
-    script: "server.js",
-    env: {
-      NODE_ENV: "production",
-      PORT: 3000
-    },
-    log_date_format: "YYYY-MM-DD HH:mm:ss",
-    error_file: "logs/error.log",
-    out_file: "logs/out.log"
-  }]
-}
-EOT
-fi
-
-# Start processes
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-
-sudo chown -R ec2-user:ec2-user /home/ec2-user/.pm2
-sudo chmod -R 775 /home/ec2-user/.pm2
-
-# Setup Nginx reverse proxy - Amazon Linux uses a different Nginx config location
-cat > /etc/nginx/conf.d/benchracers.conf <<EOT
-server {
-    listen 80;
-    server_name api.benchracers.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-    }
-}
-EOT
-
-# Remove default nginx site if it exists
-rm -f /etc/nginx/conf.d/default.conf || true
-
-# Restart services
-echo "Restarting Nginx..."
-sudo systemctl restart nginx
-
-echo "User data script finished successfully at $(date)"  # Forces Terraform to recognize changes
+systemctl enable amazon-cloudwatch-agent
+systemctl start amazon-cloudwatch-agent
 EOF
   )
 
-  # Forces instance replacement when the script updates
   lifecycle {
     create_before_destroy = true
   }
 }
 
+resource "aws_autoscaling_group" "benchracers_asg" {
+  name                      = "benchracers-asg"
+  max_size                  = 2
+  min_size                  = 1
+  desired_capacity          = 1
+  vpc_zone_identifier       = data.aws_subnets.default.ids
+  target_group_arns         = [aws_lb_target_group.benchracers_target_group.arn]
+  health_check_type         = "EC2"
+  health_check_grace_period = 300
+
+  launch_template {
+    id      = aws_launch_template.benchracers_template.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "BenchRacers Instance"
+    propagate_at_launch = true
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+
+
 resource "aws_lb" "benchracers_alb" {
   name               = "benchracers-alb"
   internal           = false
   load_balancer_type = "application"
+
+  depends_on = [aws_security_group.alb_sg]
 
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = data.aws_subnets.default.ids
@@ -368,6 +283,9 @@ resource "aws_lb_target_group" "benchracers_target_group" {
   tags = {
     Name = "BenchRacers-TargetGroup"
   }
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Use manually created certificate for HTTPS listener
@@ -384,6 +302,12 @@ resource "aws_lb_listener" "benchracers_https_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.benchracers_target_group.arn
   }
+  depends_on = [aws_lb_target_group.benchracers_target_group]
+  lifecycle {
+    create_before_destroy = true
+  }
+
+
 }
 
 # HTTP listener with redirect to HTTPS
@@ -399,6 +323,10 @@ resource "aws_lb_listener" "benchracers_http_listener" {
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
+  }
+  depends_on = [aws_lb_target_group.benchracers_target_group]
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
