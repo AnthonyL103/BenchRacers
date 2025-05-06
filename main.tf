@@ -46,6 +46,13 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port   = 0
@@ -101,7 +108,6 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # Removed custom VPC, Internet Gateway, and Security Groups to rely on AWS default networking
 # Make sure your instances and load balancer use the default VPC and subnets with open access if necessary
 
-
 resource "aws_launch_template" "benchracers_template" {
   name_prefix   = "benchracers-template"
   image_id      = "ami-07b0c09aab6e66ee9"  # Amazon Linux 2 AMI
@@ -119,11 +125,15 @@ resource "aws_launch_template" "benchracers_template" {
 set -e
 exec > /var/log/user-data.log 2>&1
 
+# Swap curl-minimal to curl to avoid conflicts
+yum remove -y curl-minimal || true
+yum install -y curl
+
 # Update system and install packages
 yum update -y
-yum install -y nginx git curl
+yum install -y nginx git gcc-c++ make
 
-# Configure Nginx (merged config)
+# Configure Nginx
 cat > /etc/nginx/conf.d/benchracers.conf <<EOT
 server {
     listen 80;
@@ -154,23 +164,27 @@ EOT
 
 systemctl restart nginx
 
-# Node.js & app setup
+# Node.js setup
 curl -sL https://rpm.nodesource.com/setup_16.x | bash -
-yum install -y nodejs gcc-c++ make
+yum install -y nodejs
 
-# Clone backend repo
+# Clone and set up backend
 cd /home/ec2-user
-git clone https://github.com/AnthonyL103/BenchRacers.git || true
+if [ ! -d "BenchRacers" ]; then
+  git clone https://github.com/AnthonyL103/BenchRacers.git
+fi
 cd BenchRacers/backend
 npm install
 
 # Setup PM2
 npm install -g pm2
-pm2 start server.js --name benchracers-api
+mkdir -p logs
+pm2 start server.js --name benchracers-api --log-date-format="YYYY-MM-DD HH:mm:ss" --output logs/out.log --error logs/error.log
 pm2 save
 pm2 startup
+eval $(pm2 startup | grep sudo)
 
-# CloudWatch
+# CloudWatch Agent setup
 yum install -y amazon-cloudwatch-agent
 mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
 cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<EOT
@@ -183,12 +197,6 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<EOT
     "logs_collected": {
       "files": {
         "collect_list": [
-          {
-            "file_path": "/var/log/benchracers-api/*.log",
-            "log_group_name": "/benchracers/api/calls",
-            "log_stream_name": "{instance_id}-api-logs",
-            "timestamp_format": "%Y-%m-%d %H:%M:%S"
-          },
           {
             "file_path": "/home/ec2-user/BenchRacers/backend/logs/*.log",
             "log_group_name": "/benchracers/api/calls",
@@ -208,6 +216,8 @@ EOT
 
 systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
+
+echo "User data script completed successfully."
 EOF
   )
 
@@ -215,6 +225,7 @@ EOF
     create_before_destroy = true
   }
 }
+
 
 resource "aws_autoscaling_group" "benchracers_asg" {
   name                      = "benchracers-asg"

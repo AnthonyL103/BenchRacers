@@ -41,6 +41,10 @@ jobs:
           import_if_not_exists aws_s3_bucket.benchracers_photos benchracers-photos
           import_if_not_exists aws_iam_policy.s3_access_policy arn:aws:iam::060795900722:policy/benchracers-s3-access-policy
           import_if_not_exists aws_security_group.alb_sg sg-009cd1df10a9e80c1
+          import_if_not_exists aws_lb_target_group.benchracers_target_group arn:aws:elasticloadbalancing:us-west-2:060795900722:targetgroup/benchracers-tg/42a15355d3e579b2
+          import_if_not_exists aws_lb.benchracers_alb arn:aws:elasticloadbalancing:us-west-2:060795900722:loadbalancer/app/benchracers-alb/c9a52193f6a69ce6
+          import_if_not_exists aws_autoscaling_group.benchracers_asg benchracers-asg
+
 
 
 
