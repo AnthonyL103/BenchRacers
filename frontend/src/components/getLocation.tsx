@@ -23,7 +23,7 @@ export function getLocation() {
   
   export const getRegionFromCoordinates = async (latitude: number, longitude: number) => {
     try {
-      // Using OpenCage Geocoder API - replace with your API keyl
+      // Using OpenCage Geocoder API - replace with your API keylj
       const response = await fetch(
         `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${OPENCAGEKEY}`
       );
