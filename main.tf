@@ -458,7 +458,7 @@ resource "aws_lb_listener" "benchracers_https_listener" {
   ssl_policy        = "ELBSecurityPolicy-2016-08"
   
   # Reference your existing certificate - Update this with your actual certificate ARN
-  certificate_arn   = " arn:aws:acm:us-west-2:060795900722:certificate/7c9b7b25-72b6-4802-80e6-787021dd4942"
+  certificate_arn   = "arn:aws:acm:us-west-2:060795900722:certificate/7c9b7b25-72b6-4802-80e6-787021dd4942"
  
   default_action {
     type             = "forward"
