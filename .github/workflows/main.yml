@@ -40,6 +40,8 @@ jobs:
           import_if_not_exists aws_iam_instance_profile.ec2_profile benchracers-ec2-cloudwatch-profile
           import_if_not_exists aws_s3_bucket.benchracers_photos benchracers-photos
           import_if_not_exists aws_iam_policy.s3_access_policy arn:aws:iam::060795900722:policy/benchracers-s3-access-policy
+          import_if_not_exists aws_security_group.alb_sg sg-009cd1df10a9e80c1
+
 
 
       - name: Terraform Plan
