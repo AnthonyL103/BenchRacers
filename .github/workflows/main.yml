@@ -51,10 +51,11 @@ jobs:
           import_if_not_exists aws_subnet.benchracers_subnet_4 subnet-06d60fb0cf107ea8b
           import_if_not_exists aws_internet_gateway.benchracers_igw igw-0201c4b37e2725866
           import_if_not_exists aws_route_table.benchracers_rt rtb-0323ca1bcbb5b50a2
-          import_if_not_exists aws_route_table_association.a subnet-0f7c4d8fbf2120098/rtb-0323ca1bcbb5b50a2
-          import_if_not_exists aws_route_table_association.b subnet-091aeac6690bec0e8/rtb-0323ca1bcbb5b50a2
-          import_if_not_exists aws_route_table_association.c subnet-05d4f20360b99ba7a/rtb-0323ca1bcbb5b50a2
-          import_if_not_exists aws_route_table_association.d subnet-06d60fb0cf107ea8b/rtb-0323ca1bcbb5b50a2
+          import_if_not_exists aws_route_table_association.a subnet-05d4f20360b99ba7a/rtb-0323ca1bcbb5b50a2
+          import_if_not_exists aws_route_table_association.b subnet-0f7c4d8fbf2120098/rtb-0323ca1bcbb5b50a2
+          import_if_not_exists aws_route_table_association.c subnet-06d60fb0cf107ea8b/rtb-0323ca1bcbb5b50a2
+          import_if_not_exists aws_route_table_association.d subnet-091aeac6690bec0e8/rtb-0323ca1bcbb5b50a2
+
 
 
 
