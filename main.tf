@@ -110,7 +110,9 @@ resource "aws_launch_template" "benchracers_template" {
   key_name      = "benchracers-key"  # Your SSH key name
   
   # Include both the new security group and your existing EC2-RDS security groups
-  vpc_security_group_ids = [data.aws_security_group.default.id]
+  vpc_security_group_ids = [aws_security_group.alb_sg.id]
+
+
 
 
 
