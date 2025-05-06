@@ -28,6 +28,16 @@ data "aws_subnets" "default" {
   }
 }
 
+resource "aws_s3_bucket" "benchracers_photos" {
+  bucket = "benchracers-photos"
+
+  tags = {
+    Name = "BenchRacers Photos"
+    Environment = "Production"
+  }
+}
+
+
 resource "aws_cloudwatch_log_group" "benchracers_api_logs" {
   name              = "/benchracers/api/calls"
   retention_in_days = 14
