@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
+//test
 process.on('SIGINT', () => {
   console.log('Shutting down gracefully');
   pool.end();
