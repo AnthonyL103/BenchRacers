@@ -16,58 +16,79 @@ const router = Router();
 
 // Signup route
 router.post('/signup', async (req: Request, res: Response) => {
-  try {
-    const { email, name, password, region } = req.body;
-    if (!email || !name || !password || !region) {
-      return res.status(400).json({ message: 'All fields are required' });
+    console.log('[SIGNUP] Received signup request');
+  
+    try {
+      const { email, name, password, region } = req.body;
+      console.log('[SIGNUP] Request body:', { email, name, password: !!password, region });
+  
+      if (!email || !name || !password || !region) {
+        console.warn('[SIGNUP] Missing required fields');
+        return res.status(400).json({ message: 'All fields are required' });
+      }
+  
+      const [existingUsers]: any = await pool.query('SELECT * FROM Users WHERE userID = ?', [email]);
+      console.log('[SIGNUP] Checked for existing user:', existingUsers.length);
+  
+      if (existingUsers.length > 0) {
+        console.warn('[SIGNUP] User already exists:', email);
+        return res.status(409).json({ message: 'User already exists' });
+      }
+  
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const verificationToken = uuidv4();
+      const accountCreated = new Date();
+  
+      console.log('[SIGNUP] Inserting new user');
+      await pool.query(
+        `INSERT INTO Users 
+         (userID, name, password, accountCreated, totalEntries, region, isEditor, isVerified, verificationToken) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [email, name, hashedPassword, accountCreated, 0, region, false, false, verificationToken]
+      );
+      console.log('[SIGNUP] Inserted user successfully');
+  
+      const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
+      console.log('[SIGNUP] Generated verification URL:', verificationUrl);
+  
+      const msg = {
+        to: email,
+        from: process.env.EMAIL_USER || 'noreply@benchracers.com',
+        subject: 'Verify your Bench Racers account',
+        html: `
+          <h1>Welcome to Bench Racers!</h1>
+          <p>Thank you for signing up. Please verify your email:</p>
+          <a href="${verificationUrl}">Verify Email</a>
+        `
+      };
+  
+      console.log('[SIGNUP] Sending verification email to:', msg.to);
+      try {
+        await sgMail.send(msg);
+        console.log('[SIGNUP] Verification email sent');
+      } catch (sendErr) {
+        console.error('[SIGNUP] Email send failed');
+        throw sendErr;
+      }
+  
+      const token = jwt.sign(
+        { userID: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+  
+      console.log('[SIGNUP] JWT generated, returning success');
+      res.status(201).json({
+        message: 'User created successfully. Please verify your email.',
+        token,
+        user: { userID: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
+      });
+    } catch (error) {
+      console.error('[SIGNUP] Error occurred:', error);
+      res.status(500).json({ message: 'Server error during signup' });
     }
-
-    const [existingUsers]: any = await pool.query('SELECT * FROM Users WHERE userID = ?', [email]);
-    if (existingUsers.length > 0) {
-      return res.status(409).json({ message: 'User already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = uuidv4();
-    const accountCreated = new Date();
-
-    await pool.query(
-      `INSERT INTO Users 
-       (userID, name, password, accountCreated, totalEntries, region, isEditor, isVerified, verificationToken) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [email, name, hashedPassword, accountCreated, 0, region, false, false, verificationToken]
-    );
-
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
-    const msg = {
-      to: email,
-      from: process.env.EMAIL_USER || 'noreply@benchracers.com',
-      subject: 'Verify your Bench Racers account',
-      html: `
-        <h1>Welcome to Bench Racers!</h1>
-        <p>Thank you for signing up. Please verify your email:</p>
-        <a href="${verificationUrl}">Verify Email</a>
-      `
-    };
-
-    await sgMail.send(msg);
-
-    const token = jwt.sign(
-      { userID: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.status(201).json({
-      message: 'User created successfully. Please verify your email.',
-      token,
-      user: { userID: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
-    });
-  } catch (error) {
-    console.error('Signup error:', error);
-    res.status(500).json({ message: 'Server error during signup' });
-  }
-});
+  });
+  
 
 // Login route
 router.post('/login', async (req: Request, res: Response) => {

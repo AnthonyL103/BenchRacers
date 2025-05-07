@@ -22,8 +22,8 @@ DROP TABLE IF EXISTS Users;
 -- Create the Users table
 -- I increased the password size to fit bcypt hashing
 CREATE TABLE Users (
-    userID VARCHAR(20) PRIMARY KEY,
-    name VARCHAR(20) NOT NULL,
+    userID VARCHAR(60) PRIMARY KEY,
+    name VARCHAR(60) NOT NULL,
     password VARCHAR(60) NOT NULL, 
     accountCreated DATETIME NOT NULL,
     userIndex INT AUTO_INCREMENT UNIQUE,

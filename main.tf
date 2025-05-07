@@ -278,6 +278,8 @@ resource "aws_lb" "benchracers_alb" {
   subnets = [
     "subnet-0fa3bbd6a9b398729",  # e.g., us-west-2a
     "subnet-03b8554a7dd4aeec8"   # e.g., us-west-2b
+    "subnet-0808f06feea54df94"
+    "subnet-0c064f12fd07fae84"
   ]
 
   enable_deletion_protection = false
