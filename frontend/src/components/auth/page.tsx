@@ -51,7 +51,7 @@ export default function AuthPage() {
       const password = formData.get('password') as string;
       
       // Make API call
-      const response = await fetch('/api/users/login', {
+      const response = await fetch('https://api.benchracershq.com/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ export default function AuthPage() {
       console.log(region);
       
       // Make API call with region included
-      const response = await fetch('/api/users/signup', {
+      const response = await fetch('https://api.benchracershq.com/api/users/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
