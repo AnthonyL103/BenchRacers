@@ -66,7 +66,8 @@ export default function AuthPage() {
     dispatch({ type: UserActionTypes.CLEAR_ERROR });
   }, [activeTab, dispatch]);
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  // In the handleLogin function, modify the error handling section:
+const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // First dispatch LOGIN_REQUEST to set loading state
@@ -78,31 +79,6 @@ export default function AuthPage() {
       const email = formData.get('email') as string;
       const password = formData.get('password') as string;
       
-      const location = useLocation();
-  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
-  
-  // Add this new useEffect to handle verification messages
-  useEffect(() => {
-    if (location.state && 
-        'verificationMessage' in location.state && 
-        'verificationStatus' in location.state) {
-      setVerificationMessage(location.state.verificationMessage as string);
-      setVerificationStatus(location.state.verificationStatus as "success" | "error");
-      
-      // Clear the message after 5 seconds
-      const timer = setTimeout(() => {
-        setVerificationMessage(null);
-        setVerificationStatus(null);
-        
-        // Clear the location state to prevent showing the message again on refresh
-        window.history.replaceState({}, document.title);
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [location]);
-      
       // Make API call
       const response = await fetch('https://api.benchracershq.com/api/users/login', {
         method: 'POST',
@@ -112,13 +88,24 @@ export default function AuthPage() {
         body: JSON.stringify({ email, password }),
       });
       
+      // Parse the response data regardless of status
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
+        // Handle specific error codes
+        if (data.errorCode === 'EMAIL_NOT_VERIFIED') {
+          throw new Error('Please verify your email before logging in. Check your inbox for a verification email.');
+        } else if (data.errorCode === 'INVALID_CREDENTIALS') {
+          throw new Error('Invalid email or password.');
+        } else if (data.errorCode === 'MISSING_FIELDS') {
+          throw new Error('Email and password are required.');
+        } else {
+          throw new Error(data.message || 'Login failed');
+        }
       }
       
       // Handle successful login
-      const userData = await response.json();
+      const userData = data;
       
       // Dispatch LOGIN_SUCCESS with the user data
       dispatch({ 
@@ -143,6 +130,7 @@ export default function AuthPage() {
     }
   };
   
+  // In the handleSignup function, update the error handling section:
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -177,28 +165,46 @@ export default function AuthPage() {
         body: JSON.stringify({ email, name, password, region }),
       });
     
+      // Parse the response data regardless of status
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Signup failed');
+        // Handle specific error codes
+        if (data.errorCode === 'USER_EXISTS') {
+          throw new Error('An account with this email already exists.');
+        } else if (data.errorCode === 'USER_EXISTS_NOT_VERIFIED') {
+          throw new Error('An account with this email already exists but is not verified. A new verification email has been sent.');
+        } else if (data.errorCode === 'WEAK_PASSWORD') {
+          throw new Error('Password must be at least 8 characters long.');
+        } else if (data.errorCode === 'MISSING_FIELDS') {
+          throw new Error('All fields are required.');
+        } else {
+          throw new Error(data.message || 'Signup failed');
+        }
       }
       
-      const userData = await response.json();
+      const userData = data;
       dispatch({ 
         type: UserActionTypes.REGISTER_SUCCESS, 
         payload: userData 
       });
       
-      // Navigate to dashboard on successful signup
+      // Show success message for signup
       setErrorMessage("");
       
+      // Navigate to a post-signup page or show a message about verification
+      // Optionally: Show a success modal or message about checking email
+      // For now, just show a success alert
+      alert("Account created successfully! Please check your email to verify your account.");
+      
     } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
       dispatch({ 
         type: UserActionTypes.REGISTER_FAILURE, 
         payload: error instanceof Error ? error.message : 'An unknown error occurred'
       });
     }
   };
-
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
