@@ -103,7 +103,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       );
       console.log('[SIGNUP] Inserted user successfully');
   
-      const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
+      const verificationUrl = `${process.env.FRONTEND_URL}`;
       console.log('[SIGNUP] Generated verification URL:', verificationUrl);
   
       const msg = {
