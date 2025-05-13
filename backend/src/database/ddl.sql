@@ -39,7 +39,7 @@ CREATE TABLE Users (
 -- Create the Entries table
 CREATE TABLE Entries (
     entryID INT AUTO_INCREMENT PRIMARY KEY,
-    userEmai VARCHAR(20) NOT NULL,
+    userEmail VARCHAR(60) NOT NULL,
     carName VARCHAR(20) NOT NULL,
     carMake VARCHAR(20) NOT NULL,
     carColor VARCHAR(20),
@@ -56,7 +56,7 @@ CREATE TABLE Entries (
 -- Create the Awards table
 CREATE TABLE Awards (
     awardID INT AUTO_INCREMENT PRIMARY KEY,
-    userEmail VARCHAR(20) NOT NULL,
+    userEmail VARCHAR(60) NOT NULL,
     awardType VARCHAR(20) NOT NULL,
     awardDate DATETIME NOT NULL,
     FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
