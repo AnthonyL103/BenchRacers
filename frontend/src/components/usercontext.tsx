@@ -1,177 +1,99 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Define the User type based on your database schema
-interface User {
-  userID: string | null;
-  name: string | null;
-  accountCreated: string | null;
-  userIndex?: number | null;
+export interface User {
+  userEmail: string;
+  name: string;
+  accountCreated: string;
+  userIndex?: number;
   totalEntries: number;
-  region: string | null;
+  region: string;
   isEditor: boolean;
+  isVerified?: boolean;
 }
 
-// Define the initial state
-interface UserState {
+// Define the context state
+interface UserContextState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  login: (userData: User, token: string) => void;
+  logout: () => void;
+  setError: (error: string | null) => void;
+  setLoading: (isLoading: boolean) => void;
 }
 
-// Action type interface
-interface UserAction {
-  type: string;
-  payload?: any;
-}
+// Create context
+const UserContext = createContext<UserContextState | undefined>(undefined);
 
-// Initial state
-const initialState: UserState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
-  error: null
-};
-
-// Get initial state from localStorage if available
-const getInitialState = (): UserState => {
+// Get initial state from localStorage
+const getStoredUser = (): User | null => {
   try {
-    const savedState = localStorage.getItem('userState');
-    return savedState ? JSON.parse(savedState) : initialState;
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
   } catch (error) {
-    console.error('Error loading state from localStorage:', error);
-    return initialState;
+    console.error('Error loading user from localStorage:', error);
+    return null;
   }
 };
-
-// Action types
-export const UserActionTypes = {
-  LOGIN_REQUEST: 'LOGIN_REQUEST',
-  LOGIN_SUCCESS: 'LOGIN_SUCCESS',
-  LOGIN_FAILURE: 'LOGIN_FAILURE',
-  LOGOUT: 'LOGOUT',
-  REGISTER_REQUEST: 'REGISTER_REQUEST',
-  REGISTER_SUCCESS: 'REGISTER_SUCCESS',
-  REGISTER_FAILURE: 'REGISTER_FAILURE',
-  UPDATE_USER: 'UPDATE_USER',
-  CLEAR_ERROR: 'CLEAR_ERROR'
-};
-
-// Reducer function
-function userReducer(state: UserState, action: UserAction): UserState {
-  switch (action.type) {
-    case UserActionTypes.LOGIN_REQUEST:
-      return {
-        ...state,
-        isLoading: true,
-        error: null
-      };
-    case UserActionTypes.LOGIN_SUCCESS:
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null
-      };
-    case UserActionTypes.LOGIN_FAILURE:
-      return {
-        ...state,
-        isLoading: false,
-        error: action.payload
-      };
-    case UserActionTypes.LOGOUT:
-      return {
-        ...state,
-        user: null,
-        isAuthenticated: false,
-        error: null
-      };
-    case UserActionTypes.REGISTER_REQUEST:
-      return {
-        ...state,
-        isLoading: true,
-        error: null
-      };
-    case UserActionTypes.REGISTER_SUCCESS:
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null
-      };
-    case UserActionTypes.REGISTER_FAILURE:
-      return {
-        ...state,
-        isLoading: false,
-        error: action.payload
-      };
-    case UserActionTypes.UPDATE_USER:
-      return {
-        ...state,
-        user: state.user ? {
-          ...state.user,
-          ...action.payload
-        } : action.payload
-      };
-    case UserActionTypes.CLEAR_ERROR:
-      return {
-        ...state,
-        error: null
-      };
-    default:
-      return state;
-  }
-}
-
-// Create context with explicit types
-type UserStateContextType = UserState;
-type UserDispatchContextType = React.Dispatch<UserAction>;
-
-// Create context objects with default values
-const UserStateContext = createContext<UserStateContextType>(initialState);
-const UserDispatchContext = createContext<UserDispatchContextType>(() => null);
 
 // Provider component
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(userReducer, getInitialState());
+  const [user, setUser] = useState<User | null>(getStoredUser());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getStoredUser());
+  const [isLoading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // This effect ensures state is saved whenever it changes
+  // Login function
+  const login = (userData: User, token: string) => {
+    console.log("Setting user in context:", userData);
+    setUser(userData);
+    setIsAuthenticated(true);
+    setError(null);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', token);
+  };
+
+  // Logout function
+  const logout = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+  };
+
+  // Check if token exists on load
   useEffect(() => {
-    localStorage.setItem('userState', JSON.stringify(state));
-  }, [state]);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      logout();
+    }
+  }, []);
 
   return (
-    <UserStateContext.Provider value={state as UserStateContextType}>
-      <UserDispatchContext.Provider value={dispatch}>
-        {children}
-      </UserDispatchContext.Provider>
-    </UserStateContext.Provider>
+    <UserContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoading,
+        error,
+        login,
+        logout,
+        setError,
+        setLoading
+      }}
+    >
+      {children}
+    </UserContext.Provider>
   );
 }
 
-// Custom hooks to use state and dispatch
-export function useUserState() {
-  const context = useContext(UserStateContext);
-  if (!context) {
-    throw new Error('useUserState must be used within a UserProvider');
-  }
-  return context;
-}
-
-export function useUserDispatch() {
-  const context = useContext(UserDispatchContext);
-  if (!context) {
-    throw new Error('useUserDispatch must be used within a UserProvider');
-  }
-  return context;
-}
-
-// Hook that provides both state and dispatch
+// Hook to use the user context
 export function useUser() {
-  const state = useUserState();
-  const dispatch = useUserDispatch();
-  
-  return { ...state, dispatch };
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
 }

@@ -8,15 +8,13 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Car, Github, ChromeIcon as Google } from "lucide-react"
-import { useUser, UserActionTypes } from '../usercontext';
+import { useUser } from '../usercontext';
 import { getUserRegion } from '../getLocation';
 import { useLocation } from "react-router-dom";
 
-
-
 export default function AuthPage() {
   // Use React Router's useSearchParams hook
-  const { isLoading, error, dispatch } = useUser();
+  const { isLoading, login, setLoading, setError } = useUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -31,7 +29,7 @@ export default function AuthPage() {
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
   
-  // Add this new useEffect to handle verification messages
+  // Handle verification messages
   useEffect(() => {
     if (location.state && 
         'verificationMessage' in location.state && 
@@ -63,21 +61,25 @@ export default function AuthPage() {
   
   // Clear error when switching tabs
   useEffect(() => {
-    dispatch({ type: UserActionTypes.CLEAR_ERROR });
-  }, [activeTab, dispatch]);
+    setErrorMessage("");
+    setError(null);
+  }, [activeTab, setError]);
 
-  // In the handleLogin function, modify the error handling section:
-const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Simplified login handler
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // First dispatch LOGIN_REQUEST to set loading state
-    dispatch({ type: UserActionTypes.LOGIN_REQUEST });
+    // Set loading state
+    setLoading(true);
+    setErrorMessage(""); // Clear any previous error messages
     
     try {
       // Get form data
       const formData = new FormData(e.currentTarget);
       const email = formData.get('email') as string;
       const password = formData.get('password') as string;
+      
+      console.log("Attempting login with:", { email });
       
       // Make API call
       const response = await fetch('https://api.benchracershq.com/api/users/login', {
@@ -88,61 +90,58 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         body: JSON.stringify({ email, password }),
       });
       
-      // Parse the response data regardless of status
+      // Parse the response data
       const data = await response.json();
+      console.log("Login response:", data);
       
       if (!response.ok) {
         // Handle specific error codes
         if (data.errorCode === 'EMAIL_NOT_VERIFIED') {
-          throw new Error('Please verify your email before logging in. Check your inbox for a verification email.');
+          setErrorMessage("Please verify your email before logging in. Check your inbox for a verification email.");
         } else if (data.errorCode === 'INVALID_CREDENTIALS') {
-          throw new Error('Invalid email or password.');
+          setErrorMessage('Invalid email or password.');
         } else if (data.errorCode === 'MISSING_FIELDS') {
-          throw new Error('Email and password are required.');
+          setErrorMessage('Email and password are required.');
         } else {
-          throw new Error(data.message || 'Login failed');
+          setErrorMessage(data.message || 'Login failed');
         }
+        setError(data.message || 'Login failed');
+        setLoading(false);
+        return;
       }
       
       // Handle successful login
-      const userData = data;
-      
-      // Dispatch LOGIN_SUCCESS with the user data
-      dispatch({ 
-        type: UserActionTypes.LOGIN_SUCCESS, 
-        payload: userData 
-      });
-      
-      // Optionally store JWT token if your API returns one
-      if (userData.token) {
-        localStorage.setItem('token', userData.token);
+      if (data.success && data.token) {
+        console.log("Login successful, user data:", data.user);
+        
+        // Call the login function from context with user data and token
+        login(data.user, data.token);
+        
+        // Navigate to home page
+        navigate('/');
+      } else {
+        setErrorMessage('Invalid response from server');
+        setError('Invalid response from server');
       }
-      
-      // Navigate to dashboard on successful login
-      navigate('/');
-      
     } catch (error) {
-      // Dispatch LOGIN_FAILURE with the error message
-      dispatch({ 
-        type: UserActionTypes.LOGIN_FAILURE, 
-        payload: error instanceof Error ? error.message : 'An unknown error occurred'
-      });
+      console.error("Login error:", error);
+      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
     }
   };
   
-  // In the handleSignup function, update the error handling section:
+  // Simplified signup handler
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    dispatch({ type: UserActionTypes.REGISTER_REQUEST });
+    setLoading(true);
+    setErrorMessage("");
     
     if (password !== confirmPassword) {
-      dispatch({ 
-        type: UserActionTypes.REGISTER_FAILURE, 
-        payload: "Passwords do not match" 
-      });
       setErrorMessage("Passwords do not match");
-      
+      setLoading(false);
       return;
     }
     
@@ -154,7 +153,7 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
       
       // Get user's region
       const region = await getUserRegion();
-      console.log(region);
+      console.log("User region:", region);
       
       // Make API call with region included
       const response = await fetch('https://api.benchracershq.com/api/users/signup', {
@@ -165,46 +164,48 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         body: JSON.stringify({ email, name, password, region }),
       });
     
-      // Parse the response data regardless of status
+      // Parse the response data
       const data = await response.json();
+      console.log("Signup response:", data);
       
       if (!response.ok) {
         // Handle specific error codes
         if (data.errorCode === 'USER_EXISTS') {
-          throw new Error('An account with this email already exists.');
+          setErrorMessage('An account with this email already exists.');
         } else if (data.errorCode === 'USER_EXISTS_NOT_VERIFIED') {
-          throw new Error('An account with this email already exists but is not verified. A new verification email has been sent.');
+          setErrorMessage('An account with this email already exists but is not verified. A new verification email has been sent.');
         } else if (data.errorCode === 'WEAK_PASSWORD') {
-          throw new Error('Password must be at least 8 characters long.');
+          setErrorMessage('Password must be at least 8 characters long.');
         } else if (data.errorCode === 'MISSING_FIELDS') {
-          throw new Error('All fields are required.');
+          setErrorMessage('All fields are required.');
         } else {
-          throw new Error(data.message || 'Signup failed');
+          setErrorMessage(data.message || 'Signup failed');
         }
+        setError(data.message || 'Signup failed');
+        setLoading(false);
+        return;
       }
       
-      const userData = data;
-      dispatch({ 
-        type: UserActionTypes.REGISTER_SUCCESS, 
-        payload: userData 
-      });
-      
-      // Show success message for signup
-      setErrorMessage("");
-      
-      // Navigate to a post-signup page or show a message about verification
-      // Optionally: Show a success modal or message about checking email
-      // For now, just show a success alert
-      alert("Account created successfully! Please check your email to verify your account.");
-      
+      // Handle successful signup
+      if (data.success && data.user && data.token) {
+        // Store the token and user data
+        login(data.user, data.token);
+        
+        // Show success alert
+        alert("Account created successfully! Please check your email to verify your account.");
+      } else {
+        setErrorMessage('Invalid response from server');
+        setError('Invalid response from server');
+      }
     } catch (error) {
+      console.error("Signup error:", error);
       setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
-      dispatch({ 
-        type: UserActionTypes.REGISTER_FAILURE, 
-        payload: error instanceof Error ? error.message : 'An unknown error occurred'
-      });
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
     }
   };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -244,8 +245,6 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
               </Tabs>
             </CardHeader>
             <CardContent className="space-y-4">
-              
-              
               {activeTab === "login" ? (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2 text-white">
@@ -261,6 +260,11 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
                     </div>
                     <Input id="password" name="password" className="text-black" type="password" required />
                   </div>
+                  <div className="flex items-center"> 
+                    {errorMessage && (
+                      <p className="text-red-500 text-sm font-medium mb-2">{errorMessage}</p>
+                    )}
+                  </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Logging in..." : "Login"}
                   </Button>
@@ -269,7 +273,7 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2 text-white">
                     <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" name="name" placeholder="John Doe" required />
+                    <Input id="name" name="name" className="text-black" placeholder="John Doe" required />
                   </div>
                   <div className="space-y-2 text-white">
                     <Label htmlFor="signup-email">Email</Label>
@@ -307,8 +311,8 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
                     />
                   </div>
                   <div className="flex items-center"> 
-                  {errorMessage && (
-                    <p className="text-red-500 text-sm font-medium mb-2">{errorMessage}</p>
+                    {errorMessage && (
+                      <p className="text-red-500 text-sm font-medium mb-2">{errorMessage}</p>
                     )}
                   </div>
                  

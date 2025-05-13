@@ -11,6 +11,8 @@ import RankingsPage from './components/rankings/page';
 import AuthPage from './components/auth/page';
 import StatsPage from './components/stats/page';
 import VerifyEmail from './components/auth/verify';
+import ForgotPasswordPage from './components/auth/forgotpassword';
+import ResetPasswordPage from './components/auth/resetpassword';
 
 
 const AnimatedRoutes = () => {
@@ -27,6 +29,8 @@ const AnimatedRoutes = () => {
         <Route path="/garage" element={<GaragePage />} />
         <Route path="/rankings" element={<RankingsPage />} />
         <Route path="/stats" element={<StatsPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
         <Route path="/signup" element={<Navigate to="/auth?signup=true" replace />} />
