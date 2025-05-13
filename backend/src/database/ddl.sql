@@ -39,7 +39,7 @@ CREATE TABLE Users (
 -- Create the Entries table
 CREATE TABLE Entries (
     entryID INT AUTO_INCREMENT PRIMARY KEY,
-    userID VARCHAR(20) NOT NULL,
+    userEmai VARCHAR(20) NOT NULL,
     carName VARCHAR(20) NOT NULL,
     carMake VARCHAR(20) NOT NULL,
     carColor VARCHAR(20),
@@ -50,16 +50,16 @@ CREATE TABLE Entries (
     category VARCHAR(20) NOT NULL,
     region VARCHAR(20) NOT NULL,
     upvotes INT NOT NULL DEFAULT 0,
-    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE
+    FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
 );
 
 -- Create the Awards table
 CREATE TABLE Awards (
     awardID INT AUTO_INCREMENT PRIMARY KEY,
-    userID VARCHAR(20) NOT NULL,
+    userEmail VARCHAR(20) NOT NULL,
     awardType VARCHAR(20) NOT NULL,
     awardDate DATETIME NOT NULL,
-    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE
+    FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
 );
 
 -- Create the EngineMods table
