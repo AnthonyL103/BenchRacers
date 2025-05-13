@@ -2,7 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import { UserProvider } from './components/usercontext';
+import { UserProvider } from './components/contexts/usercontext';
+import { GarageProvider } from './components/contexts/garagecontext';
 
 const rootElement = document.getElementById('root');
 
@@ -12,7 +13,9 @@ if (rootElement) {
   root.render(
     <React.StrictMode>
         <UserProvider>
+        <GarageProvider>
       <App />
+      </GarageProvider>
       </UserProvider>
     </React.StrictMode>
   );

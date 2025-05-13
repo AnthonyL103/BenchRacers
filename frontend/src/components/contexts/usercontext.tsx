@@ -12,6 +12,7 @@ export interface User {
   isVerified?: boolean;
 }
 
+
 // Define the context state
 interface UserContextState {
   user: User | null;

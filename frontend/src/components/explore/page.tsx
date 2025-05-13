@@ -11,7 +11,7 @@ import { Badge } from "../ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Input } from "../ui/input"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
-import { useCarState, useCarDispatch, CarActionTypes } from "../carlistcontext" // Import your car context
+import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" // Import your car context
 
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState("swipe")

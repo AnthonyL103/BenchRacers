@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Car, Compass, User, Home, Trophy, Users, LogOut } from "lucide-react";
 import { cn } from "./lib/utils";
-import { useUser } from './usercontext';
+import { useUser } from './contexts/usercontext';
 
 export function Navbar() {
   const location = useLocation();
