@@ -18,13 +18,12 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const uuid_1 = require("uuid");
 const mail_1 = __importDefault(require("@sendgrid/mail"));
-const dbconfig_1 = require("../dbconfig"); // Adjust if needed
-(0, dotenv_1.config)(); // Load .env
+const dbconfig_1 = require("../dbconfig"); 
+(0, dotenv_1.config)(); 
 mail_1.default.setApiKey(process.env.MAILERKEY || '');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const router = (0, express_1.Router)();
-// ===== AUTH ROUTES =====
-// Signup route
+
 router.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, name, password, region } = req.body;
@@ -65,7 +64,7 @@ router.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function*
         res.status(500).json({ message: 'Server error during signup' });
     }
 }));
-// Login route
+
 router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, password } = req.body;
@@ -109,7 +108,6 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         res.status(500).json({ message: 'Server error during login' });
     }
 }));
-// Email verification route
 router.get('/verify', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { token } = req.query;
@@ -128,7 +126,6 @@ router.get('/verify', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         res.status(500).json({ message: 'Server error during verification' });
     }
 }));
-// Forgot password
 router.post('/forgot-password', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email } = req.body;
@@ -161,7 +158,6 @@ router.post('/forgot-password', (req, res) => __awaiter(void 0, void 0, void 0, 
         res.status(500).json({ message: 'Server error during reset request' });
     }
 }));
-// Reset password
 router.post('/reset-password', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { token, newPassword } = req.body;
@@ -182,3 +178,4 @@ router.post('/reset-password', (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 }));
 exports.default = router;
+

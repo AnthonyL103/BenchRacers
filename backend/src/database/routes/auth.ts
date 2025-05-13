@@ -4,17 +4,72 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import sgMail from '@sendgrid/mail';
-import { pool } from '../dbconfig'; // Adjust if needed
+import { pool } from '../dbconfig'; 
 
-config(); // Load .env
+config(); 
 sgMail.setApiKey(process.env.MAILERKEY || '');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const router = Router();
 
-// ===== AUTH ROUTES =====
+/* OTHER QUERIES 
+NOTE THE BOTTOM ROUTES ARE FOR THE AUTH PAGE (LOGIN/SIGNUP) I HAVNEN't configured the rest explicility as routes but here they are (Most basic features Im for sure doing, others like following are up in the air)
 
-// Signup route
+Get top 3 Cars for Exotic/Sport/ Off-Road Categories
+SELECT * FROM Entries 
+WHERE category IN ('Exotic', 'Sport', 'Off-Road') 
+ORDER BY upvotes DESC 
+LIMIT 3;
+
+
+Get top 10 leaderboard (by votes)
+SELECT entryID, carName, carMake, upvotes 
+FROM Entries 
+ORDER BY upvotes DESC 
+LIMIT 10;
+
+
+Get explore cars by category (should be different indexes than the input indexes(represents viewed cars))
+SELECT * FROM Entries 
+WHERE category = 'Sport' 
+  AND entryID NOT IN (1, 5, 9)
+  AND region = 'East'
+ORDER BY RAND()
+LIMIT 10;
+
+
+Get Awards
+
+SELECT * FROM Awards 
+WHERE userEmail = 'some_user_id'
+ORDER BY awardDate DESC;
+
+
+Add Car Entry to the Database
+
+INSERT INTO Entries (
+    userEmail, carName, carMake, carColor, description, 
+    s3ContentID, totalMods, totalCost, category, region
+) VALUES (
+    'some_user_id', 'blah', 'blah', 'blah', 
+    'blah', 'blah', 5, 12000, 'blah', 'blah'
+);
+
+Update Entry Like/Dislike Count
+
+UPDATE Entries 
+SET upvotes = upvotes + 1 
+WHERE entryID = 42;
+
+UPDATE Entries 
+SET upvotes = GREATEST(upvotes - 1, 0) 
+WHERE entryID = 42;
+
+Routes/queries for signup/login:
+*/
+
+
+
 router.post('/signup', async (req: Request, res: Response) => {
     console.log('[SIGNUP] Received signup request');
   
@@ -27,7 +82,7 @@ router.post('/signup', async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'All fields are required' });
       }
   
-      const [existingUsers]: any = await pool.query('SELECT * FROM Users WHERE userID = ?', [email]);
+      const [existingUsers]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
       console.log('[SIGNUP] Checked for existing user:', existingUsers.length);
   
       if (existingUsers.length > 0) {
@@ -42,7 +97,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       console.log('[SIGNUP] Inserting new user');
       await pool.query(
         `INSERT INTO Users 
-         (userID, name, password, accountCreated, totalEntries, region, isEditor, isVerified, verificationToken) 
+         (userEmail, name, password, accountCreated, totalEntries, region, isEditor, isVerified, verificationToken) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [email, name, hashedPassword, accountCreated, 0, region, false, false, verificationToken]
       );
@@ -72,7 +127,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       }
   
       const token = jwt.sign(
-        { userID: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false },
+        { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false },
         JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -81,7 +136,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       res.status(201).json({
         message: 'User created successfully. Please verify your email.',
         token,
-        user: { userID: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
+        user: { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
       });
     } catch (error) {
       console.error('[SIGNUP] Error occurred:', error);
@@ -90,7 +145,6 @@ router.post('/signup', async (req: Request, res: Response) => {
   });
   
 
-// Login route
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -98,7 +152,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const [users]: any = await pool.query('SELECT * FROM Users WHERE userID = ?', [email]);
+    const [users]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
     if (users.length === 0 || !(await bcrypt.compare(password, users[0].password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -110,7 +164,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const token = jwt.sign(
       {
-        userID: user.userID,
+        userEmail: user.userEmail,
         name: user.name,
         accountCreated: user.accountCreated,
         userIndex: user.userIndex,
@@ -127,7 +181,7 @@ router.post('/login', async (req: Request, res: Response) => {
       message: 'Login successful',
       token,
       user: {
-        userID: user.userID,
+        userEmail: user.userEmail,
         name: user.name,
         accountCreated: user.accountCreated,
         userIndex: user.userIndex,
@@ -156,8 +210,8 @@ router.get('/verify', async (req: Request, res: Response) => {
     }
 
     await pool.query(
-      'UPDATE Users SET isVerified = TRUE, verificationToken = NULL WHERE userID = ?',
-      [users[0].userID]
+      'UPDATE Users SET isVerified = TRUE, verificationToken = NULL WHERE userEmail = ?',
+      [users[0].userEmail]
     );
 
     res.status(200).json({ message: 'Email verified. You can now login.' });
@@ -167,7 +221,6 @@ router.get('/verify', async (req: Request, res: Response) => {
   }
 });
 
-// Forgot password
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -175,7 +228,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const [users]: any = await pool.query('SELECT * FROM Users WHERE userID = ?', [email]);
+    const [users]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
     if (users.length === 0) {
       return res.status(200).json({ message: 'If registered, a reset link will be sent.' });
     }
@@ -184,7 +237,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
 
     await pool.query(
-      'UPDATE Users SET resetToken = ?, resetTokenExpiry = ? WHERE userID = ?',
+      'UPDATE Users SET resetToken = ?, resetTokenExpiry = ? WHERE userEmail = ?',
       [resetToken, resetTokenExpiry, email]
     );
 
@@ -209,7 +262,6 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
   }
 });
 
-// Reset password
 router.post('/reset-password', async (req: Request, res: Response) => {
   try {
     const { token, newPassword } = req.body;
@@ -227,8 +279,8 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await pool.query(
-      'UPDATE Users SET password = ?, resetToken = NULL, resetTokenExpiry = NULL WHERE userID = ?',
-      [hashedPassword, users[0].userID]
+      'UPDATE Users SET password = ?, resetToken = NULL, resetTokenExpiry = NULL WHERE userEmail = ?',
+      [hashedPassword, users[0].userEmail]
     );
 
     res.status(200).json({ message: 'Password has been reset. You can now login.' });

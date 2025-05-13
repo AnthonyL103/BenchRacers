@@ -22,7 +22,7 @@ DROP TABLE IF EXISTS Users;
 -- Create the Users table
 -- I increased the password size to fit bcypt hashing
 CREATE TABLE Users (
-    userID VARCHAR(60) PRIMARY KEY,
+    userEmail VARCHAR(60) PRIMARY KEY,
     name VARCHAR(60) NOT NULL,
     password VARCHAR(60) NOT NULL, 
     accountCreated DATETIME NOT NULL,
@@ -47,6 +47,7 @@ CREATE TABLE Entries (
     s3ContentID VARCHAR(20) NOT NULL,
     totalMods INT NOT NULL DEFAULT 0,
     totalCost INT NOT NULL DEFAULT 0,
+    category VARCHAR(20) NOT NULL,
     region VARCHAR(20) NOT NULL,
     upvotes INT NOT NULL DEFAULT 0,
     FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE

@@ -38,6 +38,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
     trim: "",
     engine: "",
     transmission: "",
+    category:"",
     drivetrain: "",
   })
 
@@ -79,6 +80,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
         year: "2020",
         trim: "GR",
         engine: "3.0L Inline-6 Turbo",
+        category:"Sports car",
         transmission: "8-Speed Automatic",
         drivetrain: "RWD",
       })
@@ -158,7 +160,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
                 </Alert>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="make">Make</Label>
                   <Input
@@ -176,6 +178,22 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
                     value={carDetails.model}
                     onChange={(e) => setCarDetails({ ...carDetails, model: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="Category">Category</Label>
+                  <Select
+                    value={carDetails.category}
+                    onValueChange={(value) => setCarDetails({ ...carDetails, category: value })}
+                  >
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Exotic">Exotic Car</SelectItem>
+                      <SelectItem value="Sport">Sports Car</SelectItem>
+                      <SelectItem value="Off-Road">Off Road Car</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

@@ -10,7 +10,6 @@ import GaragePage from './components/garage/page';
 import RankingsPage from './components/rankings/page';
 import AuthPage from './components/auth/page';
 import StatsPage from './components/stats/page';
-import UploadPage from './components/upload/page';
 
 
 const AnimatedRoutes = () => {
@@ -29,7 +28,6 @@ const AnimatedRoutes = () => {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
         <Route path="/signup" element={<Navigate to="/auth?signup=true" replace />} />
-        <Route path="/upload" element={<UploadPage/>} />
       </Routes>
     </AnimatePresence>
   );
