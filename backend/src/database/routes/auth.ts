@@ -69,27 +69,205 @@ Routes/queries for signup/login:
 */
 
 
-
-router.post('/signup', async (req: Request, res: Response) => {
+// Login route with improved error handling
+router.post('/login', async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      
+      // Check if email and password are provided
+      if (!email || !password) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Email and password are required',
+          errorCode: 'MISSING_FIELDS'
+        });
+      }
+  
+      // Check if user exists
+      const [users]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
+      if (users.length === 0) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid email or password',
+          errorCode: 'INVALID_CREDENTIALS'
+        });
+      }
+  
+      // Check if password is correct
+      const user = users[0];
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid email or password',
+          errorCode: 'INVALID_CREDENTIALS'
+        });
+      }
+  
+      // Check if email is verified
+      if (!user.isVerified) {
+        // Generate a new verification token for convenience
+        const verificationToken = uuidv4();
+        await pool.query(
+          'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
+          [verificationToken, email]
+        );
+  
+        // Send a new verification email
+        const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
+        const msg = {
+          to: email,
+          from: process.env.EMAIL_USER || 'noreply@benchracers.com',
+          subject: 'Verify your Bench Racers account',
+          html: `
+            <h1>Welcome to Bench Racers!</h1>
+            <p>Please verify your email to complete your registration:</p>
+            <a href="${verificationUrl}">Verify Email</a>
+          `
+        };
+  
+        try {
+          await sgMail.send(msg);
+          console.log('[LOGIN] New verification email sent');
+        } catch (sendErr) {
+          console.error('[LOGIN] Failed to send new verification email', sendErr);
+          // Continue with response even if email fails
+        }
+        
+        return res.status(403).json({ 
+          success: false,
+          message: 'Please verify your email before logging in. A new verification email has been sent.',
+          errorCode: 'EMAIL_NOT_VERIFIED'
+        });
+      }
+  
+      // Generate token for authenticated user
+      const token = jwt.sign(
+        {
+          userEmail: user.userEmail,
+          name: user.name,
+          accountCreated: user.accountCreated,
+          userIndex: user.userIndex,
+          totalEntries: user.totalEntries,
+          region: user.region,
+          isEditor: user.isEditor,
+          isVerified: user.isVerified
+        },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+  
+      // Return successful login response
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token,
+        user: {
+          userEmail: user.userEmail,
+          name: user.name,
+          accountCreated: user.accountCreated,
+          userIndex: user.userIndex,
+          totalEntries: user.totalEntries,
+          region: user.region,
+          isEditor: user.isEditor
+        }
+      });
+    } catch (error) {
+      console.error('[LOGIN] Server error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Server error during login',
+        errorCode: 'SERVER_ERROR'
+      });
+    }
+  });
+  
+  // Signup route with improved error handling
+  router.post('/signup', async (req: Request, res: Response) => {
     console.log('[SIGNUP] Received signup request');
   
     try {
       const { email, name, password, region } = req.body;
       console.log('[SIGNUP] Request body:', { email, name, password: !!password, region });
   
+      // Validate input fields
       if (!email || !name || !password || !region) {
         console.warn('[SIGNUP] Missing required fields');
-        return res.status(400).json({ message: 'All fields are required' });
+        return res.status(400).json({ 
+          success: false,
+          message: 'All fields are required',
+          errorCode: 'MISSING_FIELDS',
+          missingFields: [
+            !email ? 'email' : null,
+            !name ? 'name' : null,
+            !password ? 'password' : null,
+            !region ? 'region' : null
+          ].filter(Boolean)
+        });
       }
   
+      // Password strength validation (optional)
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 8 characters long',
+          errorCode: 'WEAK_PASSWORD'
+        });
+      }
+  
+      // Check if user already exists
       const [existingUsers]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
       console.log('[SIGNUP] Checked for existing user:', existingUsers.length);
   
       if (existingUsers.length > 0) {
+        const existingUser = existingUsers[0];
+        
+        // If user exists but isn't verified, we can offer to resend verification email
+        if (!existingUser.isVerified) {
+          // Generate a new verification token
+          const verificationToken = uuidv4();
+          await pool.query(
+            'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
+            [verificationToken, email]
+          );
+  
+          // Send verification email
+          const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
+          const msg = {
+            to: email,
+            from: process.env.EMAIL_USER || 'noreply@benchracers.com',
+            subject: 'Verify your Bench Racers account',
+            html: `
+              <h1>Welcome to Bench Racers!</h1>
+              <p>Please verify your email to complete your registration:</p>
+              <a href="${verificationUrl}">Verify Email</a>
+            `
+          };
+  
+          try {
+            await sgMail.send(msg);
+            console.log('[SIGNUP] Resent verification email');
+          } catch (sendErr) {
+            console.error('[SIGNUP] Email resend failed');
+          }
+  
+          return res.status(409).json({ 
+            success: false,
+            message: 'An account with this email already exists but is not verified. A new verification email has been sent.',
+            errorCode: 'USER_EXISTS_NOT_VERIFIED'
+          });
+        }
+        
+        // User exists and is verified
         console.warn('[SIGNUP] User already exists:', email);
-        return res.status(409).json({ message: 'User already exists' });
+        return res.status(409).json({ 
+          success: false,
+          message: 'An account with this email already exists',
+          errorCode: 'USER_EXISTS'
+        });
       }
   
+      // Create new user
       const hashedPassword = await bcrypt.hash(password, 10);
       const verificationToken = uuidv4();
       const accountCreated = new Date();
@@ -103,7 +281,8 @@ router.post('/signup', async (req: Request, res: Response) => {
       );
       console.log('[SIGNUP] Inserted user successfully');
   
-      const verificationUrl = `${process.env.FRONTEND_URL}`;
+      // Send verification email
+      const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
       console.log('[SIGNUP] Generated verification URL:', verificationUrl);
   
       const msg = {
@@ -126,6 +305,7 @@ router.post('/signup', async (req: Request, res: Response) => {
         throw sendErr;
       }
   
+      // Generate JWT token for the new user
       const token = jwt.sign(
         { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false },
         JWT_SECRET,
@@ -134,68 +314,21 @@ router.post('/signup', async (req: Request, res: Response) => {
   
       console.log('[SIGNUP] JWT generated, returning success');
       res.status(201).json({
+        success: true,
         message: 'User created successfully. Please verify your email.',
         token,
         user: { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
       });
     } catch (error) {
       console.error('[SIGNUP] Error occurred:', error);
-      res.status(500).json({ message: 'Server error during signup' });
+      res.status(500).json({ 
+        success: false,
+        message: 'Server error during signup',
+        errorCode: 'SERVER_ERROR'
+      });
     }
   });
   
-
-router.post('/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    const [users]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
-    if (users.length === 0 || !(await bcrypt.compare(password, users[0].password))) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const user = users[0];
-    if (!user.isVerified) {
-      return res.status(403).json({ message: 'Please verify your email before logging in' });
-    }
-
-    const token = jwt.sign(
-      {
-        userEmail: user.userEmail,
-        name: user.name,
-        accountCreated: user.accountCreated,
-        userIndex: user.userIndex,
-        totalEntries: user.totalEntries,
-        region: user.region,
-        isEditor: user.isEditor,
-        isVerified: user.isVerified
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.status(200).json({
-      message: 'Login successful',
-      token,
-      user: {
-        userEmail: user.userEmail,
-        name: user.name,
-        accountCreated: user.accountCreated,
-        userIndex: user.userIndex,
-        totalEntries: user.totalEntries,
-        region: user.region,
-        isEditor: user.isEditor
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
-  }
-});
-
 // Email verification route
 router.get('/verify', async (req: Request, res: Response) => {
   try {
@@ -234,11 +367,11 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     }
 
     const resetToken = uuidv4();
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hour
 
     await pool.query(
-      'UPDATE Users SET resetToken = ?, resetTokenExpiry = ? WHERE userEmail = ?',
-      [resetToken, resetTokenExpiry, email]
+      'UPDATE Users SET resetToken = ?, resetTokenExpiration = ? WHERE userEmail = ?',
+      [resetToken, resetTokenExpiration, email]
     );
 
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
@@ -270,7 +403,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     }
 
     const [users]: any = await pool.query(
-      'SELECT * FROM Users WHERE resetToken = ? AND resetTokenExpiry > NOW()',
+      'SELECT * FROM Users WHERE resetToken = ? AND resetTokenExpiration > NOW()',
       [token]
     );
     if (users.length === 0) {
@@ -279,7 +412,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await pool.query(
-      'UPDATE Users SET password = ?, resetToken = NULL, resetTokenExpiry = NULL WHERE userEmail = ?',
+      'UPDATE Users SET password = ?, resetToken = NULL, resetTokenExpiration = NULL WHERE userEmail = ?',
       [hashedPassword, users[0].userEmail]
     );
 
