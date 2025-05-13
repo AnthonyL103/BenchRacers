@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Car, Github, ChromeIcon as Google } from "lucide-react"
 import { useUser, UserActionTypes } from '../usercontext';
 import { getUserRegion } from '../getLocation';
+import { useLocation } from "react-router-dom";
+
+
 
 export default function AuthPage() {
   // Use React Router's useSearchParams hook
@@ -23,6 +26,31 @@ export default function AuthPage() {
   // Get the signup parameter from the URL
   const showSignup = searchParams.get("signup") === "true";
   const [activeTab, setActiveTab] = useState(showSignup ? "signup" : "login");
+  
+  const location = useLocation();
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
+  
+  // Add this new useEffect to handle verification messages
+  useEffect(() => {
+    if (location.state && 
+        'verificationMessage' in location.state && 
+        'verificationStatus' in location.state) {
+      setVerificationMessage(location.state.verificationMessage as string);
+      setVerificationStatus(location.state.verificationStatus as "success" | "error");
+      
+      // Clear the message after 5 seconds
+      const timer = setTimeout(() => {
+        setVerificationMessage(null);
+        setVerificationStatus(null);
+        
+        // Clear the location state to prevent showing the message again on refresh
+        window.history.replaceState({}, document.title);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location]);
 
   // Update URL when tab changes
   useEffect(() => {
@@ -49,6 +77,31 @@ export default function AuthPage() {
       const formData = new FormData(e.currentTarget);
       const email = formData.get('email') as string;
       const password = formData.get('password') as string;
+      
+      const location = useLocation();
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
+  
+  // Add this new useEffect to handle verification messages
+  useEffect(() => {
+    if (location.state && 
+        'verificationMessage' in location.state && 
+        'verificationStatus' in location.state) {
+      setVerificationMessage(location.state.verificationMessage as string);
+      setVerificationStatus(location.state.verificationStatus as "success" | "error");
+      
+      // Clear the message after 5 seconds
+      const timer = setTimeout(() => {
+        setVerificationMessage(null);
+        setVerificationStatus(null);
+        
+        // Clear the location state to prevent showing the message again on refresh
+        window.history.replaceState({}, document.title);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [location]);
       
       // Make API call
       const response = await fetch('https://api.benchracershq.com/api/users/login', {
@@ -79,7 +132,7 @@ export default function AuthPage() {
       }
       
       // Navigate to dashboard on successful login
-      navigate('/dashboard');
+      navigate('/');
       
     } catch (error) {
       // Dispatch LOGIN_FAILURE with the error message
@@ -137,7 +190,6 @@ export default function AuthPage() {
       
       // Navigate to dashboard on successful signup
       setErrorMessage("");
-      navigate('/dashboard');
       
     } catch (error) {
       dispatch({ 
@@ -159,6 +211,16 @@ export default function AuthPage() {
             <h1 className="text-3xl font-bold">Welcome to Bench Racers</h1>
             <p className="text-gray-400 mt-2">The ultimate car enthusiast community</p>
           </div>
+          
+          {verificationMessage && (
+            <div className={`mb-4 p-3 rounded text-sm ${
+              verificationStatus === "success" 
+                ? "bg-green-800 text-green-100 border border-green-700" 
+                : "bg-red-900 text-red-100 border border-red-800"
+            }`}>
+              {verificationMessage}
+            </div>
+          )}
 
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
@@ -182,7 +244,7 @@ export default function AuthPage() {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2 text-white">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" placeholder="your@email.com" required />
+                    <Input id="email" name="email" className="text-black" type="email" placeholder="your@email.com" required />
                   </div>
                   <div className="space-y-2 text-white">
                     <div className="flex items-center justify-between">
@@ -191,7 +253,7 @@ export default function AuthPage() {
                         Forgot password?
                       </Link>
                     </div>
-                    <Input id="password" name="password" type="password" required />
+                    <Input id="password" name="password" className="text-black" type="password" required />
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Logging in..." : "Login"}
@@ -209,6 +271,7 @@ export default function AuthPage() {
                       id="signup-email" 
                       name="signup-email" 
                       type="email" 
+                      className="text-black"
                       placeholder="your@email.com" 
                       required 
                     />

@@ -10,6 +10,7 @@ import GaragePage from './components/garage/page';
 import RankingsPage from './components/rankings/page';
 import AuthPage from './components/auth/page';
 import StatsPage from './components/stats/page';
+import VerifyEmail from './components/auth/verify';
 
 
 const AnimatedRoutes = () => {
@@ -19,6 +20,7 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
+        <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/following" element={<FollowingPage />} />
