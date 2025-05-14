@@ -206,24 +206,32 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   };
 
   // Handle file selection
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file selection
+const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    // Limit to 6 images total
-    const newFiles = Array.from(files).slice(0, 6 - photoFiles.length);
-    if (newFiles.length + photoFiles.length > 6) {
+  
+    // Calculate how many more photos we can add
+    const remainingSlots = 6 - photoFiles.length;
+    
+    if (remainingSlots <= 0) {
       alert("You can upload a maximum of 6 images");
       return;
     }
-
+  
+    // Limit to remaining slots
+    const newFiles = Array.from(files).slice(0, remainingSlots);
+  
     // Update files array
-    setPhotoFiles([...photoFiles, ...newFiles]);
-
-    // Create preview URLs
+    setPhotoFiles(prevFiles => [...prevFiles, ...newFiles]);
+  
+    // Create preview URLs for the new files
     const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-    setPhotoPreview([...photoPreview, ...newPreviews]);
-  };
+    setPhotoPreview(prevPreviews => [...prevPreviews, ...newPreviews]);
+    
+    // Reset the file input so the same file can be selected again if needed
+    e.target.value = '';
+  }
 
   const removePhoto = (index: number) => {
     // Remove file
@@ -611,33 +619,33 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
               <Label className="block mb-4 text-white">Car Photos</Label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 {photoPreview.map((photo, index) => (
-                  <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
+                    <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
                     <img
-                      src={photo || "/placeholder.svg"}
-                      alt={`Car photo ${index + 1}`}
-                      className="object-cover w-full h-full"
+                        src={photo}
+                        alt={`Car photo ${index + 1}`}
+                        className="object-cover w-full h-full"
                     />
                     <button
-                      onClick={() => removePhoto(index)}
-                      className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
+                        onClick={() => removePhoto(index)}
+                        className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
                     >
-                      <X className="h-4 w-4" />
+                        <X className="h-4 w-4" />
                     </button>
-                  </div>
+                    </div>
                 ))}
 
                 {photoPreview.length < 6 && (
-                  <button
+                    <button
                     onClick={triggerFileInput}
                     className={`aspect-square rounded-md border-2 border-dashed ${
-                      errors.photos ? "border-red-500" : "border-gray-700"
+                        errors.photos ? "border-red-500" : "border-gray-700"
                     } flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-gray-800/50 transition-colors`}
-                  >
+                    >
                     <Camera className="h-6 w-6 text-gray-400" />
-                   <span className="text-sm text-gray-400">Add Photo</span>
-                 </button>
-               )}
-             </div>
+                    <span className="text-sm text-gray-400">Add Photo</span>
+                    </button>
+                )}
+                </div>
              {errors.photos && <p className="text-xs text-red-500 mt-1">{errors.photos}</p>}
              <p className="text-xs text-gray-500">
                Upload up to 6 high-quality photos of your car. First photo will be the main image.

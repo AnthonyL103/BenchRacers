@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { pool } from '../dbconfig';
 import AWS from 'aws-sdk';
+import { FieldPacket, ResultSetHeader } from 'mysql2/promise';
 
 config();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -347,6 +348,89 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// Define types for your database entities
+// Define EntryPhoto interface
+interface EntryPhoto {
+    s3Key: string;
+    entryID: number;
+    isMainPhoto?: boolean;
+  }
+  
+  router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+    const connection = await pool.getConnection();
+    
+    try {
+      const { entryID } = req.body;
+      const user = req.user as any; // Simple any type
+      
+      await connection.beginTransaction();
+      
+      // Using any for the query results
+      const [existingCars]: [any[], any] = await connection.query(
+        'SELECT * FROM Entries WHERE entryID = ? AND userEmail = ?',
+        [entryID, user.userEmail]
+      );
+      
+      if (existingCars.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: 'Car not found or you do not have permission to delete this car'
+        });
+      }
+      
+      // Get photos with any for field packets
+      const [photos] = await connection.query(
+        'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
+        [entryID]
+      ) as [EntryPhoto[], any];
+      
+      // Delete the car
+      await connection.query(
+        'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
+        [entryID, user.userEmail]
+      );
+      
+      // Update user stats
+      await connection.query(
+        'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
+        [user.userEmail]
+      );
+      
+      await connection.commit();
+      
+      // Process photos - no more TypeScript errors
+      if (photos.length > 0) {
+        try {
+          await Promise.all(photos.map((photo: any) => 
+            s3.deleteObject({
+              Bucket: BUCKET_NAME,
+              Key: photo.s3Key
+            }).promise()
+          ));
+        } catch (s3Error) {
+          console.error('Error deleting photos from S3:', s3Error);
+        }
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: 'Car deleted successfully'
+      });
+      
+    } catch (error) {
+      await connection.rollback();
+      console.error('Error deleting car:', error);
+      res.status(500).json({
+        success: false, 
+        message: 'Failed to delete car',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      connection.release();
+    }
+  });
+  
 // Update a car including photos
 router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   // Use a connection for transaction

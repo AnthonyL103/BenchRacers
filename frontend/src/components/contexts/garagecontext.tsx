@@ -148,10 +148,54 @@ export function GarageProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Delete a car
-  const deleteCar = async (entryID: number) => {
-    // Implementation...
+  // Delete a car
+// Delete a car
+// Delete a car
+const deleteCar = async (entryID: number): Promise<void> => {
+    if (!isAuthenticated || !user) {
+      setError('You must be logged in to delete a car');
+      return;
+    }
+  
+    setIsLoading(true);
+    setError(null);
+  
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Match the '/delete' endpoint from your backend router
+      const response = await axios.delete('https://api.benchracershq.com/api/garage/delete', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        data: { entryID } // Send entryID in the request body as expected by your backend
+      });
+  
+      if (response.data.success) {
+        // Remove the deleted car from the state
+        setCars(prevCars => prevCars.filter(car => car.entryID !== entryID));
+        
+        // Optional: Add a success message or notification
+        // setSuccessMessage('Car deleted successfully');
+      } else {
+        throw new Error(response.data.message || 'Failed to delete car');
+      }
+    } catch (error) {
+      console.error('Error deleting car:', error);
+      const errorMessage = 
+        error instanceof axios.AxiosError && error.response?.data?.message
+          ? error.response.data.message
+          : error instanceof Error 
+            ? error.message 
+            : 'An error occurred while deleting the car';
+      
+      setError(errorMessage);
+      // We're no longer returning a boolean value
+    } finally {
+      setIsLoading(false);
+    }
   };
-
   // Fetch cars when user authenticates
   useEffect(() => {
     if (isAuthenticated) {
