@@ -97,7 +97,7 @@ CREATE TABLE Awards (
 
 -- Create the EngineMods table
 CREATE TABLE Mods (
-    ModID INT AUTO_INCREMENT PRIMARY KEY,
+    modID INT AUTO_INCREMENT PRIMARY KEY,
     brand VARCHAR(20) NOT NULL,
     category VARCHAR(20) NOT NULL,
     cost INT NOT NULL,
@@ -109,10 +109,10 @@ CREATE TABLE Mods (
 -- Create the EntryEngineMods intersection table
 CREATE TABLE EntryMods (
     entryID INT NOT NULL,
-    ModID INT NOT NULL,
-    PRIMARY KEY (entryID, ModID),
+    modID INT NOT NULL,
+    PRIMARY KEY (entryID, modID),
     FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
-    FOREIGN KEY (ModID) REFERENCES Mods(ModID)
+    FOREIGN KEY (modID) REFERENCES Mods(modID)
 );
 
 

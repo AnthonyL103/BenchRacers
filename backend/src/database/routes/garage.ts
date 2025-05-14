@@ -186,8 +186,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     const { 
       carName, carMake, carModel, carYear, carColor, description,
       totalMods, totalCost, category, region, engine, transmission, 
-      drivetrain, horsepower, torque, photos, tags, engineMods, 
-      interiorMods, exteriorMods 
+      drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
     
     // Validate required fields
@@ -231,31 +230,11 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       );
     }
     
-    // Insert engine mods associations
-    if (engineMods && Array.isArray(engineMods) && engineMods.length > 0) {
-      for (const modId of engineMods) {
+    // Insert mods associations
+    if (mods && Array.isArray(mods) && mods.length > 0) {
+      for (const modId of mods) {
         await connection.query(
-          'INSERT INTO EntryEngineMods (entryID, engineModID) VALUES (?, ?)',
-          [entryID, modId]
-        );
-      }
-    }
-    
-    // Insert interior mods associations
-    if (interiorMods && Array.isArray(interiorMods) && interiorMods.length > 0) {
-      for (const modId of interiorMods) {
-        await connection.query(
-          'INSERT INTO EntryInteriorMods (entryID, interiorModID) VALUES (?, ?)',
-          [entryID, modId]
-        );
-      }
-    }
-    
-    // Insert exterior mods associations
-    if (exteriorMods && Array.isArray(exteriorMods) && exteriorMods.length > 0) {
-      for (const modId of exteriorMods) {
-        await connection.query(
-          'INSERT INTO EntryExteriorMods (entryID, exteriorModID) VALUES (?, ?)',
+          'INSERT INTO EntryMods (entryID, modID) VALUES (?, ?)',
           [entryID, modId]
         );
       }
@@ -354,82 +333,82 @@ interface EntryPhoto {
     s3Key: string;
     entryID: number;
     isMainPhoto?: boolean;
-  }
+}
   
-  router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-    const connection = await pool.getConnection();
+router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const { entryID } = req.body;
+    const user = req.user as any; // Simple any type
     
-    try {
-      const { entryID } = req.body;
-      const user = req.user as any; // Simple any type
-      
-      await connection.beginTransaction();
-      
-      // Using any for the query results
-      const [existingCars]: [any[], any] = await connection.query(
-        'SELECT * FROM Entries WHERE entryID = ? AND userEmail = ?',
-        [entryID, user.userEmail]
-      );
-      
-      if (existingCars.length === 0) {
-        await connection.rollback();
-        return res.status(404).json({
-          success: false,
-          message: 'Car not found or you do not have permission to delete this car'
-        });
-      }
-      
-      // Get photos with any for field packets
-      const [photos] = await connection.query(
-        'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
-        [entryID]
-      ) as [EntryPhoto[], any];
-      
-      // Delete the car
-      await connection.query(
-        'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
-        [entryID, user.userEmail]
-      );
-      
-      // Update user stats
-      await connection.query(
-        'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
-        [user.userEmail]
-      );
-      
-      await connection.commit();
-      
-      // Process photos - no more TypeScript errors
-      if (photos.length > 0) {
-        try {
-          await Promise.all(photos.map((photo: any) => 
-            s3.deleteObject({
-              Bucket: BUCKET_NAME,
-              Key: photo.s3Key
-            }).promise()
-          ));
-        } catch (s3Error) {
-          console.error('Error deleting photos from S3:', s3Error);
-        }
-      }
-      
-      res.status(200).json({
-        success: true,
-        message: 'Car deleted successfully'
-      });
-      
-    } catch (error) {
+    await connection.beginTransaction();
+    
+    // Using any for the query results
+    const [existingCars]: [any[], any] = await connection.query(
+      'SELECT * FROM Entries WHERE entryID = ? AND userEmail = ?',
+      [entryID, user.userEmail]
+    );
+    
+    if (existingCars.length === 0) {
       await connection.rollback();
-      console.error('Error deleting car:', error);
-      res.status(500).json({
-        success: false, 
-        message: 'Failed to delete car',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      return res.status(404).json({
+        success: false,
+        message: 'Car not found or you do not have permission to delete this car'
       });
-    } finally {
-      connection.release();
     }
-  });
+    
+    // Get photos with any for field packets
+    const [photos] = await connection.query(
+      'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
+      [entryID]
+    ) as [EntryPhoto[], any];
+    
+    // Delete the car
+    await connection.query(
+      'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
+      [entryID, user.userEmail]
+    );
+    
+    // Update user stats
+    await connection.query(
+      'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
+      [user.userEmail]
+    );
+    
+    await connection.commit();
+    
+    // Process photos - no more TypeScript errors
+    if (photos.length > 0) {
+      try {
+        await Promise.all(photos.map((photo: any) => 
+          s3.deleteObject({
+            Bucket: BUCKET_NAME,
+            Key: photo.s3Key
+          }).promise()
+        ));
+      } catch (s3Error) {
+        console.error('Error deleting photos from S3:', s3Error);
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Car deleted successfully'
+    });
+    
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error deleting car:', error);
+    res.status(500).json({
+      success: false, 
+      message: 'Failed to delete car',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  } finally {
+    connection.release();
+  }
+});
   
 // Update a car including photos
 router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
@@ -444,8 +423,7 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     const { 
       carName, carMake, carModel, carYear, carColor, description,
       totalMods, totalCost, category, region, engine, transmission, 
-      drivetrain, horsepower, torque, photos, tags, engineMods, 
-      interiorMods, exteriorMods 
+      drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
     
     // Check if the car exists and belongs to the user
@@ -494,40 +472,14 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     }
     
     // Update mods if provided
-    if (engineMods && Array.isArray(engineMods)) {
+    if (mods && Array.isArray(mods)) {
       // Delete existing associations
-      await connection.query('DELETE FROM EntryEngineMods WHERE entryID = ?', [entryID]);
+      await connection.query('DELETE FROM EntryMods WHERE entryID = ?', [entryID]);
       
       // Insert new associations
-      for (const modId of engineMods) {
+      for (const modId of mods) {
         await connection.query(
-          'INSERT INTO EntryEngineMods (entryID, engineModID) VALUES (?, ?)',
-          [entryID, modId]
-        );
-      }
-    }
-    
-    if (interiorMods && Array.isArray(interiorMods)) {
-      // Delete existing associations
-      await connection.query('DELETE FROM EntryInteriorMods WHERE entryID = ?', [entryID]);
-      
-      // Insert new associations
-      for (const modId of interiorMods) {
-        await connection.query(
-          'INSERT INTO EntryInteriorMods (entryID, interiorModID) VALUES (?, ?)',
-          [entryID, modId]
-        );
-      }
-    }
-    
-    if (exteriorMods && Array.isArray(exteriorMods)) {
-      // Delete existing associations
-      await connection.query('DELETE FROM EntryExteriorMods WHERE entryID = ?', [entryID]);
-      
-      // Insert new associations
-      for (const modId of exteriorMods) {
-        await connection.query(
-          'INSERT INTO EntryExteriorMods (entryID, exteriorModID) VALUES (?, ?)',
+          'INSERT INTO EntryMods (entryID, modID) VALUES (?, ?)',
           [entryID, modId]
         );
       }
@@ -684,36 +636,25 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
   }
 });
 
-// Get available mods
-router.get('/mods/:type', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+// Get available mods - UPDATED to use the single Mods table
+router.get('/mods/:category', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { type } = req.params;
-    let table, idField;
+    const { category } = req.params;
     
-    // Determine which mods table to query
-    switch (type.toLowerCase()) {
-      case 'engine':
-        table = 'EngineMods';
-        idField = 'engineModID';
-        break;
-      case 'interior':
-        table = 'InteriorMods';
-        idField = 'interiorModID';
-        break;
-      case 'exterior':
-        table = 'ExteriorMods';
-        idField = 'exteriorModID';
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid mod type. Must be "engine", "interior", or "exterior".'
-        });
+    // Make sure the category is valid
+    if (!['engine', 'interior', 'exterior'].includes(category.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid mod category. Must be "engine", "interior", or "exterior".'
+      });
     }
     
-    // Query the mods
+    // Query the mods from the unified Mods table filtering by category
     const [mods]: any = await pool.query(
-      `SELECT ${idField} as id, brand, cost, description, link FROM ${table}`
+      `SELECT modID as id, brand, cost, description, link 
+       FROM Mods
+       WHERE category = ?`,
+      [category.toLowerCase()]
     );
     
     res.status(200).json({
@@ -721,10 +662,49 @@ router.get('/mods/:type', authenticateUser, async (req: AuthenticatedRequest, re
       mods
     });
   } catch (error) {
-    console.error(`Error fetching ${req.params.type} mods:`, error);
+    console.error(`Error fetching ${req.params.category} mods:`, error);
     res.status(500).json({
       success: false,
-      message: `Failed to fetch ${req.params.type} modifications`,
+      message: `Failed to fetch ${req.params.category} modifications`,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get all available mods
+router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Query all mods from the unified Mods table grouped by category
+    const [mods]: any = await pool.query(
+      `SELECT modID as id, brand, category, cost, description, link 
+       FROM Mods
+       ORDER BY category, brand`
+    );
+    
+    // Group mods by category for easier consumption by the client
+    const groupedMods = mods.reduce((acc: any, mod: any) => {
+      if (!acc[mod.category]) {
+        acc[mod.category] = [];
+      }
+      acc[mod.category].push({
+        id: mod.id,
+        brand: mod.brand,
+        cost: mod.cost,
+        description: mod.description,
+        link: mod.link
+      });
+      return acc;
+    }, {});
+    
+    res.status(200).json({
+      success: true,
+      mods: groupedMods
+    });
+  } catch (error) {
+    console.error('Error fetching all mods:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch modifications',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
