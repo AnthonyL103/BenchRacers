@@ -182,7 +182,7 @@ export default function GaragePage() {
                     <Card className="bg-gray-900 border-gray-800 text-center p-12">
                       <div className="flex flex-col items-center gap-4">
                         <CarIcon className="h-16 w-16 text-gray-600" />
-                        <h2 className="text-2xl font-bold">Your garage is empty</h2>
+                        <h2 className="text-2xl font-bold text-white">Your garage is empty</h2>
                         <p className="text-gray-400 max-w-md mx-auto">
                           You haven't added any cars to your garage yet. Click the "Add Car" button to get started.
                         </p>
