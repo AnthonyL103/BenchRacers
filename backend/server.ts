@@ -3,6 +3,7 @@ import cors from 'cors';
 import { config } from 'dotenv';
 import { pool } from './src/database/dbconfig';
 import authRoutes from './src/database/routes/auth';
+import garageRoutes from './src/database/routes/garage'; 
 
 config();
 
@@ -10,7 +11,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Register routes
 app.use('/api/users', authRoutes);
+app.use('/api/garage', garageRoutes); // Add the cars routes under /api/cars
 
 const PORT = process.env.PORT || 3000;
 app.get('/health', (req, res) => {
@@ -21,7 +25,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-//test
+// Graceful shutdown
 process.on('SIGINT', () => {
   console.log('Shutting down gracefully');
   pool.end();

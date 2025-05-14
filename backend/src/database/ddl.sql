@@ -36,21 +36,54 @@ CREATE TABLE Users (
     isEditor BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- Add a new table for car photos
+CREATE TABLE EntryPhotos (
+    photoID INT AUTO_INCREMENT PRIMARY KEY,
+    entryID INT NOT NULL,
+    s3Key VARCHAR(255) NOT NULL,
+    isMainPhoto BOOLEAN NOT NULL DEFAULT FALSE,
+    uploadDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE
+);
+
 -- Create the Entries table
 CREATE TABLE Entries (
     entryID INT AUTO_INCREMENT PRIMARY KEY,
     userEmail VARCHAR(60) NOT NULL,
-    carName VARCHAR(20) NOT NULL,
-    carMake VARCHAR(20) NOT NULL,
-    carColor VARCHAR(20),
-    description VARCHAR(500),
-    s3ContentID VARCHAR(20) NOT NULL,
+    carName VARCHAR(100) NOT NULL, -- Increased size for longer car names
+    carMake VARCHAR(50) NOT NULL,  -- Increased for longer manufacturer names
+    carModel VARCHAR(50) NOT NULL, -- Added separate model field
+    carYear VARCHAR(4),           -- Added year field
+    carColor VARCHAR(30),         -- Slightly increased
+    description TEXT,             -- Changed to TEXT for longer descriptions
     totalMods INT NOT NULL DEFAULT 0,
-    totalCost INT NOT NULL DEFAULT 0,
-    category VARCHAR(20) NOT NULL,
-    region VARCHAR(20) NOT NULL,
+    totalCost DECIMAL(10,2) NOT NULL DEFAULT 0, -- Changed to DECIMAL for currency
+    category VARCHAR(30) NOT NULL,
+    region VARCHAR(50) NOT NULL,  -- Increased for longer region names
     upvotes INT NOT NULL DEFAULT 0,
+    engine VARCHAR(100),
+    transmission VARCHAR(50),
+    drivetrain VARCHAR(20),
+    horsepower INT,
+    torque INT,
+    viewCount INT NOT NULL DEFAULT 0, -- Added view count tracking
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
+);
+
+CREATE TABLE Tags (
+    tagID INT AUTO_INCREMENT PRIMARY KEY,
+    tagName VARCHAR(30) NOT NULL UNIQUE
+);
+
+-- Create a table for associating tags with entries
+CREATE TABLE EntryTags (
+    entryID INT NOT NULL,
+    tagID INT NOT NULL,
+    PRIMARY KEY (entryID, tagID),
+    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
+    FOREIGN KEY (tagID) REFERENCES Tags(tagID) ON DELETE CASCADE
 );
 
 -- Create the Awards table
