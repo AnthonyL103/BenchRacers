@@ -96,57 +96,23 @@ CREATE TABLE Awards (
 );
 
 -- Create the EngineMods table
-CREATE TABLE EngineMods (
-    engineModID INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE Mods (
+    ModID INT AUTO_INCREMENT PRIMARY KEY,
     brand VARCHAR(20) NOT NULL,
+    category VARCHAR(20) NOT NULL,
     cost INT NOT NULL,
     description VARCHAR(100),
     link VARCHAR(30) NOT NULL
 );
 
--- Create the InteriorMods table
-CREATE TABLE InteriorMods (
-    interiorModID INT AUTO_INCREMENT PRIMARY KEY,
-    brand VARCHAR(20) NOT NULL,
-    cost INT NOT NULL,
-    description VARCHAR(100),
-    link VARCHAR(30) NOT NULL
-);
-
--- Create the ExteriorMods table
-CREATE TABLE ExteriorMods (
-    exteriorModID INT AUTO_INCREMENT PRIMARY KEY,
-    brand VARCHAR(20) NOT NULL,
-    cost INT NOT NULL,
-    description VARCHAR(100),
-    link VARCHAR(30) NOT NULL
-);
 
 -- Create the EntryEngineMods intersection table
-CREATE TABLE EntryEngineMods (
+CREATE TABLE EntryMods (
     entryID INT NOT NULL,
-    engineModID INT NOT NULL,
-    PRIMARY KEY (entryID, engineModID),
+    ModID INT NOT NULL,
+    PRIMARY KEY (entryID, ModID),
     FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
-    FOREIGN KEY (engineModID) REFERENCES EngineMods(engineModID)
-);
-
--- Create the EntryInteriorMods intersection table
-CREATE TABLE EntryInteriorMods (
-    entryID INT NOT NULL,
-    interiorModID INT NOT NULL,
-    PRIMARY KEY (entryID, interiorModID),
-    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
-    FOREIGN KEY (interiorModID) REFERENCES InteriorMods(interiorModID)
-);
-
--- Create the EntryExteriorMods intersection table
-CREATE TABLE EntryExteriorMods (
-    entryID INT NOT NULL,
-    exteriorModID INT NOT NULL,
-    PRIMARY KEY (entryID, exteriorModID),
-    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
-    FOREIGN KEY (exteriorModID) REFERENCES ExteriorMods(exteriorModID)
+    FOREIGN KEY (ModID) REFERENCES Mods(ModID)
 );
 
 
