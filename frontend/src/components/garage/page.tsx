@@ -3,8 +3,8 @@
 import { Label } from "../ui/label"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Navbar } from "../navbar"
-import { Footer } from "../footer"
+import { Navbar } from "../utils/navbar"
+import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
@@ -14,8 +14,8 @@ import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { BarChart3, Camera, Edit, Heart, LineChart, Plus, Settings, Trophy, Upload, X, Trash, Car as CarIcon } from "lucide-react"
-
-import { AddCarModal } from "../add-car-modal"
+import { getS3ImageUrl } from "../utils/s3helper"
+import { AddCarModal } from "../utils/add-car-modal"
 import { useUser } from '../contexts/usercontext'
 import { useGarage } from '../contexts/garagecontext'
 import { useNavigate } from 'react-router-dom'
@@ -52,7 +52,17 @@ export default function GaragePage() {
       setSelectedTags([...selectedTags, tag])
     }
   }
-
+  
+  const getImageSrc = (photoKey: string | null | undefined, carName: string): string => {
+    try {
+      return photoKey 
+        ? getS3ImageUrl(photoKey) 
+        : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(carName)}`;
+    } catch (error) {
+      console.error('Error getting image URL:', error);
+      return `/placeholder.svg?height=400&width=600&text=Error+Loading+Image`;
+    }
+  };
   const removeTag = (tag: string) => {
     setSelectedTags(selectedTags.filter((t) => t !== tag))
   }
@@ -186,12 +196,14 @@ export default function GaragePage() {
                       {cars.map((car) => (
                         <Card key={car.entryID} className="bg-gray-900 border-gray-800">
                           <div className="relative h-48">
-                            <Image
-                              src={car.mainPhotoKey || `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(car.carName)}`}
-                              alt={car.carName}
-                              fill
-                              className="object-cover"
-                            />
+                          <img
+                            src={car.mainPhotoKey 
+                            ? getS3ImageUrl(car.mainPhotoKey) 
+                            : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(car.carName)}`
+                            }
+                            alt={car.carName}
+                            className="absolute inset-0 w-full h-full object-cover"
+                        />
                             <div className="absolute top-2 right-2">
                               <Badge className="bg-primary">{car.category}</Badge>
                             </div>
@@ -199,14 +211,14 @@ export default function GaragePage() {
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start">
                               <div>
-                                <h3 className="font-bold">{car.carName}</h3>
+                                <h3 className="font-bold text-white">{car.carName}</h3>
                                 <p className="text-sm text-gray-400">
                                   {car.carMake} {car.carColor && `· ${car.carColor}`}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Heart className="h-4 w-4 text-primary" fill="currentColor" />
-                                <span className="text-sm">{car.upvotes}</span>
+                                <Heart className="h-4 w-4 text-primary text-white" fill="currentColor" />
+                                <span className="text-sm text-white">{car.upvotes}</span>
                               </div>
                             </div>
                           </CardContent>

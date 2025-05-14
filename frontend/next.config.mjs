@@ -13,21 +13,25 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    unoptimized: true,
-  },
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-  },
-}
+    images: {
+      domains: [
+        'benchracers-photos.s3.us-west-2.amazonaws.com',
+      ],
+      unoptimized: true,
+    },
+    // Keep your other existing settings
+    eslint: {
+      ignoreDuringBuilds: true,
+    },
+    typescript: {
+      ignoreBuildErrors: true,
+    },
+    experimental: {
+      webpackBuildWorker: true,
+      parallelServerBuildTraces: true,
+      parallelServerCompiles: true,
+    },
+  }
 
 if (userConfig) {
   // ESM imports will have a "default" property

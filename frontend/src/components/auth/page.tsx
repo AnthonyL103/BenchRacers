@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link, useSearchParams, useNavigate } from "react-router-dom"
-import { Navbar } from "../navbar"
-import { Footer } from "../footer"
+import { Navbar } from "../utils/navbar"
+import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "../ui/card"
 import { Input } from "../ui/input"
@@ -9,7 +9,7 @@ import { Label } from "../ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Car, Github, ChromeIcon as Google } from "lucide-react"
 import { useUser } from '../contexts/usercontext';
-import { getUserRegion } from '../getLocation';
+import { getUserRegion } from '../utils/getLocation';
 import { useLocation } from "react-router-dom";
 
 export default function AuthPage() {

@@ -1,6 +1,6 @@
 import Link from "next/link"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
+import { Button } from "../ui/button"
+import { Input } from "../ui/input"
 import { Car, Instagram, Twitter, Youtube, Facebook, BookOpen } from "lucide-react"
 
 export function Footer() {

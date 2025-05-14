@@ -1,4 +1,4 @@
-import { Navbar } from "../navbar"
+import { Navbar } from "../utils/navbar"
 import { Footer } from "../footer"
 import { Skeleton } from "../ui/skeleton"
 

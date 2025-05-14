@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Button } from "./ui/button"
+import { Button } from "../ui/button"
 import {
   Dialog,
   DialogContent,
@@ -9,17 +9,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog"
-import { Input } from "./ui/input"
-import { Label } from "./ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
-import { Textarea } from "./ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
-import { Badge } from "./ui/badge"
+} from "../ui/dialog"
+import { Input } from "../ui/input"
+import { Label } from "../ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
+import { Textarea } from "../ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Badge } from "../ui/badge"
 import { Camera, Loader2, Plus, Search, X, Upload, ChevronsUpDown, Check } from "lucide-react"
-import { Alert, AlertDescription } from "./ui/alert"
-import { useGarage } from "./contexts/garagecontext"
-import { useUser } from "./contexts/usercontext"
+import { Alert, AlertDescription } from "../ui/alert"
+import { useGarage } from "../contexts/garagecontext"
+import { useUser } from "../contexts/usercontext"
 import axios from "axios"
 import { 
   Command,
@@ -28,8 +28,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList
-} from "./ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
+} from "../ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 
 // Types for mods
 interface Mod {

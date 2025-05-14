@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Navbar } from "../navbar";
-import { Footer } from "../footer";
+import { Navbar } from "../utils/navbar";
+import { Footer } from "../utils/footer";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Car } from "lucide-react";
 import axios from "axios";

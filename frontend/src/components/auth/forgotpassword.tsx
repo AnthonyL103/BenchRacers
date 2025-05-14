@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Navbar } from "../navbar";
-import { Footer } from "../footer";
+import { Navbar } from "../utils/navbar";
+import { Footer } from "../utils/footer";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "../ui/card";
 import { Input } from "../ui/input";

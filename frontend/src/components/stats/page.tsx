@@ -1,5 +1,5 @@
-import { Navbar } from "../navbar"
-import { Footer } from "../footer"
+import { Navbar } from "../utils/navbar"
+import { Footer } from "../utils/footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"

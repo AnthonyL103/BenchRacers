@@ -1,5 +1,5 @@
-import { Navbar } from "../navbar"
-import { Footer } from "../footer"
+import { Navbar } from "../utils/navbar"
+import { Footer } from "../utils/footer"
 import { Skeleton } from "../ui/skeleton"
 import { Card, CardContent } from "../ui/card"
 

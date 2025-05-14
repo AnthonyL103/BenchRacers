@@ -4,8 +4,8 @@ import Image from "next/image"
 import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
-import { Navbar } from "./navbar"
-import { Footer } from "./footer"
+import { Navbar } from "./utils/navbar"
+import { Footer } from "./utils/footer"
 import { ArrowRight, Heart, ThumbsUp, Trophy, Upload } from "lucide-react"
 
 export default function Home() {

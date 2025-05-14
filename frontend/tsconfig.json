@@ -22,7 +22,7 @@
         "@/*": ["./*"]
       }
     },
-    "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../../BenchRacers/frontend/src/components/add-car-modal.tsx", "../../BenchRacers/frontend/src/components/footer.tsx", "src/components/contexts/usercontext.tsx"],
+    "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/components/utils/add-car-modal.tsx", "../../BenchRacers/frontend/src/components/footer.tsx", "src/components/contexts/usercontext.tsx"],
     "exclude": ["node_modules"]
   }
   
