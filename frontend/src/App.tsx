@@ -13,6 +13,7 @@ import StatsPage from './components/stats/page';
 import VerifyEmail from './components/auth/verify';
 import ForgotPasswordPage from './components/auth/forgotpassword';
 import ResetPasswordPage from './components/auth/resetpassword';
+import AdminPage from './components/admin/page';
 
 
 const AnimatedRoutes = () => {
@@ -34,6 +35,7 @@ const AnimatedRoutes = () => {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
         <Route path="/signup" element={<Navigate to="/auth?signup=true" replace />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </AnimatePresence>
   );

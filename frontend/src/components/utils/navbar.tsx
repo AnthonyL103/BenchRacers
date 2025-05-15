@@ -19,6 +19,11 @@ export function Navbar() {
     { name: "My Garage", path: "/garage", icon: User },
   ];
   
+  if (user && user.isEditor) {
+    routes.push({ name: "Admin", path: "/admin", icon: Car });
+  }
+  console.log("User in Navbar:", user);
+  
   // Handle logout
   const handleLogout = () => {
     logout();
