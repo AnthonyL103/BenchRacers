@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Button } from "../ui/button"
 import {
   Dialog,
@@ -115,25 +115,51 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
     setTotalCost(total);
   }, [Mods]);
 
-  // Fetch available mods from the backend
-  const fetchAvailableMods = async () => {
+    const fetchAvailableMods = async () => {
     try {
-      const token = localStorage.getItem('token');
-      
-      // Fetch engine mods
-      setIsLoadingMods(true);
-      const ModsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods', {
+        const token = localStorage.getItem('token');
+        
+        // Fetch mods
+        setIsLoadingMods(true);
+        const modsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods', {
         headers: { Authorization: `Bearer ${token}` }
-      });
-      setAvailableMods(ModsResponse.data.mods || []);
-      setIsLoadingMods(false);
-    
-      
+        });
+        
+        // Handle the data based on structure (whether it's flat or grouped)
+        if (Array.isArray(modsResponse.data.mods)) {
+        // If backend returns flat array (with the fix above)
+        setAvailableMods(modsResponse.data.mods);
+        } else {
+        // If backend still returns grouped object format
+        // Convert grouped object to flat array
+        const flatMods = Object.entries(modsResponse.data.mods as Record<string, any[]>).flatMap(([category, mods]) => 
+            mods.map(mod => ({...mod, category}))
+        );
+        setAvailableMods(flatMods);
+        }
+        
+        setIsLoadingMods(false);
     } catch (error) {
-      console.error("Error fetching available mods:", error);
-      setErrors(prev => ({ ...prev, mods: "Failed to load available modifications" }));
+        console.error("Error fetching available mods:", error);
+        setErrors(prev => ({ ...prev, mods: "Failed to load available modifications" }));
     }
-  };
+    };
+
+    // 3. Add GroupBy functionality if still needed for display purposes
+    // This allows you to maintain a flat array for selection but group for UI
+    interface GroupedMods {
+      [category: string]: Mod[];
+    }
+
+    const groupModsByCategory = (mods: Mod[]): GroupedMods => {
+      return mods.reduce((acc: GroupedMods, mod: Mod) => {
+        if (!acc[mod.category]) {
+          acc[mod.category] = [];
+        }
+        acc[mod.category].push(mod);
+        return acc;
+      }, {});
+    };
 
   const addTag = (tag: string) => {
     if (!selectedTags.includes(tag)) {
@@ -620,18 +646,12 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 
          <TabsContent value="mods" className="space-y-6 py-4">
            <div>
-             <Label className="block mb-2 text-white">Modifications</Label>
-             <Tabs defaultValue="engine">
-               <TabsList className="grid grid-cols-3 mb-4">
-                 <TabsTrigger value="engine">Engine</TabsTrigger>
-                 <TabsTrigger value="exterior">Exterior</TabsTrigger>
-                 <TabsTrigger value="interior">Interior</TabsTrigger>
-               </TabsList>
-               
-               {/* ENGINE MODS */}
-               <TabsContent value="engine" className="space-y-4">
+              <DialogHeader>
+                <DialogTitle className="text-xl text-white">Modifications</DialogTitle>
+                    <DialogDescription>Add modifications to your car</DialogDescription>
+                </DialogHeader>
+             
                  <div className="space-y-2">
-                   <Label className="text-white">Selected Engine Modifications</Label>
                    
                    {Mods.length > 0 ? (
                      <div className="space-y-2">
@@ -681,36 +701,40 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                              </div>
                            ) : (
                              <CommandGroup>
-                               {availableMods.map((mod) => (
-                                 <CommandItem
-                                   key={mod.id}
-                                   value={mod.id.toString()}
-                                   onSelect={() => addMod(mod)}
-                                   className="py-2"
-                                 >
-                                   <div className="flex-1">
-                                     <p className="font-medium">{mod.brand}</p>
-                                     <p className="text-sm text-gray-400">{mod.description}</p>
-                                     <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                                   </div>
-                                   <Check
-                                     className={`h-4 w-4 ${
-                                       Mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                                     }`}
-                                   />
-                                 </CommandItem>
-                               ))}
-                             </CommandGroup>
+                            {Object.entries(groupModsByCategory(availableMods)).map(([category, categoryMods]) => (
+                                <React.Fragment key={category}>
+                                <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">
+                                    {category}
+                                </div>
+                                {categoryMods.map((mod) => (
+                                    <CommandItem
+                                    key={mod.id}
+                                    value={mod.id.toString()}
+                                    onSelect={() => addMod(mod)}
+                                    className="py-2"
+                                    >
+                                    <div className="flex-1">
+                                        <p className="font-medium">{mod.brand}</p>
+                                        <p className="text-sm text-gray-400">{mod.description}</p>
+                                        <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
+                                    </div>
+                                    <Check
+                                        className={`h-4 w-4 ${
+                                        Mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
+                                        }`}
+                                    />
+                                    </CommandItem>
+                                ))}
+                                </React.Fragment>
+                            ))}
+                            </CommandGroup>
                            )}
                          </CommandList>
                        </Command>
                      </PopoverContent>
                    </Popover>
                  </div>
-               </TabsContent>
                
-               
-             </Tabs>
            </div>
 
            <div className="mt-4 p-4 bg-gray-800 rounded-md">

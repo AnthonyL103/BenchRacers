@@ -638,34 +638,19 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
 
 
 
-// Get all available mods
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Query all mods from the unified Mods table grouped by category
+    // Query all mods from the unified Mods table
     const [mods]: any = await pool.query(
       `SELECT modID as id, brand, category, cost, description, link 
        FROM Mods
        ORDER BY category, brand`
     );
     
-    // Group mods by category for easier consumption by the client
-    const groupedMods = mods.reduce((acc: any, mod: any) => {
-      if (!acc[mod.category]) {
-        acc[mod.category] = [];
-      }
-      acc[mod.category].push({
-        id: mod.id,
-        brand: mod.brand,
-        cost: mod.cost,
-        description: mod.description,
-        link: mod.link
-      });
-      return acc;
-    }, {});
-    
+    // Return as a flat array (or optionally grouped if your frontend expects it)
     res.status(200).json({
       success: true,
-      mods: groupedMods
+      mods: mods // This is now a flat array with category property included
     });
   } catch (error) {
     console.error('Error fetching all mods:', error);
