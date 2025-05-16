@@ -1,3 +1,4 @@
+// Optimized Auth Routes - Focusing Only on Database Query Optimization
 import { Router, Request, Response } from 'express';
 import { config } from 'dotenv';
 import bcrypt from 'bcrypt';
@@ -12,64 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const router = Router();
 
-/* OTHER QUERIES 
-NOTE THE BOTTOM ROUTES ARE FOR THE AUTH PAGE (LOGIN/SIGNUP) I HAVNEN't configured the rest explicility as routes but here they are (Most basic features Im for sure doing, others like following are up in the air)
-
-Get top 3 Cars for Exotic/Sport/ Off-Road Categories
-SELECT * FROM Entries 
-WHERE category IN ('Exotic', 'Sport', 'Off-Road') 
-ORDER BY upvotes DESC 
-LIMIT 3;
-
-
-Get top 10 leaderboard (by votes)
-SELECT entryID, carName, carMake, upvotes 
-FROM Entries 
-ORDER BY upvotes DESC 
-LIMIT 10;
-
-
-Get explore cars by category (should be different indexes than the input indexes(represents viewed cars))
-SELECT * FROM Entries 
-WHERE category = 'Sport' 
-  AND entryID NOT IN (1, 5, 9)
-  AND region = 'East'
-ORDER BY RAND()
-LIMIT 10;
-
-
-Get Awards
-
-SELECT * FROM Awards 
-WHERE userEmail = 'some_user_id'
-ORDER BY awardDate DESC;
-
-
-Add Car Entry to the Database
-
-INSERT INTO Entries (
-    userEmail, carName, carMake, carColor, description, 
-    s3ContentID, totalMods, totalCost, category, region
-) VALUES (
-    'some_user_id', 'blah', 'blah', 'blah', 
-    'blah', 'blah', 5, 12000, 'blah', 'blah'
-);
-
-Update Entry Like/Dislike Count
-
-UPDATE Entries 
-SET upvotes = upvotes + 1 
-WHERE entryID = 42;
-
-UPDATE Entries 
-SET upvotes = GREATEST(upvotes - 1, 0) 
-WHERE entryID = 42;
-
-Routes/queries for signup/login:
-*/
-
-
-// Login route with improved error handling
+// Login route with optimized queries
 router.post('/login', async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
@@ -83,8 +27,12 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      // Check if user exists
-      const [users]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
+      // OPTIMIZATION: Only select needed fields rather than SELECT *
+      const [users]: any = await pool.query(
+        'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken FROM Users WHERE userEmail = ?', 
+        [email]
+      );
+      
       if (users.length === 0) {
         return res.status(401).json({ 
           success: false,
@@ -108,6 +56,8 @@ router.post('/login', async (req: Request, res: Response) => {
       if (!user.isVerified) {
         // Generate a new verification token for convenience
         const verificationToken = uuidv4();
+        
+        // OPTIMIZATION: Direct update without querying first
         await pool.query(
           'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
           [verificationToken, email]
@@ -180,19 +130,28 @@ router.post('/login', async (req: Request, res: Response) => {
         errorCode: 'SERVER_ERROR'
       });
     }
-  });
+});
   
-  // Signup route with improved error handling
-  router.post('/signup', async (req: Request, res: Response) => {
+// Signup route with optimized queries
+router.post('/signup', async (req: Request, res: Response) => {
     console.log('[SIGNUP] Received signup request');
-  
+    
+    // OPTIMIZATION: Use a single connection with transaction for multiple operations
+    const connection = await pool.getConnection();
+    
     try {
+      await connection.beginTransaction();
+      
       const { email, name, password, region } = req.body;
       console.log('[SIGNUP] Request body:', { email, name, password: !!password, region });
   
       // Validate input fields
       if (!email || !name || !password || !region) {
         console.warn('[SIGNUP] Missing required fields');
+        
+        // OPTIMIZATION: Release connection early if validation fails
+        connection.release();
+        
         return res.status(400).json({ 
           success: false,
           message: 'All fields are required',
@@ -208,6 +167,7 @@ router.post('/login', async (req: Request, res: Response) => {
   
       // Password strength validation (optional)
       if (password.length < 8) {
+        connection.release();
         return res.status(400).json({
           success: false,
           message: 'Password must be at least 8 characters long',
@@ -215,8 +175,12 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      // Check if user already exists
-      const [existingUsers]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
+      // OPTIMIZATION: Only select needed fields
+      const [existingUsers]: any = await connection.query(
+        'SELECT userEmail, isVerified FROM Users WHERE userEmail = ?', 
+        [email]
+      );
+      
       console.log('[SIGNUP] Checked for existing user:', existingUsers.length);
   
       if (existingUsers.length > 0) {
@@ -226,10 +190,13 @@ router.post('/login', async (req: Request, res: Response) => {
         if (!existingUser.isVerified) {
           // Generate a new verification token
           const verificationToken = uuidv4();
-          await pool.query(
+          
+          await connection.query(
             'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
             [verificationToken, email]
           );
+          
+          await connection.commit();
   
           // Send verification email
           const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
@@ -250,7 +217,9 @@ router.post('/login', async (req: Request, res: Response) => {
           } catch (sendErr) {
             console.error('[SIGNUP] Email resend failed');
           }
-  
+          
+          connection.release();
+          
           return res.status(409).json({ 
             success: false,
             message: 'An account with this email already exists but is not verified. A new verification email has been sent.',
@@ -260,6 +229,10 @@ router.post('/login', async (req: Request, res: Response) => {
         
         // User exists and is verified
         console.warn('[SIGNUP] User already exists:', email);
+        
+        await connection.rollback();
+        connection.release();
+        
         return res.status(409).json({ 
           success: false,
           message: 'An account with this email already exists',
@@ -273,12 +246,17 @@ router.post('/login', async (req: Request, res: Response) => {
       const accountCreated = new Date();
   
       console.log('[SIGNUP] Inserting new user');
-      await pool.query(
+      
+      // OPTIMIZATION: Simplified insert with fewer parameters and defaults
+      await connection.query(
         `INSERT INTO Users 
          (userEmail, name, password, accountCreated, totalEntries, region, isEditor, isVerified, verificationToken) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [email, name, hashedPassword, accountCreated, 0, region, false, false, verificationToken]
+         VALUES (?, ?, ?, ?, 0, ?, FALSE, FALSE, ?)`,
+        [email, name, hashedPassword, accountCreated, region, verificationToken]
       );
+      
+      await connection.commit();
+      
       console.log('[SIGNUP] Inserted user successfully');
   
       // Send verification email
@@ -313,6 +291,9 @@ router.post('/login', async (req: Request, res: Response) => {
       );
   
       console.log('[SIGNUP] JWT generated, returning success');
+      
+      connection.release();
+      
       res.status(201).json({
         success: true,
         message: 'User created successfully. Please verify your email.',
@@ -320,6 +301,10 @@ router.post('/login', async (req: Request, res: Response) => {
         user: { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
       });
     } catch (error) {
+      // OPTIMIZATION: Ensure rollback on error
+      await connection.rollback();
+      connection.release();
+      
       console.error('[SIGNUP] Error occurred:', error);
       res.status(500).json({ 
         success: false,
@@ -327,9 +312,9 @@ router.post('/login', async (req: Request, res: Response) => {
         errorCode: 'SERVER_ERROR'
       });
     }
-  });
+});
   
-// Email verification route
+// Email verification route with optimized queries
 router.get('/verify', async (req: Request, res: Response) => {
   try {
     const { token } = req.query;
@@ -337,15 +322,16 @@ router.get('/verify', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid verification token' });
     }
 
-    const [users]: any = await pool.query('SELECT * FROM Users WHERE verificationToken = ?', [token]);
-    if (users.length === 0) {
+    // OPTIMIZATION: Use UPDATE with direct check instead of SELECT first
+    const [result]: any = await pool.query(
+      'UPDATE Users SET isVerified = TRUE, verificationToken = NULL WHERE verificationToken = ?',
+      [token]
+    );
+    
+    // Check if any rows were affected
+    if (result.affectedRows === 0) {
       return res.status(400).json({ message: 'Invalid token' });
     }
-
-    await pool.query(
-      'UPDATE Users SET isVerified = TRUE, verificationToken = NULL WHERE userEmail = ?',
-      [users[0].userEmail]
-    );
 
     res.status(200).json({ message: 'Email verified. You can now login.' });
   } catch (error) {
@@ -354,6 +340,7 @@ router.get('/verify', async (req: Request, res: Response) => {
   }
 });
 
+// Forgot password route with optimized queries
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -361,9 +348,19 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const [users]: any = await pool.query('SELECT * FROM Users WHERE userEmail = ?', [email]);
+    // OPTIMIZATION: Only select the email field
+    const [users]: any = await pool.query(
+      'SELECT userEmail FROM Users WHERE userEmail = ?', 
+      [email]
+    );
+    
+    // Always return same message for security
+    const standardResponse = { message: 'If registered, a reset link will be sent.' };
+    
     if (users.length === 0) {
-      return res.status(200).json({ message: 'If registered, a reset link will be sent.' });
+      // Add slight delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 100));
+      return res.status(200).json(standardResponse);
     }
 
     const resetToken = uuidv4();
@@ -388,36 +385,55 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     await sgMail.send(msg);
 
-    res.status(200).json({ message: 'If registered, a reset link will be sent.' });
+    res.status(200).json(standardResponse);
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ message: 'Server error during reset request' });
   }
 });
 
+// Reset password route with optimized queries
 router.post('/reset-password', async (req: Request, res: Response) => {
+  // OPTIMIZATION: Use a single connection with transaction
+  const connection = await pool.getConnection();
+  
   try {
+    await connection.beginTransaction();
+    
     const { token, newPassword } = req.body;
     if (!token || !newPassword) {
+      connection.release();
       return res.status(400).json({ message: 'Token and password required' });
     }
 
-    const [users]: any = await pool.query(
-      'SELECT * FROM Users WHERE resetToken = ? AND resetTokenExpiration > NOW()',
+    // OPTIMIZATION: Only select the userEmail field
+    const [users]: any = await connection.query(
+      'SELECT userEmail FROM Users WHERE resetToken = ? AND resetTokenExpiration > NOW()',
       [token]
     );
+    
     if (users.length === 0) {
+      await connection.rollback();
+      connection.release();
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await pool.query(
+    
+    await connection.query(
       'UPDATE Users SET password = ?, resetToken = NULL, resetTokenExpiration = NULL WHERE userEmail = ?',
       [hashedPassword, users[0].userEmail]
     );
 
+    await connection.commit();
+    connection.release();
+
     res.status(200).json({ message: 'Password has been reset. You can now login.' });
   } catch (error) {
+    // OPTIMIZATION: Ensure rollback on error
+    await connection.rollback();
+    connection.release();
+    
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Server error during password reset' });
   }

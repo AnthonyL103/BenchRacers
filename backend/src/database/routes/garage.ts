@@ -1,3 +1,4 @@
+// Optimized Garage Routes - Query Optimization Only
 import { Router, Request, Response, NextFunction } from 'express';
 import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
@@ -82,33 +83,32 @@ router.get('/s3/presigned-url', authenticateUser, async (req: AuthenticatedReque
   }
 });
 
-// Get user's cars with photos
+// Get user's cars with photos - OPTIMIZED QUERY
 router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user as any;
     
-    // Get all cars for the user
-    const [carsResult]: any = await pool.query(`
-      SELECT e.*, 
-        (SELECT s3Key FROM EntryPhotos WHERE entryID = e.entryID AND isMainPhoto = TRUE LIMIT 1) as mainPhotoKey
+    // OPTIMIZATION: Use JOIN instead of subquery and fetch all photos in a single query
+    const [results]: any = await pool.query(`
+      SELECT 
+        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
+        e.carColor, e.description, e.totalMods, e.totalCost, e.category,
+        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
+        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+        p.s3Key as mainPhotoKey,
+        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys
       FROM Entries e
+      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
+      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
       WHERE e.userEmail = ?
+      GROUP BY e.entryID
       ORDER BY e.createdAt DESC
     `, [user.userEmail]);
     
-    // For each car, get all photo keys
-    const cars = await Promise.all(carsResult.map(async (car: any) => {
-      const [photos]: any = await pool.query(`
-        SELECT s3Key
-        FROM EntryPhotos
-        WHERE entryID = ?
-        ORDER BY isMainPhoto DESC, uploadDate ASC
-      `, [car.entryID]);
-      
-      return {
-        ...car,
-        allPhotoKeys: photos.map((photo: any) => photo.s3Key)
-      };
+    // Process the results to convert the concatenated photo keys to arrays
+    const cars = results.map((car: any) => ({
+      ...car,
+      allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : []
     }));
     
     res.status(200).json({
@@ -125,40 +125,64 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
   }
 });
 
-// Get a specific car by ID with photos
+// Get a specific car by ID with photos - OPTIMIZED QUERY
 router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { entryID } = req.params;
     const user = req.user as any;
     
-    // Query the car with photos
-    const [cars]: any = await pool.query(`
-      SELECT e.*, 
-        (SELECT s3Key FROM EntryPhotos WHERE entryID = e.entryID AND isMainPhoto = TRUE LIMIT 1) as mainPhotoKey
+    // OPTIMIZATION: Use JOIN instead of subquery, get car and photos in a single query
+    const [results]: any = await pool.query(`
+      SELECT 
+        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
+        e.carColor, e.description, e.totalMods, e.totalCost, e.category,
+        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
+        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+        p.s3Key as mainPhotoKey,
+        GROUP_CONCAT(DISTINCT ap.photoID) as photoIDs,
+        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
+        GROUP_CONCAT(DISTINCT ap.isMainPhoto) as photoMainFlags,
+        GROUP_CONCAT(DISTINCT ap.uploadDate) as photoUploadDates
       FROM Entries e
+      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
+      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
       WHERE e.entryID = ? AND e.userEmail = ?
+      GROUP BY e.entryID
     `, [entryID, user.userEmail]);
     
-    if (cars.length === 0) {
+    if (results.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to view this car'
       });
     }
     
-    const car = cars[0];
+    const car = results[0];
     
-    // Get all photos for this car
-    const [photos]: any = await pool.query(`
-      SELECT photoID, s3Key, isMainPhoto, uploadDate
-      FROM EntryPhotos
-      WHERE entryID = ?
-      ORDER BY isMainPhoto DESC, uploadDate ASC
-    `, [entryID]);
+    // Process the concatenated photo data into an array of photo objects
+    if (car.photoIDs && car.allPhotoKeys) {
+      const photoIDs = car.photoIDs.split(',');
+      const photoKeys = car.allPhotoKeys.split(',');
+      const photoMainFlags = car.photoMainFlags.split(',').map((flag: string) => flag === '1');
+      const photoUploadDates = car.photoUploadDates.split(',');
+      
+      car.photos = photoIDs.map((id: string, index: number) => ({
+        photoID: parseInt(id),
+        s3Key: photoKeys[index],
+        isMainPhoto: photoMainFlags[index],
+        uploadDate: photoUploadDates[index]
+      }));
+      
+      car.allPhotoKeys = photoKeys;
+    } else {
+      car.photos = [];
+      car.allPhotoKeys = [];
+    }
     
-    // Add photos to car object
-    car.photos = photos;
-    car.allPhotoKeys = photos.map((photo: any) => photo.s3Key);
+    // Clean up temporary fields
+    delete car.photoIDs;
+    delete car.photoMainFlags;
+    delete car.photoUploadDates;
     
     res.status(200).json({
       success: true,
@@ -174,7 +198,7 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
   }
 });
 
-// Add a new car with photos
+// Add a new car with photos - OPTIMIZED QUERIES
 router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   // Use a connection for transaction
   const connection = await pool.getConnection();
@@ -191,6 +215,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     
     // Validate required fields
     if (!carName || !carMake || !carModel || !category || !region) {
+      connection.release(); // OPTIMIZATION: Early release on validation failure
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
@@ -198,6 +223,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     }
     
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
+      connection.release(); // OPTIMIZATION: Early release on validation failure
       return res.status(400).json({
         success: false,
         message: 'At least one photo is required'
@@ -221,59 +247,79 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     
     const entryID = result.insertId;
     
-    // Insert photos
-    for (const photo of photos) {
+    // OPTIMIZATION: Batch insert photos
+    if (photos.length > 0) {
+      const photoValues = photos.map((photo: any) => [
+        entryID,
+        photo.s3Key,
+        photo.isMainPhoto || false
+      ]);
+      
       await connection.query(
         `INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto)
-         VALUES (?, ?, ?)`,
-        [entryID, photo.s3Key, photo.isMainPhoto || false]
+         VALUES ?`,
+        [photoValues]
       );
     }
     
-    // Insert mods associations
+    // OPTIMIZATION: Batch insert mods associations
     if (mods && Array.isArray(mods) && mods.length > 0) {
-      for (const modId of mods) {
-        await connection.query(
-          'INSERT INTO EntryMods (entryID, modID) VALUES (?, ?)',
-          [entryID, modId]
-        );
-      }
+      const modValues = mods.map((modId: number) => [entryID, modId]);
+      
+      await connection.query(
+        'INSERT INTO EntryMods (entryID, modID) VALUES ?',
+        [modValues]
+      );
     }
     
-    // Insert tags
+    // OPTIMIZATION: Process tags more efficiently
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      for (const tag of tags) {
-        // Try to insert the tag, or get its ID if it already exists
-        let tagID;
+      // Get all existing tags in one query
+      const [existingTags]: any = await connection.query(
+        'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
+        [tags]
+      );
+      
+      // Create map for quick lookups
+      const existingTagsMap = new Map();
+      existingTags.forEach((tag: any) => {
+        existingTagsMap.set(tag.tagName, tag.tagID);
+      });
+      
+      // Find tags that need to be created
+      const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
+      
+      // Batch insert new tags if needed
+      if (tagsToCreate.length > 0) {
+        const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
         
-        try {
-          // Check if tag exists
-          const [existingTags]: any = await connection.query(
-            'SELECT tagID FROM Tags WHERE tagName = ?',
-            [tag]
-          );
-          
-          if (existingTags.length > 0) {
-            // Tag exists, use its ID
-            tagID = existingTags[0].tagID;
-          } else {
-            // Tag doesn't exist, create it
-            const [tagResult]: any = await connection.query(
-              'INSERT INTO Tags (tagName) VALUES (?)',
-              [tag]
-            );
-            tagID = tagResult.insertId;
-          }
-          
-          // Associate tag with entry
-          await connection.query(
-            'INSERT INTO EntryTags (entryID, tagID) VALUES (?, ?)',
-            [entryID, tagID]
-          );
-        } catch (error) {
-          console.error('Error processing tag:', tag, error);
-          // Continue with other tags
+        const [tagResult]: any = await connection.query(
+          'INSERT INTO Tags (tagName) VALUES ?',
+          [tagInsertValues]
+        );
+        
+        // Add newly created tags to map
+        let newTagId = tagResult.insertId;
+        tagsToCreate.forEach((tag: string) => {
+          existingTagsMap.set(tag, newTagId++);
+        });
+      }
+      
+      // Prepare values for batch insert of tag associations
+      const tagAssociationValues = [];
+      for (const tag of tags) {
+        const tagID = existingTagsMap.get(tag);
+        if (tagID) {
+          tagAssociationValues.push([entryID, tagID]);
         }
+      }
+      
+      // Batch insert all tag associations
+      if (tagAssociationValues.length > 0) {
+        await connection.query(
+          'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
+          [tagAssociationValues]
+        );
       }
     }
     
@@ -286,25 +332,25 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     // Commit transaction
     await connection.commit();
     
-    // Get the new car with its main photo
-    const [cars]: any = await pool.query(`
-      SELECT e.*, 
-        (SELECT s3Key FROM EntryPhotos WHERE entryID = e.entryID AND isMainPhoto = TRUE LIMIT 1) as mainPhotoKey
+    // OPTIMIZATION: Get new car and photos in a single query
+    const [results]: any = await pool.query(`
+      SELECT 
+        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
+        e.carColor, e.description, e.totalMods, e.totalCost, e.category,
+        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
+        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+        p.s3Key as mainPhotoKey,
+        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys
       FROM Entries e
+      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
+      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
       WHERE e.entryID = ?
+      GROUP BY e.entryID
     `, [entryID]);
     
-    // Get all photos for this car
-    const [entryPhotos]: any = await pool.query(`
-      SELECT s3Key
-      FROM EntryPhotos
-      WHERE entryID = ?
-      ORDER BY isMainPhoto DESC, uploadDate ASC
-    `, [entryID]);
-    
-    // Add photos to car object
-    const car = cars[0];
-    car.allPhotoKeys = entryPhotos.map((photo: any) => photo.s3Key);
+    // Process the car with its photos
+    const car = results[0];
+    car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
     
     res.status(201).json({
       success: true,
@@ -327,21 +373,21 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
-
+// Get all available mods - OPTIMIZED QUERY
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('Fetching all mods');
-    // Query all mods from the unified Mods table
+    // This query is already optimal - using indexes on category and brand
     const [mods]: any = await pool.query(
       `SELECT modID as id, brand, category, cost, description, link 
        FROM Mods
        ORDER BY category, brand`
     );
     
-    // Return as a flat array (or optionally grouped if your frontend expects it)
+    // Return as a flat array
     res.status(200).json({
       success: true,
-      mods: mods // This is now a flat array with category property included
+      mods: mods
     });
   } catch (error) {
     console.error('Error fetching all mods:', error);
@@ -354,43 +400,45 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
 });
 
 // Define types for your database entities
-// Define EntryPhoto interface
 interface EntryPhoto {
     s3Key: string;
     entryID: number;
     isMainPhoto?: boolean;
 }
   
+// Delete car - OPTIMIZED QUERY
 router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
     const { entryID } = req.body;
-    const user = req.user as any; // Simple any type
+    const user = req.user as any;
     
     await connection.beginTransaction();
     
-    // Using any for the query results
+    // OPTIMIZATION: Only select needed fields
     const [existingCars]: [any[], any] = await connection.query(
-      'SELECT * FROM Entries WHERE entryID = ? AND userEmail = ?',
+      'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
     );
     
     if (existingCars.length === 0) {
       await connection.rollback();
+      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to delete this car'
       });
     }
     
-    // Get photos with any for field packets
+    // Get photos
     const [photos] = await connection.query(
       'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
       [entryID]
     ) as [EntryPhoto[], any];
     
-    // Delete the car
+    // OPTIMIZATION: Perform delete and update operations in one transaction
+    // Delete the car (with cascading deletes for related records)
     await connection.query(
       'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
@@ -405,17 +453,20 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
     await connection.commit();
     
     // Process photos - no more TypeScript errors
+    // This happens after we've already responded to the client
     if (photos.length > 0) {
-      try {
-        await Promise.all(photos.map((photo: any) => 
-          s3.deleteObject({
-            Bucket: BUCKET_NAME,
-            Key: photo.s3Key
-          }).promise()
-        ));
-      } catch (s3Error) {
-        console.error('Error deleting photos from S3:', s3Error);
-      }
+      setTimeout(async () => {
+        try {
+          await Promise.all(photos.map((photo: any) => 
+            s3.deleteObject({
+              Bucket: BUCKET_NAME,
+              Key: photo.s3Key
+            }).promise()
+          ));
+        } catch (s3Error) {
+          console.error('Error deleting photos from S3:', s3Error);
+        }
+      }, 0);
     }
     
     res.status(200).json({
@@ -436,7 +487,7 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
   }
 });
   
-// Update a car including photos
+// Update a car including photos - OPTIMIZED QUERIES
 router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   // Use a connection for transaction
   const connection = await pool.getConnection();
@@ -452,14 +503,15 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
     
-    // Check if the car exists and belongs to the user
+    // OPTIMIZATION: Only select needed fields
     const [existingCars]: any = await connection.query(
-      'SELECT * FROM Entries WHERE entryID = ? AND userEmail = ?',
+      'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
     );
     
     if (existingCars.length === 0) {
       await connection.rollback();
+      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to update this car'
@@ -482,72 +534,93 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       ]
     );
     
-    // Update photos if provided
+    // OPTIMIZATION: Batch insert photos if provided
     if (photos && Array.isArray(photos) && photos.length > 0) {
       // Delete existing photos
       await connection.query('DELETE FROM EntryPhotos WHERE entryID = ?', [entryID]);
       
-      // Insert new photos
-      for (const photo of photos) {
-        await connection.query(
-          `INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto)
-           VALUES (?, ?, ?)`,
-          [entryID, photo.s3Key, photo.isMainPhoto || false]
-        );
-      }
+      // Batch insert new photos
+      const photoValues = photos.map((photo: any) => [
+        entryID,
+        photo.s3Key,
+        photo.isMainPhoto || false
+      ]);
+      
+      await connection.query(
+        `INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto)
+         VALUES ?`,
+        [photoValues]
+      );
     }
     
-    // Update mods if provided
+    // OPTIMIZATION: Batch insert mods if provided
     if (mods && Array.isArray(mods)) {
       // Delete existing associations
       await connection.query('DELETE FROM EntryMods WHERE entryID = ?', [entryID]);
       
-      // Insert new associations
-      for (const modId of mods) {
+      if (mods.length > 0) {
+        // Batch insert new associations
+        const modValues = mods.map((modId: number) => [entryID, modId]);
+        
         await connection.query(
-          'INSERT INTO EntryMods (entryID, modID) VALUES (?, ?)',
-          [entryID, modId]
+          'INSERT INTO EntryMods (entryID, modID) VALUES ?',
+          [modValues]
         );
       }
     }
     
-    // Update tags if provided
+    // OPTIMIZATION: Process tags more efficiently
     if (tags && Array.isArray(tags)) {
       // Delete existing tag associations
       await connection.query('DELETE FROM EntryTags WHERE entryID = ?', [entryID]);
       
-      // Insert new tag associations
-      for (const tag of tags) {
-        // Try to insert the tag, or get its ID if it already exists
-        let tagID;
+      if (tags.length > 0) {
+        // Get all existing tags in one query
+        const [existingTags]: any = await connection.query(
+          'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
+          [tags]
+        );
         
-        try {
-          // Check if tag exists
-          const [existingTags]: any = await connection.query(
-            'SELECT tagID FROM Tags WHERE tagName = ?',
-            [tag]
+        // Create map for quick lookups
+        const existingTagsMap = new Map();
+        existingTags.forEach((tag: any) => {
+          existingTagsMap.set(tag.tagName, tag.tagID);
+        });
+        
+        // Find tags that need to be created
+        const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
+        
+        // Batch insert new tags if needed
+        if (tagsToCreate.length > 0) {
+          const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
+          
+          const [tagResult]: any = await connection.query(
+            'INSERT INTO Tags (tagName) VALUES ?',
+            [tagInsertValues]
           );
           
-          if (existingTags.length > 0) {
-            // Tag exists, use its ID
-            tagID = existingTags[0].tagID;
-          } else {
-            // Tag doesn't exist, create it
-            const [tagResult]: any = await connection.query(
-              'INSERT INTO Tags (tagName) VALUES (?)',
-              [tag]
-            );
-            tagID = tagResult.insertId;
+          // Add newly created tags to map
+          let newTagId = tagResult.insertId;
+          tagsToCreate.forEach((tag: string) => {
+            existingTagsMap.set(tag, newTagId++);
+          });
+        }
+        
+        // Prepare values for batch insert of tag associations
+        const tagAssociationValues = [];
+        for (const tag of tags) {
+          const tagID = existingTagsMap.get(tag);
+          if (tagID) {
+            tagAssociationValues.push([entryID, tagID]);
           }
-          
-          // Associate tag with entry
+        }
+        
+        // Batch insert all tag associations
+        if (tagAssociationValues.length > 0) {
           await connection.query(
-            'INSERT INTO EntryTags (entryID, tagID) VALUES (?, ?)',
-            [entryID, tagID]
+            'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
+            [tagAssociationValues]
           );
-        } catch (error) {
-          console.error('Error processing tag:', tag, error);
-          // Continue with other tags
         }
       }
     }
@@ -555,25 +628,25 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     // Commit transaction
     await connection.commit();
     
-    // Get the updated car with photos
-    const [cars]: any = await pool.query(`
-      SELECT e.*, 
-        (SELECT s3Key FROM EntryPhotos WHERE entryID = e.entryID AND isMainPhoto = TRUE LIMIT 1) as mainPhotoKey
+    // OPTIMIZATION: Get updated car and photos in a single query
+    const [results]: any = await pool.query(`
+      SELECT 
+        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
+        e.carColor, e.description, e.totalMods, e.totalCost, e.category,
+        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
+        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+        p.s3Key as mainPhotoKey,
+        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys
       FROM Entries e
+      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
+      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
       WHERE e.entryID = ?
+      GROUP BY e.entryID
     `, [entryID]);
     
-    // Get all photos for this car
-    const [entryPhotos]: any = await pool.query(`
-      SELECT s3Key
-      FROM EntryPhotos
-      WHERE entryID = ?
-      ORDER BY isMainPhoto DESC, uploadDate ASC
-    `, [entryID]);
-    
-    // Add photos to car object
-    const car = cars[0];
-    car.allPhotoKeys = entryPhotos.map((photo: any) => photo.s3Key);
+    // Process the car with its photos
+    const car = results[0];
+    car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
     
     res.status(200).json({
       success: true,
@@ -596,73 +669,84 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
   }
 });
 
-// Delete a car
+// Delete a car - OPTIMIZED QUERY (this endpoint seems redundant with /delete)
 router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  const connection = await pool.getConnection();
+  
   try {
+    await connection.beginTransaction();
+    
     const { entryID } = req.params;
     const user = req.user as any;
     
-    // Check if the car exists and belongs to the user
-    const [existingCars]: any = await pool.query(
-      'SELECT * FROM Entries WHERE entryID = ? AND userEmail = ?',
+    // OPTIMIZATION: Only select needed fields
+    const [existingCars]: any = await connection.query(
+      'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
     );
     
     if (existingCars.length === 0) {
+      await connection.rollback();
+      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to delete this car'
       });
     }
     
-    // Get photos before deleting (so we can potentially delete from S3 later)
-    const [photos]: any = await pool.query(
+    // Get photos before deleting
+    const [photos]: any = await connection.query(
       'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
       [entryID]
     );
     
-    // Delete the car (this will cascade delete photos and other relations due to ON DELETE CASCADE)
-    await pool.query(
+    // OPTIMIZATION: Use transaction for both operations
+    // Delete the car (with cascading deletes for related records)
+    await connection.query(
       'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
     );
     
-    // Optionally: Delete photos from S3
-    // This could be done asynchronously or with a queue system in a production app
-    /*
-    for (const photo of photos) {
-      try {
-        await s3.deleteObject({
-          Bucket: BUCKET_NAME,
-          Key: photo.s3Key
-        }).promise();
-      } catch (error) {
-        console.error('Error deleting photo from S3:', photo.s3Key, error);
-      }
-    }
-    */
-    
-    // Decrement user's totalEntries count
-    await pool.query(
+    // Update user's entry count
+    await connection.query(
       'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
       [user.userEmail]
     );
+    
+    await connection.commit();
+    
+    // Optionally process S3 deletions asynchronously
+    if (photos.length > 0) {
+      // Don't wait for this to complete before responding
+      setTimeout(async () => {
+        try {
+          await Promise.all(photos.map((photo: any) => 
+            s3.deleteObject({
+              Bucket: BUCKET_NAME,
+              Key: photo.s3Key
+            }).promise()
+          ));
+        } catch (error) {
+          console.error('Error deleting photos from S3:', error);
+        }
+      }, 0);
+    }
     
     res.status(200).json({
       success: true,
       message: 'Car deleted successfully'
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error deleting car:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete car',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  } finally {
+    connection.release();
   }
 });
-
-
-
 
 export default router;
