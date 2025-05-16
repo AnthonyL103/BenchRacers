@@ -640,6 +640,7 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
 
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    console.log('Fetching all mods');
     // Query all mods from the unified Mods table
     const [mods]: any = await pool.query(
       `SELECT modID as id, brand, category, cost, description, link 
