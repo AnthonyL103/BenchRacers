@@ -169,6 +169,24 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       setSelectedTags([...selectedTags, tag])
     }
   }
+  
+  const filteredAndGroupedMods = () => {
+  // If no search term, return all grouped mods
+  if (!ModSearch.trim()) {
+    return groupModsByCategory(availableMods);
+  }
+  
+  // Filter mods by search term (case insensitive)
+  
+  const searchLower = ModSearch.toLowerCase();
+  const filtered = availableMods.filter(mod => 
+    mod.brand.toLowerCase().includes(searchLower) ||
+    mod.description.toLowerCase().includes(searchLower)
+  );
+  
+  // Then group the filtered results
+  return groupModsByCategory(filtered);
+};
 
   const removeTag = (tag: string) => {
     setSelectedTags(selectedTags.filter((t) => t !== tag))
@@ -677,7 +695,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                        ))}
                      </div>
                    ) : (
-                     <p className="text-sm text-gray-500">No engine modifications selected</p>
+                     <p className="text-sm text-gray-500">No modifications selected</p>
                    )}
                    
                    <Popover open={openMods} onOpenChange={setOpenMods}>
@@ -694,9 +712,13 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                      </PopoverTrigger>
                      <PopoverContent className="w-full p-0">
                        <Command>
-                         <CommandInput placeholder="Search engine mods..." />
+                         <CommandInput 
+                           value={ModSearch} 
+                           onValueChange={setModSearch} 
+                           placeholder="Search mods by brand or description..." 
+                         />
                          <CommandList>
-                           <CommandEmpty>No mods found.</CommandEmpty>
+                           <CommandEmpty>No mods found matching "{ModSearch}"</CommandEmpty>
                            {isLoadingMods ? (
                              <div className="py-6 text-center">
                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -704,33 +726,33 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                              </div>
                            ) : (
                              <CommandGroup>
-                            {Object.entries(groupModsByCategory(availableMods)).map(([category, categoryMods]) => (
-                                <React.Fragment key={category}>
-                                <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">
-                                    {category}
-                                </div>
-                                {categoryMods.map((mod) => (
-                                    <CommandItem
-                                    key={mod.id}
-                                    value={mod.id.toString()}
-                                    onSelect={() => addMod(mod)}
-                                    className="py-2"
-                                    >
-                                    <div className="flex-1">
-                                        <p className="font-medium">{mod.brand}</p>
-                                        <p className="text-sm text-gray-400">{mod.description}</p>
-                                        <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                                    </div>
-                                    <Check
-                                        className={`h-4 w-4 ${
-                                        Mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                                        }`}
-                                    />
-                                    </CommandItem>
-                                ))}
-                                </React.Fragment>
-                            ))}
-                            </CommandGroup>
+                               {Object.entries(filteredAndGroupedMods()).map(([category, categoryMods]) => (
+                                 <React.Fragment key={category}>
+                                   <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">
+                                     {category}
+                                   </div>
+                                   {categoryMods.map((mod) => (
+                                     <CommandItem
+                                       key={mod.id}
+                                       value={mod.id.toString()}
+                                       onSelect={() => addMod(mod)}
+                                       className="py-2"
+                                     >
+                                       <div className="flex-1">
+                                         <p className="font-medium">{mod.brand}</p>
+                                         <p className="text-sm text-gray-400">{mod.description}</p>
+                                         <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
+                                       </div>
+                                       <Check
+                                         className={`h-4 w-4 ${
+                                           Mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
+                                         }`}
+                                       />
+                                     </CommandItem>
+                                   ))}
+                                 </React.Fragment>
+                               ))}
+                             </CommandGroup>
                            )}
                          </CommandList>
                        </Command>
