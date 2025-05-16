@@ -83,6 +83,34 @@ router.get('/s3/presigned-url', authenticateUser, async (req: AuthenticatedReque
   }
 });
 
+
+// Get all available mods - OPTIMIZED QUERY
+router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    console.log('Fetching all mods');
+    // This query is already optimal - using indexes on category and brand
+    const [mods]: any = await pool.query(
+      `SELECT modID as id, brand, category, cost, description, link 
+       FROM Mods
+       ORDER BY category, brand`
+    );
+    
+    // Return as a flat array
+    res.status(200).json({
+      success: true,
+      mods: mods
+    });
+  } catch (error) {
+    console.error('Error fetching all mods:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch modifications',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+
 // Get user's cars with photos - OPTIMIZED QUERY
 router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -370,32 +398,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
   } finally {
     // Release connection
     connection.release();
-  }
-});
-
-// Get all available mods - OPTIMIZED QUERY
-router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    console.log('Fetching all mods');
-    // This query is already optimal - using indexes on category and brand
-    const [mods]: any = await pool.query(
-      `SELECT modID as id, brand, category, cost, description, link 
-       FROM Mods
-       ORDER BY category, brand`
-    );
-    
-    // Return as a flat array
-    res.status(200).json({
-      success: true,
-      mods: mods
-    });
-  } catch (error) {
-    console.error('Error fetching all mods:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch modifications',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
   }
 });
 

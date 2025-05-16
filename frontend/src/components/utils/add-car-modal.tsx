@@ -122,7 +122,10 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
         // Fetch mods
         setIsLoadingMods(true);
         const modsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }   
         });
         
         // Handle the data based on structure (whether it's flat or grouped)
