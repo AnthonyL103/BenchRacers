@@ -327,6 +327,32 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+
+router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    console.log('Fetching all mods');
+    // Query all mods from the unified Mods table
+    const [mods]: any = await pool.query(
+      `SELECT modID as id, brand, category, cost, description, link 
+       FROM Mods
+       ORDER BY category, brand`
+    );
+    
+    // Return as a flat array (or optionally grouped if your frontend expects it)
+    res.status(200).json({
+      success: true,
+      mods: mods // This is now a flat array with category property included
+    });
+  } catch (error) {
+    console.error('Error fetching all mods:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch modifications',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Define types for your database entities
 // Define EntryPhoto interface
 interface EntryPhoto {
@@ -638,29 +664,5 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
 
 
 
-router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    console.log('Fetching all mods');
-    // Query all mods from the unified Mods table
-    const [mods]: any = await pool.query(
-      `SELECT modID as id, brand, category, cost, description, link 
-       FROM Mods
-       ORDER BY category, brand`
-    );
-    
-    // Return as a flat array (or optionally grouped if your frontend expects it)
-    res.status(200).json({
-      success: true,
-      mods: mods // This is now a flat array with category property included
-    });
-  } catch (error) {
-    console.error('Error fetching all mods:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch modifications',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
 
 export default router;
