@@ -30,6 +30,7 @@ import {
   CommandList
 } from "../ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
+import { set } from "date-fns"
 
 // Types for mods
 interface Mod {
@@ -37,6 +38,7 @@ interface Mod {
   brand: string;
   cost: number;
   description: string;
+  category: string;
   link: string;
 }
 
@@ -59,29 +61,24 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const [description, setDescription] = useState("")
   
   // Preset mods state
-  const [engineMods, setEngineMods] = useState<Mod[]>([])
-  const [interiorMods, setInteriorMods] = useState<Mod[]>([])
-  const [exteriorMods, setExteriorMods] = useState<Mod[]>([])
+  const [Mods, setMods] = useState<Mod[]>([])
+
   
   // Available mods from the database
-  const [availableEngineMods, setAvailableEngineMods] = useState<Mod[]>([])
-  const [availableInteriorMods, setAvailableInteriorMods] = useState<Mod[]>([])
-  const [availableExteriorMods, setAvailableExteriorMods] = useState<Mod[]>([])
+  const [availableMods, setAvailableMods] = useState<Mod[]>([])
+
   
   // Search states
-  const [engineModSearch, setEngineModSearch] = useState("")
-  const [interiorModSearch, setInteriorModSearch] = useState("")
-  const [exteriorModSearch, setExteriorModSearch] = useState("")
+  const [ModSearch, setModSearch] = useState("")
+
   
   // Dropdown states
-  const [openEngineMods, setOpenEngineMods] = useState(false)
-  const [openInteriorMods, setOpenInteriorMods] = useState(false)
-  const [openExteriorMods, setOpenExteriorMods] = useState(false)
+  const [openMods, setOpenMods] = useState(false)
+
   
   // Loading states
-  const [isLoadingEngineMods, setIsLoadingEngineMods] = useState(false)
-  const [isLoadingInteriorMods, setIsLoadingInteriorMods] = useState(false)
-  const [isLoadingExteriorMods, setIsLoadingExteriorMods] = useState(false)
+  const [isLoadingMods, setIsLoadingMods] = useState(false)
+    
   
   const [totalCost, setTotalCost] = useState(0)
   
@@ -112,13 +109,11 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   // Calculate total cost when mods change
   useEffect(() => {
     const total = [
-      ...engineMods,
-      ...interiorMods,
-      ...exteriorMods
+      ...Mods
     ].reduce((sum, mod) => sum + mod.cost, 0);
     
     setTotalCost(total);
-  }, [engineMods, interiorMods, exteriorMods]);
+  }, [Mods]);
 
   // Fetch available mods from the backend
   const fetchAvailableMods = async () => {
@@ -126,28 +121,13 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
       const token = localStorage.getItem('token');
       
       // Fetch engine mods
-      setIsLoadingEngineMods(true);
-      const engineModsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods/engine', {
+      setIsLoadingMods(true);
+      const ModsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAvailableEngineMods(engineModsResponse.data.mods || []);
-      setIsLoadingEngineMods(false);
-      
-      // Fetch interior mods
-      setIsLoadingInteriorMods(true);
-      const interiorModsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods/interior', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAvailableInteriorMods(interiorModsResponse.data.mods || []);
-      setIsLoadingInteriorMods(false);
-      
-      // Fetch exterior mods
-      setIsLoadingExteriorMods(true);
-      const exteriorModsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods/exterior', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAvailableExteriorMods(exteriorModsResponse.data.mods || []);
-      setIsLoadingExteriorMods(false);
+      setAvailableMods(ModsResponse.data.mods || []);
+      setIsLoadingMods(false);
+    
       
     } catch (error) {
       console.error("Error fetching available mods:", error);
@@ -166,40 +146,19 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   }
 
   // Add a mod to selected mods
-  const addEngineMod = (mod: Mod) => {
-    if (!engineMods.some(m => m.id === mod.id)) {
-      setEngineMods([...engineMods, mod]);
+  const addMod = (mod: Mod) => {
+    if (!Mods.some(m => m.id === mod.id)) {
+      setMods([...Mods, mod]);
     }
-    setOpenEngineMods(false);
-  };
-  
-  const addInteriorMod = (mod: Mod) => {
-    if (!interiorMods.some(m => m.id === mod.id)) {
-      setInteriorMods([...interiorMods, mod]);
-    }
-    setOpenInteriorMods(false);
-  };
-  
-  const addExteriorMod = (mod: Mod) => {
-    if (!exteriorMods.some(m => m.id === mod.id)) {
-      setExteriorMods([...exteriorMods, mod]);
-    }
-    setOpenExteriorMods(false);
+    setOpenMods(false);
   };
   
   // Remove a mod from selected mods
-  const removeEngineMod = (id: number) => {
-    setEngineMods(engineMods.filter(mod => mod.id !== id));
+  const removeMod = (id: number) => {
+    setMods(Mods.filter(mod => mod.id !== id));
   };
   
-  const removeInteriorMod = (id: number) => {
-    setInteriorMods(interiorMods.filter(mod => mod.id !== id));
-  };
   
-  const removeExteriorMod = (id: number) => {
-    setExteriorMods(exteriorMods.filter(mod => mod.id !== id));
-  };
-
   // Trigger file input click
   const triggerFileInput = () => {
     fileInputRef.current?.click();
@@ -353,7 +312,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             carYear: carDetails.year,
             carColor: "", // You might want to add this field to your form
             description,
-            totalMods: engineMods.length + interiorMods.length + exteriorMods.length,
+            totalMods: Mods.length,
             totalCost,
             category: carDetails.category,
             region: user?.region || "",
@@ -367,9 +326,8 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             // Associated data
             photos: uploadedPhotos,
             tags: selectedTags,
-            engineMods: engineMods.map(mod => mod.id),
-            interiorMods: interiorMods.map(mod => mod.id),
-            exteriorMods: exteriorMods.map(mod => mod.id)
+            mods: Mods.map(mod => mod.id),
+        
         };
       
       // Send to backend via your addCar function
@@ -399,9 +357,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     photoPreview.forEach(url => URL.revokeObjectURL(url));
     setPhotoPreview([]);
     setDescription("");
-    setEngineMods([]);
-    setInteriorMods([]);
-    setExteriorMods([]);
+    setMods([]);
     setTotalCost(0);
     setErrors({});
     setCarDetails({
@@ -677,9 +633,9 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                  <div className="space-y-2">
                    <Label className="text-white">Selected Engine Modifications</Label>
                    
-                   {engineMods.length > 0 ? (
+                   {Mods.length > 0 ? (
                      <div className="space-y-2">
-                       {engineMods.map(mod => (
+                       {Mods.map(mod => (
                          <div key={mod.id} className="flex justify-between items-center p-3 bg-gray-800 rounded-md">
                            <div>
                              <p className="font-medium">{mod.brand}</p>
@@ -689,7 +645,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                            <Button 
                              variant="ghost" 
                              size="sm" 
-                             onClick={() => removeEngineMod(mod.id)}
+                             onClick={() => removeMod(mod.id)}
                              className="text-red-500"
                            >
                              <X className="h-4 w-4" />
@@ -701,15 +657,15 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                      <p className="text-sm text-gray-500">No engine modifications selected</p>
                    )}
                    
-                   <Popover open={openEngineMods} onOpenChange={setOpenEngineMods}>
+                   <Popover open={openMods} onOpenChange={setOpenMods}>
                      <PopoverTrigger asChild>
                        <Button
                          variant="outline"
                          role="combobox"
-                         aria-expanded={openEngineMods}
+                         aria-expanded={openMods}
                          className="w-full justify-between"
                        >
-                         Add Engine Modification
+                         Add Modification
                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                        </Button>
                      </PopoverTrigger>
@@ -718,18 +674,18 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                          <CommandInput placeholder="Search engine mods..." />
                          <CommandList>
                            <CommandEmpty>No mods found.</CommandEmpty>
-                           {isLoadingEngineMods ? (
+                           {isLoadingMods ? (
                              <div className="py-6 text-center">
                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                                <p className="text-sm text-gray-500 mt-2">Loading modifications...</p>
                              </div>
                            ) : (
                              <CommandGroup>
-                               {availableEngineMods.map((mod) => (
+                               {availableMods.map((mod) => (
                                  <CommandItem
                                    key={mod.id}
                                    value={mod.id.toString()}
-                                   onSelect={() => addEngineMod(mod)}
+                                   onSelect={() => addMod(mod)}
                                    className="py-2"
                                  >
                                    <div className="flex-1">
@@ -739,7 +695,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                                    </div>
                                    <Check
                                      className={`h-4 w-4 ${
-                                       engineMods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
+                                       Mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
                                      }`}
                                    />
                                  </CommandItem>
@@ -753,174 +709,14 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                  </div>
                </TabsContent>
                
-               {/* EXTERIOR MODS */}
-               <TabsContent value="exterior" className="space-y-4">
-                 <div className="space-y-2">
-                   <Label className="text-white">Selected Exterior Modifications</Label>
-                   
-                   {exteriorMods.length > 0 ? (
-                     <div className="space-y-2">
-                       {exteriorMods.map(mod => (
-                         <div key={mod.id} className="flex justify-between items-center p-3 bg-gray-800 rounded-md">
-                           <div>
-                             <p className="font-medium">{mod.brand}</p>
-                             <p className="text-sm text-gray-400">{mod.description}</p>
-                             <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                           </div>
-                           <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             onClick={() => removeExteriorMod(mod.id)}
-                             className="text-red-500"
-                           >
-                             <X className="h-4 w-4" />
-                           </Button>
-                         </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <p className="text-sm text-gray-500">No exterior modifications selected</p>
-                   )}
-                   
-                   <Popover open={openExteriorMods} onOpenChange={setOpenExteriorMods}>
-                     <PopoverTrigger asChild>
-                       <Button
-                         variant="outline"
-                         role="combobox"
-                         aria-expanded={openExteriorMods}
-                         className="w-full justify-between"
-                       >
-                         Add Exterior Modification
-                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                       </Button>
-                     </PopoverTrigger>
-                     <PopoverContent className="w-full p-0">
-                       <Command>
-                         <CommandInput placeholder="Search exterior mods..." />
-                         <CommandList>
-                           <CommandEmpty>No mods found.</CommandEmpty>
-                           {isLoadingExteriorMods ? (
-                             <div className="py-6 text-center">
-                               <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                               <p className="text-sm text-gray-500 mt-2">Loading modifications...</p>
-                             </div>
-                           ) : (
-                             <CommandGroup>
-                               {availableExteriorMods.map((mod) => (
-                                 <CommandItem
-                                   key={mod.id}
-                                   value={mod.id.toString()}
-                                   onSelect={() => addExteriorMod(mod)}
-                                   className="py-2"
-                                 >
-                                   <div className="flex-1">
-                                     <p className="font-medium">{mod.brand}</p>
-                                     <p className="text-sm text-gray-400">{mod.description}</p>
-                                     <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                                   </div>
-                                   <Check
-                                     className={`h-4 w-4 ${
-                                       exteriorMods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                                     }`}
-                                   />
-                                 </CommandItem>
-                               ))}
-                             </CommandGroup>
-                           )}
-                         </CommandList>
-                       </Command>
-                     </PopoverContent>
-                   </Popover>
-                 </div>
-               </TabsContent>
                
-               {/* INTERIOR MODS */}
-               <TabsContent value="interior" className="space-y-4">
-                 <div className="space-y-2">
-                   <Label className="text-white">Selected Interior Modifications</Label>
-                   
-                   {interiorMods.length > 0 ? (
-                     <div className="space-y-2">
-                       {interiorMods.map(mod => (
-                         <div key={mod.id} className="flex justify-between items-center p-3 bg-gray-800 rounded-md">
-                           <div>
-                             <p className="font-medium">{mod.brand}</p>
-                             <p className="text-sm text-gray-400">{mod.description}</p>
-                             <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                           </div>
-                           <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             onClick={() => removeInteriorMod(mod.id)}
-                             className="text-red-500"
-                           >
-                             <X className="h-4 w-4" />
-                           </Button>
-                         </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <p className="text-sm text-gray-500">No interior modifications selected</p>
-                   )}
-                   
-                   <Popover open={openInteriorMods} onOpenChange={setOpenInteriorMods}>
-                     <PopoverTrigger asChild>
-                       <Button
-                         variant="outline"
-                         role="combobox"
-                         aria-expanded={openInteriorMods}
-                         className="w-full justify-between"
-                       >
-                         Add Interior Modification
-                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                       </Button>
-                     </PopoverTrigger>
-                     <PopoverContent className="w-full p-0">
-                       <Command>
-                         <CommandInput placeholder="Search interior mods..." />
-                         <CommandList>
-                           <CommandEmpty>No mods found.</CommandEmpty>
-                           {isLoadingInteriorMods ? (
-                             <div className="py-6 text-center">
-                               <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                               <p className="text-sm text-gray-500 mt-2">Loading modifications...</p>
-                             </div>
-                           ) : (
-                             <CommandGroup>
-                               {availableInteriorMods.map((mod) => (
-                                 <CommandItem
-                                   key={mod.id}
-                                   value={mod.id.toString()}
-                                   onSelect={() => addInteriorMod(mod)}
-                                   className="py-2"
-                                 >
-                                   <div className="flex-1">
-                                     <p className="font-medium">{mod.brand}</p>
-                                     <p className="text-sm text-gray-400">{mod.description}</p>
-                                     <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                                   </div>
-                                   <Check
-                                     className={`h-4 w-4 ${
-                                       interiorMods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                                     }`}
-                                   />
-                                 </CommandItem>
-                               ))}
-                             </CommandGroup>
-                           )}
-                         </CommandList>
-                       </Command>
-                     </PopoverContent>
-                   </Popover>
-                 </div>
-               </TabsContent>
              </Tabs>
            </div>
 
            <div className="mt-4 p-4 bg-gray-800 rounded-md">
              <div className="flex justify-between items-center">
                <span className="font-medium">Total Modifications:</span>
-               <span>{engineMods.length + exteriorMods.length + interiorMods.length}</span>
+               <span>{Mods.length}</span>
              </div>
              <div className="flex justify-between items-center mt-2">
                <span className="font-medium">Total Cost:</span>

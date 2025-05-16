@@ -92,7 +92,7 @@ WHERE entryID = :entryID
   AND userEmail = :userEmail;
 
 
--- Authentication
+-- Authentication/Account
 
 -- Sign up
 INSERT INTO Users (
@@ -123,6 +123,11 @@ SET password = :newHashedPassword,
     resetTokenExpiration = NULL
 WHERE userEmail = :userEmail;
 
+--Delete a user
+DELETE FROM Users
+WHERE userEmail = :userEmail;
+
+
 
 --ADMIN PAGE QUERIES
 
@@ -138,82 +143,101 @@ WHERE userEmail = :userEmail;
 SELECT *
 FROM Users;
 
--- View users by region
+-- search users by region
 SELECT *
 FROM Users
-WHERE region = :region;
+WHERE region LIKE CONCAT('%', :region, '%');
 
--- View users by account created date
+-- Search users by name
 SELECT *
 FROM Users
-WHERE accountCreated BETWEEN :startDate AND :endDate;
+WHERE name LIKE CONCAT('%', :name, '%');
 
 -- Manually add a new user
 INSERT INTO Users (
-    userEmail, name, password, accountCreated, region
+    userEmail, name, password, accountCreated, region, isVerified, isEditor
 )
 VALUES (
-    :userEmail, :name, :password, NOW(), :region
+    :userEmail, :name, :password, NOW(), :region, FALSE, :isEditor
 );
 
 -- Manually update user info (e.g., region, name, editor status)
 UPDATE Users
 SET region = :region,
-    name = :name,
+    
     userEmail = :userEmail,
+    name = :name,
+    password = :password,
+    isVerified = :isVerified,
     isEditor = :isEditor
+    
 WHERE userEmail = :userEmail;
+
+--Delete a user
+DELETE FROM Users
+WHERE userEmail = :userEmail;
+
 
 --ENTRIES
 
 -- View all entries with associated users
 SELECT e.entryID, e.carName, e.carMake, e.carModel,
-       u.name AS owner, e.category, e.createdAt
+       u.userEmail AS Email, e.category, e.createdAt
 FROM Entries e
 JOIN Users u ON e.userEmail = u.userEmail;
 
 -- View all entries with no mods
 SELECT e.entryID, e.carName, e.carMake, e.carModel,
-       u.name AS owner, e.category, e.createdAt
+       u.userEmail AS owner, e.category, e.createdAt
 FROM Entries e
 JOIN Users u ON e.userEmail = u.userEmail
 WHERE e.totalMods = 0;
 
--- View entries by region
+-- Search entries by region
 SELECT e.entryID, e.carName, e.carMake, e.carModel,
-       u.name AS owner, e.category, e.createdAt
+       u.userEmail AS owner, e.category, e.createdAt
 FROM Entries e
 JOIN Users u ON e.userEmail = u.userEmail
-WHERE e.region = :region;
+WHERE e.region LIKE CONCAT('%', :region, '%');
 
--- View entries by region and category
+-- Search entries by category
 SELECT e.entryID, e.carName, e.carMake, e.carModel,
-       u.name AS owner, e.category, e.createdAt
+       u.userEmail AS owner, e.category, e.createdAt
 FROM Entries e
 JOIN Users u ON e.userEmail = u.userEmail
-WHERE e.region = :region AND e.category = :category;
-
--- View entries by category
-SELECT e.entryID, e.carName, e.carMake, e.carModel,
-       u.name AS owner, e.category, e.createdAt
-FROM Entries e
-JOIN Users u ON e.userEmail = u.userEmail
-WHERE e.category = :category;
+WHERE e.category LIKE CONCAT('%', :category, '%');
 
 -- Manually add a new entry
 INSERT INTO Entries (
     userEmail, carName, carMake, carModel,
-    carYear, carColor, description, category, region
+    carYear, carColor, totalCost, upvotes,
+    category, region, engine, transmission,
+    drivetrain, horsepower, torque
 )
 VALUES (
     :userEmail, :carName, :carMake, :carModel,
-    :carYear, :carColor, :description, :category, :region
+    :carYear, :carColor, :totalCost, :upvotes,
+    :category, :region, :engine, :transmission,
+    :drivetrain, :horsepower, :torque
 );
+
 
 -- Manually update an entry
 UPDATE Entries
-SET description = :description,
-    carColor = :carColor
+SET carName = :carName,
+    carMake = :carMake,
+    carModel = :carModel,
+    carYear = :carYear,
+    carColor = :carColor,
+    totalCost = :totalCost,
+    upvotes = :upvotes,
+    category = :category,
+    region = :region,
+    engine = :engine,
+    transmission = :transmission,
+    drivetrain = :drivetrain,
+    horsepower = :horsepower,
+    torque = :torque
 WHERE entryID = :entryID;
 
 -- Manually delete an entry
@@ -223,10 +247,26 @@ WHERE entryID = :entryID;
 
 -- MODS
 
--- View all mods grouped by category
+-- View all mods
+SELECT *
+FROM Mods;
+
+-- View all mods associated with an entry
+SELECT m.ModID, m.brand, m.category, m.cost
+FROM EntryMods em
+JOIN Mods m ON em.ModID = m.ModID
+WHERE em.entryID = :entryID;
+
+-- search mods by category
 SELECT *
 FROM Mods
-ORDER BY category;
+WHERE category LIKE CONCAT('%', :category, '%');
+
+-- search mods by brand
+SELECT *
+FROM Mods
+WHERE brand LIKE CONCAT('%', :brand, '%');
+
 
 -- Manually add a new mod
 INSERT INTO Mods (
@@ -238,43 +278,17 @@ VALUES (
 
 -- Manually update a mod
 UPDATE Mods
-SET cost = :cost,
-    description = :description
-WHERE ModID = :ModID;
+SET brand = :brand,
+    category = :category,
+    cost = :cost,
+    description = :description,
+    link = :link
+WHERE modID = :modID;
+
 
 -- Delete a mod
 DELETE FROM Mods
 WHERE ModID = :ModID;
-
--- View all mods associated with an entry
-SELECT m.ModID, m.brand, m.category, m.cost
-FROM EntryMods em
-JOIN Mods m ON em.ModID = m.ModID
-WHERE em.entryID = :entryID;
-
--- View entry mods by category
-SELECT m.ModID, m.brand, m.category, m.cost
-FROM EntryMods em
-JOIN Mods m ON em.ModID = m.ModID
-WHERE em.entryID = :entryID AND m.category = :category;
-
--- View entry mods by brand
-SELECT m.ModID, m.brand, m.category, m.cost
-FROM EntryMods em
-JOIN Mods m ON em.ModID = m.ModID
-WHERE em.entryID = :entryID AND m.brand = :brand;
-
--- Link a mod to an entry
-INSERT INTO EntryMods (
-    entryID, ModID
-)
-VALUES (
-    :entryID, :ModID
-);
-
--- Unlink a mod from an entry
-DELETE FROM EntryMods
-WHERE entryID = :entryID AND ModID = :ModID;
 
 
 -- TAGS
@@ -282,6 +296,12 @@ WHERE entryID = :entryID AND ModID = :ModID;
 -- View all tags
 SELECT *
 FROM Tags;
+
+-- View all tags associated with an entry
+SELECT t.tagID, t.tagName
+FROM EntryTags et
+JOIN Tags t ON et.tagID = t.tagID
+WHERE et.entryID = :entryID;
 
 -- Add a tag
 INSERT INTO Tags (
@@ -300,24 +320,6 @@ WHERE tagID = :tagID;
 DELETE FROM Tags
 WHERE tagID = :tagID;
 
--- View tags for an entry
-SELECT t.tagName
-FROM EntryTags et
-JOIN Tags t ON et.tagID = t.tagID
-WHERE et.entryID = :entryID;
-
--- Add tag to entry
-INSERT INTO EntryTags (
-    entryID, tagID
-)
-VALUES (
-    :entryID, :tagID
-);
-
--- Remove tag from entry
-DELETE FROM EntryTags
-WHERE entryID = :entryID AND tagID = :tagID;
-
 
 -- PHOTOS
 
@@ -331,23 +333,28 @@ SELECT *
 FROM EntryPhotos
 WHERE entryID = :entryID AND isMainPhoto = :isMainPhoto;
 
--- View photo by S3 key
+-- Search photo by S3 key
 SELECT *
 FROM EntryPhotos
-WHERE entryID = :entryID AND s3Key = :s3Key;
+WHERE s3Key LIKE CONCAT('%', :s3Key, '%');
 
 -- Add a photo
 INSERT INTO EntryPhotos (
-    entryID, s3Key, isMainPhoto
+    entryID, s3Key, isMainPhoto, uploadDate
 )
 VALUES (
-    :entryID, :s3Key, :isMainPhoto
+    :entryID, :s3Key, :isMainPhoto, :uploadDate
 );
+
 
 -- Update main photo status
 UPDATE EntryPhotos
-SET isMainPhoto = :isMainPhoto
+SET entryID = :entryID,
+    s3Key = :s3Key,
+    isMainPhoto = :isMainPhoto,
+    uploadDate = :uploadDate
 WHERE photoID = :photoID;
+
 
 -- Delete a photo
 DELETE FROM EntryPhotos
@@ -356,25 +363,24 @@ WHERE photoID = :photoID;
 
 -- AWARDS
 
--- View awards by user
+-- View awards 
 SELECT *
-FROM Awards
-WHERE userEmail = :userEmail;
+FROM Awards;
 
--- View awards by type
+-- View awards ordered by date
 SELECT *
 FROM Awards
-WHERE awardType = :awardType;
+ORDER BY awardDate DESC;
 
--- View awards by date
+-- search awards by type
 SELECT *
 FROM Awards
-WHERE awardDate BETWEEN :startDate AND :endDate;
+WHERE awardType LIKE CONCAT('%', :awardType, '%');
 
--- View awards by user and type
+-- search awards by user
 SELECT *
 FROM Awards
-WHERE userEmail = :userEmail AND awardType = :awardType;
+WHERE userEmail LIKE CONCAT('%', :userEmail, '%');
 
 -- Add an award
 INSERT INTO Awards (
@@ -383,6 +389,13 @@ INSERT INTO Awards (
 VALUES (
     :userEmail, :awardType, NOW()
 );
+
+-- Update an award
+UPDATE Awards
+SET userEmail = :userEmail,
+    awardType = :awardType,
+    awardDate = :awardDate
+WHERE awardID = :awardID;
 
 -- Delete an award
 DELETE FROM Awards

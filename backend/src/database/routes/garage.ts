@@ -636,40 +636,7 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
   }
 });
 
-// Get available mods - UPDATED to use the single Mods table
-router.get('/mods/:category', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { category } = req.params;
-    
-    // Make sure the category is valid
-    if (!['engine', 'interior', 'exterior'].includes(category.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid mod category. Must be "engine", "interior", or "exterior".'
-      });
-    }
-    
-    // Query the mods from the unified Mods table filtering by category
-    const [mods]: any = await pool.query(
-      `SELECT modID as id, brand, cost, description, link 
-       FROM Mods
-       WHERE category = ?`,
-      [category.toLowerCase()]
-    );
-    
-    res.status(200).json({
-      success: true,
-      mods
-    });
-  } catch (error) {
-    console.error(`Error fetching ${req.params.category} mods:`, error);
-    res.status(500).json({
-      success: false,
-      message: `Failed to fetch ${req.params.category} modifications`,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
+
 
 // Get all available mods
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {

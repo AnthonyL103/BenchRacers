@@ -50,9 +50,7 @@ export interface CarCreate {
   torque?: number;
   photos: { s3Key: string; isMainPhoto: boolean }[]; // New photos structure
   tags?: string[];
-  engineMods?: number[];
-  interiorMods?: number[];
-  exteriorMods?: number[];
+  mods?: number[];
 }
 
 // Define the garage context state
