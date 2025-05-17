@@ -152,7 +152,8 @@ INSERT INTO Entries (
 -- AWARDS (subquery for userEmail)
 INSERT INTO Awards (userEmail, awardType, awardDate) VALUES
 ((SELECT userEmail FROM Users WHERE name = 'Anthony'), 'Best JDM', '2025-02-15'),
-((SELECT userEmail FROM Users WHERE name = 'Alex'), 'Editor''s Choice', '2024-03-01');
+((SELECT userEmail FROM Users WHERE name = 'Alex'), 'Editor''s Choice', '2024-03-01'),
+((SELECT userEmail FROM Users WHERE name = 'Dan'), 'Best American Muscle', '2022-03-05');
 
 -- TAGS
 INSERT INTO Tags (tagName) VALUES
