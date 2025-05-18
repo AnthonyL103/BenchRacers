@@ -3,7 +3,15 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useUser } from './usercontext';
 import axios from 'axios';
 
-// Define the Car type
+export interface Mod {
+  modID: number;  // Backend uses modID not id
+  brand: string;
+  cost: number;
+  description: string;
+  category: string;
+  link: string;
+}
+
 export interface Car {
     entryID: number;
     userEmail: string;
@@ -12,6 +20,7 @@ export interface Car {
     carModel: string;
     carYear?: string;
     carColor?: string;
+    carTrim?: string; // Added to match backend
     description?: string;
     totalMods: number;
     totalCost: number;
@@ -19,8 +28,6 @@ export interface Car {
     region: string;
     upvotes: number;
     engine?: string;
-    carTrim?: string;
-    carMods?: number[];
     transmission?: string;
     drivetrain?: string;
     horsepower?: number;
@@ -28,20 +35,26 @@ export interface Car {
     viewCount: number;
     createdAt: string;
     updatedAt: string;
-    tags?: string[];
-    mainPhotoKey?: string; // The primary photo S3 key
-    allPhotoKeys?: string[]; // Array of all photo S3 keys including the main one
+    
+    // Update these fields to match what your backend returns
+    tags: string[];              // Array of tag strings
+    mods: Mod[];                 // Array of mod objects
+    
+    mainPhotoKey?: string;       // The primary photo S3 key
+    allPhotoKeys: string[];      // Array of all photo S3 keys
+    photos?: { s3Key: string; isMainPhoto: boolean }[]; // Optional full photo objects
 }
 
-// Type for car creation
+// Type for car creation/updating
 export interface CarCreate {
-  entryID?: number; // Optional for new cars
+  entryID?: number;               // Optional for new cars
   userEmail: string;
   carName: string;
   carMake: string;
   carModel: string;
   carYear?: string;
   carColor?: string;
+  carTrim?: string;              // Added to match backend
   description?: string;
   totalMods: number;
   totalCost: number;
@@ -52,9 +65,11 @@ export interface CarCreate {
   drivetrain?: string;
   horsepower?: number;
   torque?: number;
-  photos: { s3Key: string; isMainPhoto: boolean }[]; // New photos structure
-  tags?: string[];
-  mods?: number[];
+  
+  // These fields should match what your EditCarModal expects
+  photos: { s3Key: string; isMainPhoto: boolean }[];  // Photo objects
+  tags: string[];                                     // Array of tag strings
+  mods: number[];                                     // Array of mod IDs
 }
 
 // Define the garage context state

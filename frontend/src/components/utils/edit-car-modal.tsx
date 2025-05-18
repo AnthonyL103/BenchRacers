@@ -21,6 +21,8 @@ import { Alert, AlertDescription } from "../ui/alert"
 import { useGarage } from "../contexts/garagecontext"
 import { useUser } from "../contexts/usercontext"
 import axios from "axios"
+import { getS3ImageUrl } from "../utils/s3helper"
+
 import { 
   Command,
   CommandEmpty,
@@ -86,6 +88,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [description, setDescription] = useState("")
+  
   
   // Existing photos from the car
   const [existingPhotos, setExistingPhotos] = useState<any[]>([])
@@ -185,16 +188,16 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
       // Initialize mods
       if (car.mods && Array.isArray(car.mods)) {
         const formattedMods = car.mods.map((mod: any) => ({
-          id: mod.modID || mod.id,
-          brand: mod.brand,
-          cost: mod.cost,
-          description: mod.description,
-          category: mod.category,
-          link: mod.link
+            id: mod.modID || mod.id, // Normalize ID format
+            brand: mod.brand,
+            cost: mod.cost,
+            description: mod.description,
+            category: mod.category,
+            link: mod.link
         }));
-        
+  
         setMods(formattedMods);
-      }
+}
     }
   }, [car, open]);
 
@@ -257,10 +260,14 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   };
 
   const addTag = (tag: string) => {
-    if (!selectedTags.includes(tag)) {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
+  if (!selectedTags.includes(tag)) {
+    setSelectedTags([...selectedTags, tag]);
+  } else {
+    // Optional: Show a message that tag is already added
+    // You could use a toast notification here instead of an alert
+    console.log(`Tag "${tag}" is already added`);
+  }
+};
 
   const removeTag = (tag: string) => {
     setSelectedTags(selectedTags.filter((t) => t !== tag));
@@ -286,13 +293,19 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   };
 
   // Add a mod to selected mods
-  const addMod = (mod: Mod) => {
-    if (!mods.some(m => m.id === mod.id)) {
-      setMods([...mods, mod]);
-    }
-    // Close the dropdown for the current category
-    updateOpenState(mod.category.toLowerCase(), false);
-  };
+  // Enhanced addMod function to prevent duplicates
+ const addMod = (mod: Mod) => {
+  // Check if mod already exists by ID
+  if (!mods.some(m => m.id === mod.id)) {
+    setMods([...mods, mod]);
+  } else {
+    // Optional: Show a message that mod is already added
+    alert(`${mod.brand} is already added to your build`);
+  }
+  
+  // Close the dropdown for the current category
+  updateOpenState(mod.category.toLowerCase(), false);
+};
   
   // Remove a mod from selected mods
   const removeMod = (id: number) => {
@@ -344,23 +357,24 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                       </div>
                     ) : (
                       filteredMods.map((mod) => (
-                        <CommandItem
-                          key={mod.id}
-                          value={mod.id.toString()}
-                          onSelect={() => addMod(mod)}
-                          className="py-2"
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium">{mod.brand}</p>
-                            <p className="text-sm text-gray-400">{mod.description}</p>
-                            <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                          </div>
-                          <Check
-                            className={`h-4 w-4 ${
-                              mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                            }`}
-                          />
-                        </CommandItem>
+                            <CommandItem
+                            key={mod.id}
+                            value={mod.id.toString()}
+                            onSelect={() => addMod(mod)}
+                            className={`py-2 ${mods.some(m => m.id === mod.id) ? 'opacity-50' : ''}`}
+                            disabled={mods.some(m => m.id === mod.id)}
+                            >
+                            <div className="flex-1">
+                                <p className="font-medium">{mod.brand}</p>
+                                <p className="text-sm text-gray-400">{mod.description}</p>
+                                <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
+                            </div>
+                            <Check
+                                className={`h-4 w-4 ${
+                                mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
+                                }`}
+                            />
+                            </CommandItem>
                       ))
                     )}
                   </CommandGroup>
@@ -753,16 +767,19 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 {photoPreview.map((photo, index) => (
                   <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
-                    <img
-                      src={photo}
-                      alt={`Car photo ${index + 1}`}
-                      className="object-cover w-full h-full"
-                    />
+                     <img
+                                                src={car.mainPhotoKey 
+                                                ? getS3ImageUrl(car.mainPhotoKey) 
+                                                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(car.carName)}`
+                                                }
+                                                alt={car.carName}
+                                                className="absolute inset-0 w-full h-full object-cover"
+                                            />
                     <button
                       onClick={() => removePhoto(index)}
                       className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-4 w-4 bg-red-500 hover:bg-red-400" />
                     </button>
                     
                     {/* Main photo indicator */}
@@ -941,21 +958,21 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                   "NA",
                   "AWD",
                   "RWD",
-                ].map(
-                  (tag) =>
-                    !selectedTags.includes(tag) && (
-                      <Button
-                        key={tag}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addTag(tag)}
-                        className="flex items-center gap-1"
-                      >
-                        <Plus className="h-3 w-3" />
-                        {tag}
-                      </Button>
-                    ),
-                )}
+                ].map((tag) => {
+                const isSelected = selectedTags.includes(tag);
+                return !isSelected ? (
+                    <Button
+                    key={tag}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addTag(tag)}
+                    className="flex items-center gap-1"
+                    >
+                    <Plus className="h-3 w-3" />
+                    {tag}
+                    </Button>
+                ) : null;
+                })}
               </div>
             </div>
 

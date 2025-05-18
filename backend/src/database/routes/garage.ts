@@ -337,32 +337,70 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
 });
 
 
-// Get user's cars with photos - OPTIMIZED QUERY
+// Get user's cars with photos, tags, and mods - OPTIMIZED QUERY
 router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user as any;
     
-    // OPTIMIZATION: Use JOIN instead of subquery and fetch all photos in a single query
-    const [results]: any = await pool.query(`
+    // Step 1: Fetch cars with photos and tags in one query
+    const [carsResults]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
         e.carColor, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
         e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
         e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
         p.s3Key as mainPhotoKey,
-        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys
+        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
+        GROUP_CONCAT(DISTINCT t.tagName) as tagNames
       FROM Entries e
       LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
       LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
+      LEFT JOIN EntryTags et ON e.entryID = et.entryID
+      LEFT JOIN Tags t ON et.tagID = t.tagID
       WHERE e.userEmail = ?
       GROUP BY e.entryID
       ORDER BY e.createdAt DESC
     `, [user.userEmail]);
     
-    // Process the results to convert the concatenated photo keys to arrays
-    const cars = results.map((car: any) => ({
+    // Process basic car data
+    const carIds = carsResults.map((car: any) => car.entryID);
+    
+    // Step 2: If there are cars, fetch all mods in a single query
+    let modsMap = new Map();
+    
+    if (carIds.length > 0) {
+      // Get all mods for all cars in one query
+      const [modsResults]: any = await pool.query(`
+        SELECT 
+          em.entryID, 
+          m.modID, m.brand, m.category, m.cost, m.description, m.link
+        FROM EntryMods em
+        JOIN Mods m ON em.modID = m.modID
+        WHERE em.entryID IN (?)
+      `, [carIds]);
+      
+      // Group mods by car ID
+      modsResults.forEach((mod: any) => {
+        if (!modsMap.has(mod.entryID)) {
+          modsMap.set(mod.entryID, []);
+        }
+        modsMap.get(mod.entryID).push({
+          modID: mod.modID,
+          brand: mod.brand,
+          category: mod.category,
+          cost: mod.cost,
+          description: mod.description,
+          link: mod.link
+        });
+      });
+    }
+    
+    // Step 3: Combine everything
+    const cars = carsResults.map((car: any) => ({
       ...car,
-      allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : []
+      allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
+      tags: car.tagNames ? car.tagNames.split(',') : [],
+      mods: modsMap.get(car.entryID) || []
     }));
     
     res.status(200).json({
