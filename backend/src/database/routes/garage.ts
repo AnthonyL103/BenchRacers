@@ -83,7 +83,233 @@ router.get('/s3/presigned-url', authenticateUser, async (req: AuthenticatedReque
   }
 });
 
-
+// Update an existing car with photos
+router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  // Use a connection for transaction
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const user = req.user as any;
+    const entryID = parseInt(req.params.entryID);
+    
+    // Validate that entryID is provided and is a number
+    if (!entryID || isNaN(entryID)) {
+      connection.release();
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid entry ID'
+      });
+    }
+    
+    const { 
+      carName, carMake, carModel, carYear, carColor, carTrim, description,
+      totalMods, totalCost, category, region, engine, transmission, 
+      drivetrain, horsepower, torque, photos, tags, mods,
+    } = req.body;
+    
+    // Validate required fields
+    if (!carName || !carMake || !carModel || !carTrim || !category || !region) {
+      connection.release();
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+    
+    if (!photos || !Array.isArray(photos) || photos.length === 0) {
+      connection.release();
+      return res.status(400).json({
+        success: false,
+        message: 'At least one photo is required'
+      });
+    }
+    
+    // Check if the car entry exists and belongs to the user
+    const [existingEntry]: any = await connection.query(
+      'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
+      [entryID, user.userEmail]
+    );
+    
+    if (!existingEntry || existingEntry.length === 0) {
+      connection.release();
+      return res.status(404).json({
+        success: false,
+        message: 'Car entry not found or you do not have permission to update it'
+      });
+    }
+    
+    // Update the car entry
+    await connection.query(
+      `UPDATE Entries SET 
+        carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, carTrim = ?,
+        description = ?, totalMods = ?, totalCost = ?, category = ?, 
+        region = ?, engine = ?, transmission = ?, drivetrain = ?,
+        horsepower = ?, torque = ?, updatedAt = NOW()
+       WHERE entryID = ? AND userEmail = ?`,
+      [
+        carName, carMake, carModel, carYear || null, carColor || null, carTrim || null,
+        description || null, totalMods || 0, totalCost || 0, category, region,
+        engine || null, transmission || null, drivetrain || null,
+        horsepower || null, torque || null, entryID, user.userEmail
+      ]
+    );
+    
+    // Handle photos: Delete existing photos and add new ones
+    // First, delete existing photo associations
+    await connection.query(
+      'DELETE FROM EntryPhotos WHERE entryID = ?',
+      [entryID]
+    );
+    
+    // Then add new photos
+    if (photos.length > 0) {
+      const photoValues = photos.map((photo: any) => [
+        entryID,
+        photo.s3Key,
+        photo.isMainPhoto || false
+      ]);
+      
+      await connection.query(
+        `INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto)
+         VALUES ?`,
+        [photoValues]
+      );
+    }
+    
+    // Handle mods: Delete existing mods and add new ones
+    // First, delete existing mod associations
+    await connection.query(
+      'DELETE FROM EntryMods WHERE entryID = ?',
+      [entryID]
+    );
+    
+    // Then add new mods
+    if (mods && Array.isArray(mods) && mods.length > 0) {
+      const modValues = mods.map((modId: number) => [entryID, modId]);
+      
+      await connection.query(
+        'INSERT INTO EntryMods (entryID, modID) VALUES ?',
+        [modValues]
+      );
+    }
+    
+    // Handle tags: Delete existing tags and add new ones
+    // First, delete existing tag associations
+    await connection.query(
+      'DELETE FROM EntryTags WHERE entryID = ?',
+      [entryID]
+    );
+    
+    // Process new tags
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      // Get all existing tags in one query
+      const [existingTags]: any = await connection.query(
+        'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
+        [tags]
+      );
+      
+      // Create map for quick lookups
+      const existingTagsMap = new Map();
+      existingTags.forEach((tag: any) => {
+        existingTagsMap.set(tag.tagName, tag.tagID);
+      });
+      
+      // Find tags that need to be created
+      const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
+      
+      // Batch insert new tags if needed
+      if (tagsToCreate.length > 0) {
+        const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
+        
+        const [tagResult]: any = await connection.query(
+          'INSERT INTO Tags (tagName) VALUES ?',
+          [tagInsertValues]
+        );
+        
+        // Add newly created tags to map
+        let newTagId = tagResult.insertId;
+        tagsToCreate.forEach((tag: string) => {
+          existingTagsMap.set(tag, newTagId++);
+        });
+      }
+      
+      // Prepare values for batch insert of tag associations
+      const tagAssociationValues = [];
+      for (const tag of tags) {
+        const tagID = existingTagsMap.get(tag);
+        if (tagID) {
+          tagAssociationValues.push([entryID, tagID]);
+        }
+      }
+      
+      // Batch insert all tag associations
+      if (tagAssociationValues.length > 0) {
+        await connection.query(
+          'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
+          [tagAssociationValues]
+        );
+      }
+    }
+    
+    // Commit transaction
+    await connection.commit();
+    
+    // Get updated car and photos in a single query
+    const [results]: any = await pool.query(`
+      SELECT 
+        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
+        e.carColor, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
+        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
+        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+        p.s3Key as mainPhotoKey,
+        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
+        GROUP_CONCAT(DISTINCT t.tagName) as tags
+      FROM Entries e
+      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
+      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
+      LEFT JOIN EntryTags et ON e.entryID = et.entryID
+      LEFT JOIN Tags t ON et.tagID = t.tagID
+      WHERE e.entryID = ?
+      GROUP BY e.entryID
+    `, [entryID]);
+    
+    // Process the car with its photos and tags
+    const car = results[0];
+    car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
+    car.tags = car.tags ? car.tags.split(',') : [];
+    
+    // Get associated mods
+    const [modResults]: any = await pool.query(`
+      SELECT m.modID, m.brand, m.cost, m.description, m.category, m.link
+      FROM EntryMods em
+      JOIN Mods m ON em.modID = m.modID
+      WHERE em.entryID = ?
+    `, [entryID]);
+    
+    car.mods = modResults || [];
+    
+    res.status(200).json({
+      success: true,
+      message: 'Car updated successfully',
+      car
+    });
+  } catch (error) {
+    // Rollback transaction on error
+    await connection.rollback();
+    
+    console.error('Error updating car:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update car',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  } finally {
+    // Release connection
+    connection.release();
+  }
+});
 // Get all available mods - OPTIMIZED QUERY
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -430,233 +656,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
-// Update an existing car with photos
-router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  // Use a connection for transaction
-  const connection = await pool.getConnection();
-  
-  try {
-    await connection.beginTransaction();
-    
-    const user = req.user as any;
-    const entryID = parseInt(req.params.entryID);
-    
-    // Validate that entryID is provided and is a number
-    if (!entryID || isNaN(entryID)) {
-      connection.release();
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid entry ID'
-      });
-    }
-    
-    const { 
-      carName, carMake, carModel, carYear, carColor, carTrim, description,
-      totalMods, totalCost, category, region, engine, transmission, 
-      drivetrain, horsepower, torque, photos, tags, mods,
-    } = req.body;
-    
-    // Validate required fields
-    if (!carName || !carMake || !carModel || !carTrim || !category || !region) {
-      connection.release();
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
-    }
-    
-    if (!photos || !Array.isArray(photos) || photos.length === 0) {
-      connection.release();
-      return res.status(400).json({
-        success: false,
-        message: 'At least one photo is required'
-      });
-    }
-    
-    // Check if the car entry exists and belongs to the user
-    const [existingEntry]: any = await connection.query(
-      'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
-      [entryID, user.userEmail]
-    );
-    
-    if (!existingEntry || existingEntry.length === 0) {
-      connection.release();
-      return res.status(404).json({
-        success: false,
-        message: 'Car entry not found or you do not have permission to update it'
-      });
-    }
-    
-    // Update the car entry
-    await connection.query(
-      `UPDATE Entries SET 
-        carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, carTrim = ?,
-        description = ?, totalMods = ?, totalCost = ?, category = ?, 
-        region = ?, engine = ?, transmission = ?, drivetrain = ?,
-        horsepower = ?, torque = ?, updatedAt = NOW()
-       WHERE entryID = ? AND userEmail = ?`,
-      [
-        carName, carMake, carModel, carYear || null, carColor || null, carTrim || null,
-        description || null, totalMods || 0, totalCost || 0, category, region,
-        engine || null, transmission || null, drivetrain || null,
-        horsepower || null, torque || null, entryID, user.userEmail
-      ]
-    );
-    
-    // Handle photos: Delete existing photos and add new ones
-    // First, delete existing photo associations
-    await connection.query(
-      'DELETE FROM EntryPhotos WHERE entryID = ?',
-      [entryID]
-    );
-    
-    // Then add new photos
-    if (photos.length > 0) {
-      const photoValues = photos.map((photo: any) => [
-        entryID,
-        photo.s3Key,
-        photo.isMainPhoto || false
-      ]);
-      
-      await connection.query(
-        `INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto)
-         VALUES ?`,
-        [photoValues]
-      );
-    }
-    
-    // Handle mods: Delete existing mods and add new ones
-    // First, delete existing mod associations
-    await connection.query(
-      'DELETE FROM EntryMods WHERE entryID = ?',
-      [entryID]
-    );
-    
-    // Then add new mods
-    if (mods && Array.isArray(mods) && mods.length > 0) {
-      const modValues = mods.map((modId: number) => [entryID, modId]);
-      
-      await connection.query(
-        'INSERT INTO EntryMods (entryID, modID) VALUES ?',
-        [modValues]
-      );
-    }
-    
-    // Handle tags: Delete existing tags and add new ones
-    // First, delete existing tag associations
-    await connection.query(
-      'DELETE FROM EntryTags WHERE entryID = ?',
-      [entryID]
-    );
-    
-    // Process new tags
-    if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Get all existing tags in one query
-      const [existingTags]: any = await connection.query(
-        'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
-        [tags]
-      );
-      
-      // Create map for quick lookups
-      const existingTagsMap = new Map();
-      existingTags.forEach((tag: any) => {
-        existingTagsMap.set(tag.tagName, tag.tagID);
-      });
-      
-      // Find tags that need to be created
-      const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
-      
-      // Batch insert new tags if needed
-      if (tagsToCreate.length > 0) {
-        const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
-        
-        const [tagResult]: any = await connection.query(
-          'INSERT INTO Tags (tagName) VALUES ?',
-          [tagInsertValues]
-        );
-        
-        // Add newly created tags to map
-        let newTagId = tagResult.insertId;
-        tagsToCreate.forEach((tag: string) => {
-          existingTagsMap.set(tag, newTagId++);
-        });
-      }
-      
-      // Prepare values for batch insert of tag associations
-      const tagAssociationValues = [];
-      for (const tag of tags) {
-        const tagID = existingTagsMap.get(tag);
-        if (tagID) {
-          tagAssociationValues.push([entryID, tagID]);
-        }
-      }
-      
-      // Batch insert all tag associations
-      if (tagAssociationValues.length > 0) {
-        await connection.query(
-          'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
-          [tagAssociationValues]
-        );
-      }
-    }
-    
-    // Commit transaction
-    await connection.commit();
-    
-    // Get updated car and photos in a single query
-    const [results]: any = await pool.query(`
-      SELECT 
-        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
-        e.carColor, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
-        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
-        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
-        p.s3Key as mainPhotoKey,
-        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
-        GROUP_CONCAT(DISTINCT t.tagName) as tags
-      FROM Entries e
-      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
-      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
-      LEFT JOIN EntryTags et ON e.entryID = et.entryID
-      LEFT JOIN Tags t ON et.tagID = t.tagID
-      WHERE e.entryID = ?
-      GROUP BY e.entryID
-    `, [entryID]);
-    
-    // Process the car with its photos and tags
-    const car = results[0];
-    car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
-    car.tags = car.tags ? car.tags.split(',') : [];
-    
-    // Get associated mods
-    const [modResults]: any = await pool.query(`
-      SELECT m.modID, m.brand, m.cost, m.description, m.category, m.link
-      FROM EntryMods em
-      JOIN Mods m ON em.modID = m.modID
-      WHERE em.entryID = ?
-    `, [entryID]);
-    
-    car.mods = modResults || [];
-    
-    res.status(200).json({
-      success: true,
-      message: 'Car updated successfully',
-      car
-    });
-  } catch (error) {
-    // Rollback transaction on error
-    await connection.rollback();
-    
-    console.error('Error updating car:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update car',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  } finally {
-    // Release connection
-    connection.release();
-  }
-});
+
 
 // Define types for your database entities
 interface EntryPhoto {
