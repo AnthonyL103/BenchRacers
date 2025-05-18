@@ -16,11 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { BarChart3, Camera, Edit, Heart, LineChart, Plus, Settings, Trophy, Upload, X, Trash, Car as CarIcon } from "lucide-react"
 import { getS3ImageUrl } from "../utils/s3helper"
 import { AddCarModal } from "../utils/add-car-modal"
+import { EditCarModal } from "../utils/edit-car-modal"
 import { useUser } from '../contexts/usercontext'
 import { useGarage } from '../contexts/garagecontext'
 import { useNavigate } from 'react-router-dom'
 
 export default function GaragePage() {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCar, setSelectedCar] = useState(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false)
@@ -87,9 +90,10 @@ export default function GaragePage() {
   }
   
   // Handle edit car
-  const handleEditCar = (entryID: number) => {
-    navigate(`/edit-car/${entryID}`);
-  }
+  const handleEditCar = (car: any) => {
+  setSelectedCar(car);
+  setIsEditModalOpen(true);
+  };
 
   // If authentication is still being checked, show a loading state
   if (!isAuthenticated) {
@@ -224,13 +228,13 @@ export default function GaragePage() {
                           </CardContent>
                           <CardFooter className="flex gap-2 p-4 pt-0">
                             <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1 gap-2"
-                              onClick={() => handleEditCar(car.entryID)}
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1 gap-2"
+                            onClick={() => handleEditCar(car)} // Pass the entire car object
                             >
-                              <Edit className="h-4 w-4" />
-                              Edit
+                            <Edit className="h-4 w-4" />
+                            Edit
                             </Button>
                             <Button 
                               variant="outline" 
@@ -360,6 +364,14 @@ export default function GaragePage() {
 
       {/* Add Car Modal - This would need to be updated to use the addCar function from useGarage */}
       <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
+      <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
+        {selectedCar && (
+        <EditCarModal 
+            open={isEditModalOpen} 
+            onOpenChange={setIsEditModalOpen} 
+            car={selectedCar} 
+        />
+        )}
     </div>
   )
 }

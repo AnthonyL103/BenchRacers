@@ -19,6 +19,8 @@ export interface Car {
     region: string;
     upvotes: number;
     engine?: string;
+    carTrim?: string;
+    carMods?: number[];
     transmission?: string;
     drivetrain?: string;
     horsepower?: number;
@@ -26,12 +28,14 @@ export interface Car {
     viewCount: number;
     createdAt: string;
     updatedAt: string;
+    tags?: string[];
     mainPhotoKey?: string; // The primary photo S3 key
     allPhotoKeys?: string[]; // Array of all photo S3 keys including the main one
 }
 
 // Type for car creation
 export interface CarCreate {
+  entryID?: number; // Optional for new cars
   userEmail: string;
   carName: string;
   carMake: string;
@@ -56,11 +60,12 @@ export interface CarCreate {
 // Define the garage context state
 interface GarageContextState {
   cars: Car[];
+  Car: Car | null;
   isLoading: boolean;
   error: string | null;
   fetchUserCars: () => Promise<void>;
   addCar: (car: CarCreate) => Promise<void>;
-  updateCar: (car: Car) => Promise<void>;
+  updateCar: (entryID: number, car: CarCreate) => Promise<void>;
   deleteCar: (entryID: number) => Promise<void>;
 }
 
@@ -141,8 +146,43 @@ export function GarageProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Update an existing car
-  const updateCar = async (car: Car) => {
+  const updateCar = async (entryID: number,carData: CarCreate) => {
     // Implementation...
+    if (!isAuthenticated || !user) {
+      setError('You must be logged in to add a car');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+      `https://api.benchracershq.com/api/garage/update/${entryID}`, 
+      carData,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+      if (response.data.success) {
+        // Add the new car to the state
+        alert("Updated Entry Successfully");
+      return;
+        
+      } else {
+        throw new Error(response.data.message || 'Failed to update car');
+      }
+    } catch (error) {
+      console.error('Error updating car:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred while updating the car');
+      throw error; // Re-throw to let the component handle it
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Delete a car
@@ -207,6 +247,7 @@ const deleteCar = async (entryID: number): Promise<void> => {
     <GarageContext.Provider
       value={{
         cars,
+        Car: null, 
         isLoading,
         error,
         fetchUserCars,

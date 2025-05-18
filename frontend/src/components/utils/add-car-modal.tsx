@@ -457,6 +457,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             carModel: carDetails.model,
             carYear: carDetails.year,
             carColor: "", // You might want to add this field to your form
+            carTrim: carDetails.trim,
             description,
             totalMods: Mods.length,
             totalCost,
