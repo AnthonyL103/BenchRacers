@@ -31,6 +31,7 @@ import {
 } from "../ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { set } from "date-fns"
+import { color } from "framer-motion"
 
 // Types for mods
 interface Mod {
@@ -113,6 +114,7 @@ const [openModsState, setOpenModsState] = useState({
   const [carDetails, setCarDetails] = useState({
     make: "",
     model: "",
+    color: "",
     year: "",
     trim: "",
     engine: "",
@@ -364,6 +366,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       setCarDetails({
         make: "Toyota",
         model: "Supra",
+        color: "Red",
         year: "2020",
         trim: "GR",
         engine: "3.0L Inline-6 Turbo",
@@ -456,7 +459,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             carMake: carDetails.make,
             carModel: carDetails.model,
             carYear: carDetails.year,
-            carColor: "", // You might want to add this field to your form
+            carColor: carDetails.color, // You might want to add this field to your form
             carTrim: carDetails.trim,
             description,
             totalMods: Mods.length,
@@ -510,6 +513,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCarDetails({
       make: "",
       model: "",
+      color:"",
       year: "",
       trim: "",
       engine: "",
@@ -621,6 +625,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                   />
                   {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="Category" className="text-white">Category</Label>
                   <Select
@@ -667,6 +672,17 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     value={carDetails.engine}
                     onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
                   />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="color" className="text-white">Color</Label>
+                  <Input
+                    id="color"
+                    placeholder="Red"
+                    value={carDetails.color}
+                    onChange={(e) => setCarDetails({ ...carDetails, color: e.target.value })}
+                    className={errors.color ? "border-red-500" : ""}
+                  />
+                  {errors.color && <p className="text-xs text-red-500">{errors.color}</p>}
                 </div>
               </div>
 

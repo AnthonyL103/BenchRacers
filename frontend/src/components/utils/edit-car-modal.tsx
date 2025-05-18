@@ -697,7 +697,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                   <Label htmlFor="color" className="text-white">Color</Label>
                   <Input
                     id="color"
-                    placeholder="e.g. Blue"
+                    placeholder="Red"
                     value={carDetails.color}
                     onChange={(e) => setCarDetails({ ...carDetails, color: e.target.value })}
                   />
