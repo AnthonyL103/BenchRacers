@@ -43,6 +43,14 @@ interface Mod {
   link: string;
 }
 
+interface PhotoItem {
+  file: File;
+  preview: string;
+  isMainPhoto: boolean;
+}
+
+
+
 interface AddCarModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -62,6 +70,8 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [description, setDescription] = useState("")
+  
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   
   // Preset mods state
   const [Mods, setMods] = useState<Mod[]>([])
@@ -315,43 +325,57 @@ const [openModsState, setOpenModsState] = useState({
   // Handle file selection
   // Handle file selection
 const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  // Calculate how many more photos we can add
+  const remainingSlots = 6 - photos.length;
   
-    // Calculate how many more photos we can add
-    const remainingSlots = 6 - photoFiles.length;
-    
-    if (remainingSlots <= 0) {
-      alert("You can upload a maximum of 6 images");
-      return;
-    }
-  
-    // Limit to remaining slots
-    const newFiles = Array.from(files).slice(0, remainingSlots);
-  
-    // Update files array
-    setPhotoFiles(prevFiles => [...prevFiles, ...newFiles]);
-  
-    // Create preview URLs for the new files
-    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-    setPhotoPreview(prevPreviews => [...prevPreviews, ...newPreviews]);
-    
-    // Reset the file input so the same file can be selected again if needed
-    e.target.value = '';
+  if (remainingSlots <= 0) {
+    alert("You can upload a maximum of 6 images");
+    return;
   }
 
-  const removePhoto = (index: number) => {
-    // Remove file
-    const newFiles = [...photoFiles];
-    newFiles.splice(index, 1);
-    setPhotoFiles(newFiles);
+  // Limit to remaining slots
+  const newFiles = Array.from(files).slice(0, remainingSlots);
+  
+  // Add new photos to the existing ones
+  setPhotos(prevPhotos => [
+    ...prevPhotos,
+    ...newFiles.map((file: File) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      isMainPhoto: prevPhotos.length === 0 // First photo is main if there are no existing photos
+    }))
+  ]);
+  
+  // Reset the file input
+  e.target.value = '';
+};
+
+const removePhoto = (index: number) => {
+  setPhotos(prevPhotos => {
+    // Create a copy of the photos array
+    const newPhotos = [...prevPhotos];
     
-    // Remove preview and revoke URL to prevent memory leaks
-    URL.revokeObjectURL(photoPreview[index]);
-    const newPreviews = [...photoPreview];
-    newPreviews.splice(index, 1);
-    setPhotoPreview(newPreviews);
-  }
+    // Check if we're removing the main photo
+    const isRemovingMainPhoto = newPhotos[index].isMainPhoto;
+    
+    // Revoke object URL to prevent memory leaks
+    URL.revokeObjectURL(newPhotos[index].preview);
+    
+    // Remove the photo at the specified index
+    newPhotos.splice(index, 1);
+    
+    // If we removed the main photo and there are other photos remaining,
+    // set the first one as the new main photo
+    if (isRemovingMainPhoto && newPhotos.length > 0) {
+      newPhotos[0].isMainPhoto = true;
+    }
+    
+    return newPhotos;
+  });
+};
 
   const lookupVin = () => {
     if (!vin || vin.length !== 17) {
@@ -379,7 +403,15 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       setActiveTab("photos")
     }, 1500)
   }
-
+  
+  const setMainPhoto = (index: number) => {
+  setPhotos(prevPhotos => 
+    prevPhotos.map((photo, i) => ({
+      ...photo,
+      isMainPhoto: i === index
+    }))
+  );
+  };
   // Upload image to S3
   const uploadToS3 = async (file: File): Promise<string> => {
     try {
@@ -424,7 +456,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!carDetails.make) newErrors.make = "Car make is required";
     if (!carDetails.model) newErrors.model = "Car model is required";
     if (!carDetails.category) newErrors.category = "Category is required";
-    if (photoFiles.length === 0) newErrors.photos = "At least one photo is required";
+    if (photos.length === 0) newErrors.photos = "At least one photo is required";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -439,17 +471,17 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsSubmitting(true);
     
     try {
-      // First, upload all images to S3
-      const uploadedPhotos: { s3Key: string; isMainPhoto: boolean }[] = [];
-      
-      for (let i = 0; i < photoFiles.length; i++) {
-        setUploadProgress(0);
-        const key = await uploadToS3(photoFiles[i]);
-        uploadedPhotos.push({
-          s3Key: key,
-          isMainPhoto: i === 0 // First photo is the main photo
-        });
-      }
+    // Upload all images to S3
+    const uploadedPhotos: { s3Key: string; isMainPhoto: boolean }[] = [];
+    
+    for (const photo of photos) {
+      setUploadProgress(0);
+      const key = await uploadToS3(photo.file);
+      uploadedPhotos.push({
+        s3Key: key,
+        isMainPhoto: photo.isMainPhoto
+      });
+    }
       
       // Prepare the car entry data
       // Replace this part in the handleSubmit function:
@@ -738,26 +770,34 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             <div>
               <Label className="block mb-4 text-white">Car Photos</Label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                {photoPreview.map((photo, index) => (
-                    <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
+                {photos.map((photo, index) => (
+                <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
                     <img
-                        src={photo}
-                        alt={`Car photo ${index + 1}`}
-                        className="object-cover w-full h-full"
+                    src={photo.preview}
+                    alt={`Car photo ${index + 1}`}
+                    className="object-cover w-full h-full"
                     />
                     <button
-                        onClick={() => removePhoto(index)}
-                        className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
+                    onClick={() => removePhoto(index)}
+                    className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
                     >
-                        <X className="h-4 w-4 bg-red-500 hover:bg-red-400" />
+                    <X className="h-4 w-4 bg-red-500 hover:bg-red-400" />
                     </button>
                     
-                    {index === 0 && (
-                        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                    {photo.isMainPhoto && (
+                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                         Main Photo
-                        </div>
-                    )}
                     </div>
+                    )}
+                    {!photo.isMainPhoto && (
+                    <button
+                        onClick={() => setMainPhoto(index)}
+                        className="absolute bottom-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600"
+                    >
+                        Set as Main
+                    </button>
+                    )}
+                </div>
                 ))}
 
                 {photoPreview.length < 6 && (
