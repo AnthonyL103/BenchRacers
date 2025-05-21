@@ -613,6 +613,7 @@ interface UserData {
 function UserModal({ mode = "edit", userData, open, setOpen }: { mode?: string; userData: UserData; open?: boolean; setOpen?: (open: boolean) => void }) {
     const title = mode === "edit" ? "Edit User" : "Add User"
     const buttonText = mode === "edit" ? "Save Changes" : "Add User"
+    const button2Text = mode === "edit" ? "Delete User" : "Delete User"
     
     // For edit modals where open/setOpen isn't passed as props
     const [internalOpen, setInternalOpen] = useState(false)
@@ -621,6 +622,11 @@ function UserModal({ mode = "edit", userData, open, setOpen }: { mode?: string; 
     const onOpenChange = isControlled ? setOpen : setInternalOpen
   
     const handleSubmit = () => {
+      // Handle form submission logic here
+      onOpenChange(false)
+    }
+    
+    const handleDelete = () => {
       // Handle form submission logic here
       onOpenChange(false)
     }
@@ -655,6 +661,7 @@ function UserModal({ mode = "edit", userData, open, setOpen }: { mode?: string; 
           </div>
           <DialogFooter className="pt-4">
             <Button type="button" onClick={handleSubmit}>{buttonText}</Button>
+            <Button type="button" onClick={handleDelete}>{button2Text}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -683,12 +690,18 @@ interface EntryData {
 function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string; entryData?: EntryData; open?: boolean; setOpen?: (open: boolean) => void  }) {
     const title = mode === "edit" ? "Edit Entry" : "Add Entry"
     const buttonText = mode === "edit" ? "Save Changes" : "Add Entry"
+    const button2Text = mode === "edit" ? "Delete Entry" : "Delete Entry"
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
     const isOpen = isControlled ? open : internalOpen
     const onOpenChange = isControlled ? setOpen : setInternalOpen
     
     const handleSubmit = () => {
+      // Handle form submission logic here
+      onOpenChange(false)
+    }
+    
+    const handleDelete = () => {
       // Handle form submission logic here
       onOpenChange(false)
     }
@@ -756,6 +769,7 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
   
         <DialogFooter className="pt-4">
           <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
+          <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
         </DialogFooter>
       </DialogContent>
       </Dialog>
@@ -764,6 +778,7 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
 
 // Mod Modal Component
 interface ModData {
+  modID?: number;
   brand: string;
   category: string;
   cost: number;
@@ -774,16 +789,52 @@ interface ModData {
 function ModModal({ mode = "edit", modData, open, setOpen }: { mode?: string; modData?: ModData; open?: boolean; setOpen?: (open: boolean) => void  }) {
 const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Modification"
-  
+  const button2Text = mode === "edit" ? "Delete Mod" : "Delete Mod"
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
   const isOpen = isControlled ? open : internalOpen
   const onOpenChange = isControlled ? setOpen : setInternalOpen
   
-  const handleSubmit = () => {
-    // Handle form submission logic here
-    onOpenChange(false)
+  const handleSubmit = async () => {
+  const token = localStorage.getItem("token")
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json"
   }
+
+  try {
+    if (mode === "edit") {
+      if (modData) {
+        await axios.put(`https://api.benchracershq.com/api/admin/mods/${modData.modID}`, modData, { headers })
+      }
+    } else {
+      if (modData) {
+        await axios.post(`https://api.benchracershq.com/api/admin/mods`, modData, { headers })
+      }
+    }
+    onOpenChange(false)
+  } catch (err) {
+    console.error("Failed to submit mod:", err)
+  }
+}
+
+const handleDelete = async () => {
+  const token = localStorage.getItem("token")
+  const headers = {
+    Authorization: `Bearer ${token}`
+  }
+
+  try {
+    await axios.delete(`https://api.benchracershq.com/api/admin/mods/`, {
+      headers,
+      data: modData
+    })
+    onOpenChange(false)
+  } catch (err) {
+    console.error("Failed to delete mod:", err)
+  }
+}
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -820,7 +871,8 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
         <Input placeholder="Link" defaultValue={modData?.link} />
       </div>
       <DialogFooter className="pt-4">
-        <Button type="submit">{buttonText}</Button>
+        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
+        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
       </DialogFooter>
     </DialogContent>
     </Dialog>
@@ -837,7 +889,7 @@ interface TagData {
 function TagModal({ mode = "edit", tagData, open, setOpen }: { mode?: string; tagData?: TagData; open?: boolean; setOpen?: (open: boolean) => void }) {
   const title = mode === "edit" ? "Edit Tag" : "Add Tag"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Tag"
-  
+  const button2Text = mode === "edit" ? "Delete Tag" : "Delete Tag"
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
   const isOpen = isControlled ? open : internalOpen
@@ -847,6 +899,11 @@ function TagModal({ mode = "edit", tagData, open, setOpen }: { mode?: string; ta
     // Handle form submission logic here
     onOpenChange(false)
   }
+  
+  const handleDelete = () => {
+      // Handle form submission logic here
+      onOpenChange(false)
+    }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -863,7 +920,8 @@ function TagModal({ mode = "edit", tagData, open, setOpen }: { mode?: string; ta
         <Input placeholder="Tag Name" defaultValue={tagData?.tagName} />
       </div>
       <DialogFooter className="pt-4">
-        <Button type="submit">{buttonText}</Button>
+        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
+        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
       </DialogFooter>
     </DialogContent>
     </Dialog>
@@ -882,7 +940,7 @@ interface PhotoData {
 function PhotoModal({ mode = "edit", photoData, open, setOpen }: { mode: string; photoData: PhotoData; open?: boolean; setOpen?: (open: boolean) => void  }) {
   const title = mode === "edit" ? "Edit Photo" : "Add Photo"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Photo"
-  
+  const button2Text = mode === "edit" ? "Delete Photo" : "Delete Photo"
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
   const isOpen = isControlled ? open : internalOpen
@@ -892,6 +950,11 @@ function PhotoModal({ mode = "edit", photoData, open, setOpen }: { mode: string;
     // Handle form submission logic here
     onOpenChange(false)
   }
+  
+  const handleDelete = () => {
+      // Handle form submission logic here
+      onOpenChange(false)
+    }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -922,7 +985,8 @@ function PhotoModal({ mode = "edit", photoData, open, setOpen }: { mode: string;
         )}
       </div>
       <DialogFooter className="pt-4">
-        <Button type="submit">{buttonText}</Button>
+        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
+        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
       </DialogFooter>
     </DialogContent>
     </Dialog>
@@ -940,7 +1004,7 @@ interface AwardData {
 function AwardModal({ mode = "edit", awardData, open, setOpen }: { mode: string; awardData: AwardData; open?: boolean; setOpen?: (open: boolean) => void   }) {
   const title = mode === "edit" ? "Edit Award" : "Add Award"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Award"
-  
+  const button2Text = mode === "edit" ? "Delete Award" : "Delete Award"
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
   const isOpen = isControlled ? open : internalOpen
@@ -950,6 +1014,11 @@ function AwardModal({ mode = "edit", awardData, open, setOpen }: { mode: string;
     // Handle form submission logic here
     onOpenChange(false)
   }
+  
+  const handleDelete = () => {
+      // Handle form submission logic here
+      onOpenChange(false)
+    }
 
 
   return (
@@ -983,7 +1052,8 @@ function AwardModal({ mode = "edit", awardData, open, setOpen }: { mode: string;
         <Input type="date" defaultValue={awardData.awardDate} />
       </div>
       <DialogFooter className="pt-4">
-        <Button type="submit">{buttonText}</Button>
+        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
+        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
       </DialogFooter>
     </DialogContent>
     </Dialog>

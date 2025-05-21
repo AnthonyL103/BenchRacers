@@ -960,6 +960,52 @@ router.post('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: R
   }
 });
 
+router.put('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { brand, category, cost, description, link } = req.body;
+
+    if (!brand || !category || cost === undefined || !link) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: brand, category, cost, and link are required'
+      });
+    }
+
+    const [existingMods]: any = await pool.query(
+      'SELECT modID FROM Mods WHERE modID = ?',
+      [id]
+    );
+
+    if (existingMods.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Mod not found'
+      });
+    }
+
+    await pool.query(
+      `UPDATE Mods 
+       SET brand = ?, category = ?, cost = ?, description = ?, link = ?
+       WHERE modID = ?`,
+      [brand, category, cost, description || '', link, id]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Mod updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating mod:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update mod',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+
 // Delete a mod
 router.delete('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
