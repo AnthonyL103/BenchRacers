@@ -458,7 +458,7 @@ router.get('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, 
 });
 
 // Create a new entry
-router.post('/entries', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
@@ -597,7 +597,7 @@ router.post('/entries', authenticateAdmin, async (req: AuthenticatedRequest, res
 });
 
 // Update an existing entry
-router.put('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
@@ -767,7 +767,7 @@ router.put('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, 
 });
 
 // Delete an entry
-router.delete('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
@@ -931,6 +931,7 @@ router.get('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
 // Create a new mod
 router.post('/addmods', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    console.log('Creating mod:', req.body);
     const { brand, category, cost, description, link } = req.body;
 
     if (!brand || !category || cost === undefined || !link) {
@@ -1085,7 +1086,29 @@ router.get('/photos', authenticateAdmin, async (req: AuthenticatedRequest, res: 
   }
 });
 
-router.put('/photos/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/addphotos', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { entryID, s3Key, isMainPhoto = false } = req.body;
+
+    if (!entryID || !s3Key) {
+      return res.status(400).json({ success: false, message: 'Missing required fields: entryID and s3Key are required' });
+    }
+
+    await pool.query(
+      `INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto, uploadDate)
+       VALUES (?, ?, ?, NOW())`,
+      [entryID, s3Key, isMainPhoto]
+    );
+
+    res.status(201).json({ success: true, message: 'Photo added successfully' });
+  } catch (error) {
+    console.error('Error adding photo:', error);
+    res.status(500).json({ success: false, message: 'Failed to add photo' });
+  }
+});
+
+
+router.put('/updatephotos/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { s3Key, isMainPhoto, uploadDate } = req.body;
@@ -1104,7 +1127,7 @@ router.put('/photos/:id', authenticateAdmin, async (req: AuthenticatedRequest, r
   }
 });
 
-router.delete('/photos/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/delphotos/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -1136,7 +1159,28 @@ router.get('/tags', authenticateAdmin, async (req: AuthenticatedRequest, res: Re
   }
 });
 
-router.put('/tags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/addtags', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { tagName } = req.body;
+
+    if (!tagName) {
+      return res.status(400).json({ success: false, message: 'Tag name is required' });
+    }
+
+    await pool.query(
+      'INSERT INTO Tags (tagName) VALUES (?)',
+      [tagName]
+    );
+
+    res.status(201).json({ success: true, message: 'Tag added successfully' });
+  } catch (error) {
+    console.error('Error adding tag:', error);
+    res.status(500).json({ success: false, message: 'Failed to add tag' });
+  }
+});
+
+
+router.put('/updatetags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { tagName } = req.body;
@@ -1153,7 +1197,7 @@ router.put('/tags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
   }
 });
 
-router.delete('/tags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/deltags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -1205,7 +1249,29 @@ router.get('/awards', authenticateAdmin, async (req: AuthenticatedRequest, res: 
   }
 });
 
-router.put('/awards/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/addawards', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { userEmail, awardType, awardDate } = req.body;
+
+    if (!userEmail || !awardType || !awardDate) {
+      return res.status(400).json({ success: false, message: 'Missing required fields: userEmail, awardType, and awardDate are required' });
+    }
+
+    await pool.query(
+      `INSERT INTO Awards (userEmail, awardType, awardDate)
+       VALUES (?, ?, ?)`,
+      [userEmail, awardType, awardDate]
+    );
+
+    res.status(201).json({ success: true, message: 'Award added successfully' });
+  } catch (error) {
+    console.error('Error adding award:', error);
+    res.status(500).json({ success: false, message: 'Failed to add award' });
+  }
+});
+
+
+router.put('/updateawards/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { userEmail, awardType, awardDate } = req.body;
@@ -1224,7 +1290,7 @@ router.put('/awards/:id', authenticateAdmin, async (req: AuthenticatedRequest, r
   }
 });
 
-router.delete('/awards/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/delawards/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 

@@ -14,6 +14,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
 import axios from "axios"
+import { m } from "framer-motion"
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("users")
@@ -670,6 +671,7 @@ function UserModal({ mode = "edit", userData, open, setOpen }: { mode?: string; 
 
 // Entry Modal Component
 interface EntryData {
+  entryID?: number;
   email: string;
   carName: string;
   carColor: string;
@@ -696,14 +698,58 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
     const isOpen = isControlled ? open : internalOpen
     const onOpenChange = isControlled ? setOpen : setInternalOpen
     
-    const handleSubmit = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+    const [email, setEmail] = useState(entryData?.email || "");
+    const [carName, setCarName] = useState(entryData?.carName || "");
+    const [carColor, setCarColor] = useState(entryData?.carColor || "");
+    const [carMake, setCarMake] = useState(entryData?.carMake || "");
+    const [carModel, setCarModel] = useState(entryData?.carModel || "");
+    const [carYear, setCarYear] = useState(entryData?.carYear || "");
+    const [totalCost, setTotalCost] = useState(entryData?.totalCost || 0);
+        
+    const [upvotes, setUpvotes] = useState(entryData?.upvotes || 0);
+    const [category, setCategory] = useState(entryData?.category || "");
+    const [region, setRegion] = useState(entryData?.region || "");
+    const [engine, setEngine] = useState(entryData?.engine || "");
+    const [transmission, setTransmission] = useState(entryData?.transmission || "");
+    const [drivetrain, setDrivetrain] = useState(entryData?.drivetrain || "");
+    const [horsepower, setHorsepower] = useState(entryData?.horsepower || 0);
+    const [torque, setTorque] = useState(entryData?.torque || 0);
+    
+    
+    const handleSubmit = async () => {
+      const token = localStorage.getItem("token")
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+      
+      try {
+        const entryPayload = { email, carName, carColor, carMake, carModel, carYear, totalCost, upvotes, category, region, engine, transmission, drivetrain, horsepower, torque };
+
+        if (mode === "edit") {
+            await axios.put(`https://api.benchracershq.com/api/admin/updateentries/${entryData?.entryID}`, entryPayload, { headers });
+        } else {
+            await axios.post(`https://api.benchracershq.com/api/admin/addentries`, entryPayload, { headers });
+        }
+
+        onOpenChange(false)
+        } catch (err) {
+            console.error("Failed to submit entry:", err)
+        }
     }
     
-    const handleDelete = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+    const handleDelete = async () => {
+        if (!entryData) return;
+        const token = localStorage.getItem("token")
+        const headers = {
+            Authorization: `Bearer ${token}`
+        }
+        try {
+            await axios.delete(`https://api.benchracershq.com/api/admin/delentries/${entryData?.entryID}`, { headers });
+        } catch (err) {
+            console.error("Failed to delete entry:", err)
+        }
+        onOpenChange(false)
     }
   
     return (
@@ -721,50 +767,52 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
         {/* Two-column layout */}
         <div className="grid grid-cols-2 gap-4">
           {/* Left column */}
-          <div className="space-y-4">
-            <Input placeholder="User Email" defaultValue={entryData?.email || ""} />
-            <Input placeholder="Car Name" defaultValue={entryData?.carName} />
-            <Input placeholder="Color" defaultValue={entryData?.carColor} />
-            <Input placeholder="Make" defaultValue={entryData?.carMake} />
-            <Input placeholder="Model" defaultValue={entryData?.carModel} />
-            <Input placeholder="Year" defaultValue={entryData?.carYear} />
-            <Input placeholder="Total Cost" type="number" defaultValue={entryData?.totalCost} />
-            <Input placeholder="Upvotes" type="number" defaultValue={entryData?.upvotes} />
-          </div>
-  
-          {/* Right column */}
-          <div className="space-y-4">
-            <Select defaultValue={entryData?.category}>
-              <SelectTrigger>
+          {/* Left column */}
+            <div className="space-y-4">
+            <Input placeholder="User Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input placeholder="Car Name" value={carName} onChange={(e) => setCarName(e.target.value)} />
+            <Input placeholder="Color" value={carColor} onChange={(e) => setCarColor(e.target.value)} />
+            <Input placeholder="Make" value={carMake} onChange={(e) => setCarMake(e.target.value)} />
+            <Input placeholder="Model" value={carModel} onChange={(e) => setCarModel(e.target.value)} />
+            <Input placeholder="Year" value={carYear} onChange={(e) => setCarYear(e.target.value)} />
+            <Input placeholder="Total Cost" type="number" value={totalCost} onChange={(e) => setTotalCost(Number(e.target.value))} />
+            <Input placeholder="Upvotes" type="number" value={upvotes} onChange={(e) => setUpvotes(Number(e.target.value))} />
+            </div>
+
+            {/* Right column */}
+            <div className="space-y-4">
+            <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
                 <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
                 <SelectItem value="Track">Track</SelectItem>
                 <SelectItem value="Show">Show</SelectItem>
                 <SelectItem value="Daily">Daily</SelectItem>
                 <SelectItem value="Offroad">Offroad</SelectItem>
-              </SelectContent>
+                </SelectContent>
             </Select>
-            
-            <Input placeholder="Region" defaultValue={entryData?.region} />
-            <Input placeholder="Engine" defaultValue={entryData?.engine} />
-            <Input placeholder="Transmission" defaultValue={entryData?.transmission} />
-            
-            <Select defaultValue={entryData?.drivetrain}>
-              <SelectTrigger>
+
+            <Input placeholder="Region" value={region} onChange={(e) => setRegion(e.target.value)} />
+            <Input placeholder="Engine" value={engine} onChange={(e) => setEngine(e.target.value)} />
+            <Input placeholder="Transmission" value={transmission} onChange={(e) => setTransmission(e.target.value)} />
+
+            <Select value={drivetrain} onValueChange={setDrivetrain}>
+                <SelectTrigger>
                 <SelectValue placeholder="Drivetrain" />
-              </SelectTrigger>
-              <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
                 <SelectItem value="FWD">FWD</SelectItem>
                 <SelectItem value="RWD">RWD</SelectItem>
                 <SelectItem value="AWD">AWD</SelectItem>
                 <SelectItem value="4WD">4WD</SelectItem>
-              </SelectContent>
+                </SelectContent>
             </Select>
-            
-            <Input placeholder="Horsepower" type="number" defaultValue={entryData?.horsepower} />
-            <Input placeholder="Torque" type="number" defaultValue={entryData?.torque} />
-          </div>
+
+            <Input placeholder="Horsepower" type="number" value={horsepower} onChange={(e) => setHorsepower(Number(e.target.value))} />
+            <Input placeholder="Torque" type="number" value={torque} onChange={(e) => setTorque(Number(e.target.value))} />
+            </div>
+
         </div>
   
         <DialogFooter className="pt-4">
@@ -795,6 +843,13 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
   const isOpen = isControlled ? open : internalOpen
   const onOpenChange = isControlled ? setOpen : setInternalOpen
   
+  const [brand, setBrand] = useState(modData?.brand || "");
+  const [category, setCategory] = useState(modData?.category || "");
+  const [cost, setCost] = useState(modData?.cost || 0);
+  const [description, setDescription] = useState(modData?.description || "");
+  const [link, setLink] = useState(modData?.link || "");
+
+  
   const handleSubmit = async () => {
   const token = localStorage.getItem("token")
   const headers = {
@@ -804,15 +859,14 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
   
 
   try {
+    const modPayload = { brand, category, cost, description, link };
+
     if (mode === "edit") {
-      if (modData) {
-        await axios.put(`https://api.benchracershq.com/api/admin/updatemods/${modData.modID}`, modData, { headers })
-      }
+    await axios.put(`https://api.benchracershq.com/api/admin/updatemods/${modData?.modID}`, modPayload, { headers });
     } else {
-      if (modData) {
-        await axios.post(`https://api.benchracershq.com/api/admin/addmods`, modData, { headers })
-      }
+    await axios.post(`https://api.benchracershq.com/api/admin/addmods`, modPayload, { headers });
     }
+
     onOpenChange(false)
   } catch (err) {
     console.error("Failed to submit mod:", err)
@@ -850,13 +904,11 @@ const handleDelete = async () => {
         <DialogTitle className="text-white">{title}</DialogTitle>
       </DialogHeader>
       <div className="space-y-4">
-        <Input placeholder="Brand" defaultValue={modData?.brand} />
-        
-        <Select defaultValue={modData?.category}>
-          <SelectTrigger>
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
+        <Input placeholder="Brand" value={brand} onChange={(e) => setBrand(e.target.value)} />
+
+        <Select value={category} onValueChange={setCategory}>
+        <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+        <SelectContent>
             <SelectItem value="Exhaust">Exhaust</SelectItem>
             <SelectItem value="Intake">Intake</SelectItem>
             <SelectItem value="Suspension">Suspension</SelectItem>
@@ -865,12 +917,13 @@ const handleDelete = async () => {
             <SelectItem value="Exterior">Exterior</SelectItem>
             <SelectItem value="Interior">Interior</SelectItem>
             <SelectItem value="Engine">Engine</SelectItem>
-          </SelectContent>
+        </SelectContent>
         </Select>
-        
-        <Input placeholder="Cost" type="number" defaultValue={modData?.cost} />
-        <Textarea placeholder="Description" defaultValue={modData?.description} />
-        <Input placeholder="Link" defaultValue={modData?.link} />
+
+        <Input placeholder="Cost" type="number" value={cost} onChange={(e) => setCost(Number(e.target.value))} />
+        <Textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Input placeholder="Link" value={link} onChange={(e) => setLink(e.target.value)} />
+
       </div>
       <DialogFooter className="pt-4">
         <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
@@ -888,48 +941,95 @@ interface TagData {
   entryCount: number;
 }
 
-function TagModal({ mode = "edit", tagData, open, setOpen }: { mode?: string; tagData?: TagData; open?: boolean; setOpen?: (open: boolean) => void }) {
+function TagModal({
+  mode = "edit",
+  tagData,
+  open,
+  setOpen,
+}: {
+  mode?: string;
+  tagData?: TagData;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+}) {
   const title = mode === "edit" ? "Edit Tag" : "Add Tag"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Tag"
-  const button2Text = mode === "edit" ? "Delete Tag" : "Delete Tag"
+  const button2Text = "Delete Tag"
+
   const [internalOpen, setInternalOpen] = useState(false)
-  const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
+  const isControlled = typeof open !== "undefined" && typeof setOpen !== "undefined"
   const isOpen = isControlled ? open : internalOpen
   const onOpenChange = isControlled ? setOpen : setInternalOpen
-  
-  const handleSubmit = () => {
-    // Handle form submission logic here
-    onOpenChange(false)
-  }
-  
-  const handleDelete = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+
+  const [tagName, setTagName] = useState(tagData?.tagName || "")
+
+  const handleSubmit = async () => {
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     }
+
+    try {
+      if (mode === "edit" && tagData?.tagID !== undefined) {
+        await axios.put(`https://api.benchracershq.com/api/admin/tags/${tagData.tagID}`, { tagName }, { headers })
+      } else {
+        await axios.post(`https://api.benchracershq.com/api/admin/addtags`, { tagName }, { headers })
+      }
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to submit tag:", err)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!tagData?.tagID) return
+
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    }
+
+    try {
+      await axios.delete(`https://api.benchracershq.com/api/admin/tags/${tagData.tagID}`, { headers })
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to delete tag:", err)
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    {!isControlled && mode === "edit" &&(
-      <DialogTrigger asChild>
-        <Button size="sm">Edit</Button>
-      </DialogTrigger>
-    )}
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle className="text-white">{title}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4">
-        <Input placeholder="Tag Name" defaultValue={tagData?.tagName} />
-      </div>
-      <DialogFooter className="pt-4">
-        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
-        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
-      </DialogFooter>
-    </DialogContent>
+      {!isControlled && mode === "edit" && (
+        <DialogTrigger asChild>
+          <Button size="sm">Edit</Button>
+        </DialogTrigger>
+      )}
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            placeholder="Tag Name"
+            value={tagName}
+            onChange={(e) => setTagName(e.target.value)}
+          />
+        </div>
+        <DialogFooter className="pt-4">
+          <Button type="submit" onClick={handleSubmit}>
+            {buttonText}
+          </Button>
+          {mode === "edit" && (
+            <Button type="submit" onClick={handleDelete}>
+              {button2Text}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }
-
 // Photo Modal Component
 interface PhotoData {
   photoID: number;
@@ -939,58 +1039,113 @@ interface PhotoData {
   uploadDate: string;
 }
 
-function PhotoModal({ mode = "edit", photoData, open, setOpen }: { mode: string; photoData: PhotoData; open?: boolean; setOpen?: (open: boolean) => void  }) {
+function PhotoModal({
+  mode = "edit",
+  photoData,
+  open,
+  setOpen,
+}: {
+  mode?: string;
+  photoData?: PhotoData;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+}) {
   const title = mode === "edit" ? "Edit Photo" : "Add Photo"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Photo"
-  const button2Text = mode === "edit" ? "Delete Photo" : "Delete Photo"
+  const button2Text = "Delete Photo"
+
   const [internalOpen, setInternalOpen] = useState(false)
-  const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
+  const isControlled = typeof open !== "undefined" && typeof setOpen !== "undefined"
   const isOpen = isControlled ? open : internalOpen
   const onOpenChange = isControlled ? setOpen : setInternalOpen
-  
-  const handleSubmit = () => {
-    // Handle form submission logic here
-    onOpenChange(false)
-  }
-  
-  const handleDelete = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+
+  const [entryID, setEntryID] = useState(photoData?.entryID || 0)
+  const [s3Key, setS3Key] = useState(photoData?.s3Key || "")
+  const [isMainPhoto, setIsMainPhoto] = useState(photoData?.isMainPhoto || false)
+  const [uploadDate, setUploadDate] = useState(photoData?.uploadDate || "")
+
+  const handleSubmit = async () => {
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
     }
+
+    const payload = { entryID, s3Key, isMainPhoto, uploadDate }
+
+    try {
+      if (mode === "edit" && photoData?.photoID !== undefined) {
+        await axios.put(`https://api.benchracershq.com/api/admin/updatephotos/${photoData.photoID}`, payload, { headers })
+      } else {
+        await axios.post(`https://api.benchracershq.com/api/admin/addphotos`, payload, { headers })
+      }
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to submit photo:", err)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!photoData?.photoID) return
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`
+    }
+
+    try {
+      await axios.delete(`https://api.benchracershq.com/api/admin/delphotos/${photoData.photoID}`, { headers })
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to delete photo:", err)
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    {!isControlled && mode === "edit" &&(
-      <DialogTrigger asChild>
-        <Button size="sm">Edit</Button>
-      </DialogTrigger>
-    )}
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle className="text-white">{title}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4">
-        <Input placeholder="Entry ID" type="number" defaultValue={photoData.entryID} />
-        <Input placeholder="S3 Key" defaultValue={photoData.s3Key} />
-        
-        <div className="flex flex-row items-center gap-2">
-          <Checkbox defaultChecked={photoData.isMainPhoto} />
-          <span className="text-white">Is Main Photo</span>
-        </div>
-        
-        <Input type="date" defaultValue={photoData.uploadDate} />
-        
-        {mode === "add" && (
-          <div className="border-2 border-dashed border-gray-300 p-4 text-center rounded-md">
-            <p className="text-gray-400">Upload Photo (Feature not implemented)</p>
+      {!isControlled && mode === "edit" && (
+        <DialogTrigger asChild>
+          <Button size="sm">Edit</Button>
+        </DialogTrigger>
+      )}
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            placeholder="Entry ID"
+            type="number"
+            value={entryID}
+            onChange={(e) => setEntryID(Number(e.target.value))}
+          />
+          <Input
+            placeholder="S3 Key"
+            value={s3Key}
+            onChange={(e) => setS3Key(e.target.value)}
+          />
+          <div className="flex flex-row items-center gap-2">
+            <Checkbox checked={isMainPhoto} onCheckedChange={(checked) => setIsMainPhoto(!!checked)} />
+            <span className="text-white">Is Main Photo</span>
           </div>
-        )}
-      </div>
-      <DialogFooter className="pt-4">
-        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
-        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
-      </DialogFooter>
-    </DialogContent>
+          <Input
+            type="date"
+            value={uploadDate}
+            onChange={(e) => setUploadDate(e.target.value)}
+          />
+
+          {mode === "add" && (
+            <div className="border-2 border-dashed border-gray-300 p-4 text-center rounded-md">
+              <p className="text-gray-400">Upload Photo (Feature not implemented)</p>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="pt-4">
+          <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
+          {mode === "edit" && (
+            <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }
@@ -1003,61 +1158,125 @@ interface AwardData {
   awardDate: string;
 }
 
-function AwardModal({ mode = "edit", awardData, open, setOpen }: { mode: string; awardData: AwardData; open?: boolean; setOpen?: (open: boolean) => void   }) {
+function AwardModal({
+  mode = "edit",
+  awardData,
+  open,
+  setOpen,
+}: {
+  mode?: string
+  awardData?: AwardData
+  open?: boolean
+  setOpen?: (open: boolean) => void
+}) {
   const title = mode === "edit" ? "Edit Award" : "Add Award"
   const buttonText = mode === "edit" ? "Save Changes" : "Add Award"
-  const button2Text = mode === "edit" ? "Delete Award" : "Delete Award"
+  const button2Text = "Delete Award"
+
   const [internalOpen, setInternalOpen] = useState(false)
-  const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
+  const isControlled = typeof open !== "undefined" && typeof setOpen !== "undefined"
   const isOpen = isControlled ? open : internalOpen
   const onOpenChange = isControlled ? setOpen : setInternalOpen
-  
-  const handleSubmit = () => {
-    // Handle form submission logic here
-    onOpenChange(false)
-  }
-  
-  const handleDelete = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+
+  const [userEmail, setUserEmail] = useState(awardData?.userEmail || "")
+  const [awardType, setAwardType] = useState(awardData?.awardType || "")
+  const [awardDate, setAwardDate] = useState(awardData?.awardDate || "")
+
+  const handleSubmit = async () => {
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     }
 
+    const payload = { userEmail, awardType, awardDate }
+
+    try {
+      if (mode === "edit" && awardData?.awardID !== undefined) {
+        await axios.put(
+          `https://api.benchracershq.com/api/admin/awards/${awardData.awardID}`,
+          payload,
+          { headers }
+        )
+      } else {
+        await axios.post(
+          `https://api.benchracershq.com/api/admin/addawards`,
+          payload,
+          { headers }
+        )
+      }
+
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to submit award:", err)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!awardData?.awardID) return
+    const token = localStorage.getItem("token")
+    const headers = { Authorization: `Bearer ${token}` }
+
+    try {
+      await axios.delete(
+        `https://api.benchracershq.com/api/admin/awards/${awardData.awardID}`,
+        { headers }
+      )
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to delete award:", err)
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    {!isControlled && mode === "edit" &&(
-      <DialogTrigger asChild>
-        <Button size="sm">Edit</Button>
-      </DialogTrigger>
-    )}
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle className="text-white">{title}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-4">
-        <Input placeholder="User Email" defaultValue={awardData.userEmail} />
-        
-        <Select defaultValue={awardData.awardType}>
-          <SelectTrigger>
-            <SelectValue placeholder="Award Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Best In Show">Best In Show</SelectItem>
-            <SelectItem value="Editor's Choice">Editor's Choice</SelectItem>
-            <SelectItem value="People's Choice">People's Choice</SelectItem>
-            <SelectItem value="Best Modification">Best Modification</SelectItem>
-            <SelectItem value="Best Interior">Best Interior</SelectItem>
-            <SelectItem value="Best Exterior">Best Exterior</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <Input type="date" defaultValue={awardData.awardDate} />
-      </div>
-      <DialogFooter className="pt-4">
-        <Button type="submit" onClick={handleSubmit}>{buttonText}</Button>
-        <Button type="submit" onClick={handleDelete}>{button2Text}</Button>
-      </DialogFooter>
-    </DialogContent>
+      {!isControlled && mode === "edit" && (
+        <DialogTrigger asChild>
+          <Button size="sm">Edit</Button>
+        </DialogTrigger>
+      )}
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            placeholder="User Email"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+          />
+
+          <Select value={awardType} onValueChange={(val) => setAwardType(val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Award Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Best In Show">Best In Show</SelectItem>
+              <SelectItem value="Editor's Choice">Editor's Choice</SelectItem>
+              <SelectItem value="People's Choice">People's Choice</SelectItem>
+              <SelectItem value="Best Modification">Best Modification</SelectItem>
+              <SelectItem value="Best Interior">Best Interior</SelectItem>
+              <SelectItem value="Best Exterior">Best Exterior</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Input
+            type="date"
+            value={awardDate}
+            onChange={(e) => setAwardDate(e.target.value)}
+          />
+        </div>
+        <DialogFooter className="pt-4">
+          <Button type="submit" onClick={handleSubmit}>
+            {buttonText}
+          </Button>
+          {mode === "edit" && (
+            <Button type="submit" onClick={handleDelete}>
+              {button2Text}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }
