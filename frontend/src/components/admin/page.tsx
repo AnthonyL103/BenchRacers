@@ -802,16 +802,15 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
     "Content-Type": "application/json"
   }
   
-  console.log();
 
   try {
     if (mode === "edit") {
       if (modData) {
-        await axios.put(`https://api.benchracershq.com/api/admin/mods/${modData.modID}`, modData, { headers })
+        await axios.put(`https://api.benchracershq.com/api/admin/updatemods/${modData.modID}`, modData, { headers })
       }
     } else {
       if (modData) {
-        await axios.post(`https://api.benchracershq.com/api/admin/mods`, modData, { headers })
+        await axios.post(`https://api.benchracershq.com/api/admin/addmods`, modData, { headers })
       }
     }
     onOpenChange(false)
@@ -828,7 +827,7 @@ const handleDelete = async () => {
   }
 
   try {
-    await axios.delete(`https://api.benchracershq.com/api/admin/mods/${modData.modID}`, {
+    await axios.delete(`https://api.benchracershq.com/api/admin/delmods/${modData.modID}`, {
       headers,
       data: modData
     })

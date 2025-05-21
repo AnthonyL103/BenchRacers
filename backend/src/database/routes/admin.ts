@@ -929,7 +929,7 @@ router.get('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
 });
 
 // Create a new mod
-router.post('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/addmods', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { brand, category, cost, description, link } = req.body;
 
@@ -960,7 +960,7 @@ router.post('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: R
   }
 });
 
-router.put('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/updatemods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { brand, category, cost, description, link } = req.body;
@@ -1007,7 +1007,7 @@ router.put('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
 
 
 // Delete a mod
-router.delete('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/delmods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
