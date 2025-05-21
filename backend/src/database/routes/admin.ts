@@ -993,4 +993,192 @@ router.delete('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, 
   }
 });
 
+router.get('/photos', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { search, mainOnly } = req.query;
+
+    let query = `
+      SELECT photoID, entryID, s3Key, isMainPhoto, uploadDate
+      FROM EntryPhotos
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (search) {
+      query += ` AND s3Key LIKE ?`;
+      params.push(`%${search}%`);
+    }
+
+    if (mainOnly && mainOnly !== 'false') {
+      query += ` AND isMainPhoto = TRUE`;
+    }
+
+    query += ` ORDER BY uploadDate DESC`;
+
+    const [photos]: any = await pool.query(query, params);
+
+    res.status(200).json({ success: true, photos });
+  } catch (error) {
+    console.error("Error fetching photos:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch photos" });
+  }
+});
+
+router.put('/photos/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { s3Key, isMainPhoto, uploadDate } = req.body;
+
+    await pool.query(
+      `UPDATE EntryPhotos
+       SET s3Key = ?, isMainPhoto = ?, uploadDate = ?
+       WHERE photoID = ?`,
+      [s3Key, !!isMainPhoto, uploadDate, id]
+    );
+
+    res.status(200).json({ success: true, message: 'Photo updated successfully' });
+  } catch (error) {
+    console.error('Error updating photo:', error);
+    res.status(500).json({ success: false, message: 'Failed to update photo' });
+  }
+});
+
+router.delete('/photos/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query('DELETE FROM EntryPhotos WHERE photoID = ?', [id]);
+
+    res.status(200).json({ success: true, message: 'Photo deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting photo:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete photo' });
+  }
+});
+
+
+
+router.get('/tags', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const [tags]: any = await pool.query(`
+      SELECT t.tagID, t.tagName, COUNT(et.entryID) AS entryCount
+      FROM Tags t
+      LEFT JOIN EntryTags et ON t.tagID = et.tagID
+      GROUP BY t.tagID
+      ORDER BY t.tagName ASC
+    `);
+
+    res.status(200).json({ success: true, tags });
+  } catch (error) {
+    console.error("Error fetching tags:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch tags" });
+  }
+});
+
+router.put('/tags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { tagName } = req.body;
+
+    await pool.query(
+      `UPDATE Tags SET tagName = ? WHERE tagID = ?`,
+      [tagName, id]
+    );
+
+    res.status(200).json({ success: true, message: 'Tag updated successfully' });
+  } catch (error) {
+    console.error('Error updating tag:', error);
+    res.status(500).json({ success: false, message: 'Failed to update tag' });
+  }
+});
+
+router.delete('/tags/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query('DELETE FROM Tags WHERE tagID = ?', [id]);
+
+    res.status(200).json({ success: true, message: 'Tag deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting tag:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete tag' });
+  }
+});
+
+
+
+router.get('/awards', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { search, type, user } = req.query;
+
+    let query = `
+      SELECT awardID, userEmail, awardType, awardDate
+      FROM Awards
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (search) {
+      query += ` AND (userEmail LIKE ? OR awardType LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (type && type !== 'false') {
+      query += ` AND awardType = ?`;
+      params.push(type);
+    }
+
+    if (user && user !== 'false') {
+      query += ` AND userEmail = ?`;
+      params.push(user);
+    }
+
+    query += ` ORDER BY awardDate DESC`;
+
+    const [awards]: any = await pool.query(query, params);
+
+    res.status(200).json({ success: true, awards });
+  } catch (error) {
+    console.error("Error fetching awards:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch awards" });
+  }
+});
+
+router.put('/awards/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userEmail, awardType, awardDate } = req.body;
+
+    await pool.query(
+      `UPDATE Awards
+       SET userEmail = ?, awardType = ?, awardDate = ?
+       WHERE awardID = ?`,
+      [userEmail, awardType, awardDate, id]
+    );
+
+    res.status(200).json({ success: true, message: 'Award updated successfully' });
+  } catch (error) {
+    console.error('Error updating award:', error);
+    res.status(500).json({ success: false, message: 'Failed to update award' });
+  }
+});
+
+router.delete('/awards/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query('DELETE FROM Awards WHERE awardID = ?', [id]);
+
+    res.status(200).json({ success: true, message: 'Award deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting award:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete award' });
+  }
+});
+
+
+
+
+
+
 export default router;

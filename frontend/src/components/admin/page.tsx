@@ -32,10 +32,11 @@ export default function AdminPage() {
 const [data, setData] = useState<any[]>([])
 const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
+ useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
+        const token = localStorage.getItem("token") // or however you're storing it
         let params: any = {}
 
         if (search) params.search = search
@@ -44,10 +45,19 @@ const [loading, setLoading] = useState(false)
         if (filters.createdAt) params.orderByDate = true
         if (filters.modsOnly) params.noMods = true
 
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          params
+        }
+
         let response;
         switch (activeTab) {
           case "users":
             response = await axios.get("https://api.benchracershq.com/api/admin/users", {
+              ...config,
               params: {
                 search,
                 region: filters.region || undefined,
@@ -58,20 +68,21 @@ const [loading, setLoading] = useState(false)
             setData(response.data.users)
             break
           case "entries":
-            response = await axios.get("https://api.benchracershq.com/api/admin/entries", { params })
+            response = await axios.get("https://api.benchracershq.com/api/admin/entries", config)
             setData(response.data.entries)
             break
           case "mods":
             if (filters.modsOnly) params.usedByEntry = true
-            response = await axios.get("https://api.benchracershq.com/api/admin/mods", { params })
+            response = await axios.get("https://api.benchracershq.com/api/admin/mods", config)
             setData(response.data.mods)
             break
           case "tags":
-            response = await axios.get("https://api.benchracershq.com/api/admin/tags")
+            response = await axios.get("https://api.benchracershq.com/api/admin/tags", { headers: config.headers })
             setData(response.data.tags)
             break
           case "photos":
             response = await axios.get("https://api.benchracershq.com/api/admin/photos", {
+              headers: config.headers,
               params: {
                 search: filters.modsOnly || undefined,
                 mainOnly: filters.region || undefined
@@ -81,6 +92,7 @@ const [loading, setLoading] = useState(false)
             break
           case "awards":
             response = await axios.get("https://api.benchracershq.com/api/admin/awards", {
+              headers: config.headers,
               params: {
                 search,
                 type: filters.modsOnly || undefined,
