@@ -4,6 +4,7 @@ import { config } from 'dotenv';
 import { pool } from './src/database/dbconfig';
 import authRoutes from './src/database/routes/auth';
 import garageRoutes from './src/database/routes/garage'; 
+import adminRoutes from './src/database/routes/admin'; // Import the admin routes
 
 config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 // Register routes
 app.use('/api/users', authRoutes);
 app.use('/api/garage', garageRoutes); // Add the cars routes under /api/cars
+app.use('/api/admin', adminRoutes); // Add the admin routes under /api/admin
 
 const PORT = process.env.PORT || 3000;
 app.get('/health', (req, res) => {

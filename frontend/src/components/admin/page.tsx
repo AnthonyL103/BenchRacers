@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Navbar } from "../utils/navbar"
 import { Footer } from "../utils/footer"
@@ -13,6 +13,7 @@ import { Users, Car, Wrench, Tag, ImageIcon, Trophy, Plus } from "lucide-react"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
+import axios from "axios"
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("users")
@@ -27,6 +28,80 @@ export default function AdminPage() {
     { value: "photos", label: "Photos", icon: <ImageIcon className="w-4 h-4 mr-1" /> },
     { value: "awards", label: "Awards", icon: <Trophy className="w-4 h-4 mr-1" /> },
   ]
+  
+const [data, setData] = useState<any[]>([])
+const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        let params: any = {}
+
+        if (search) params.search = search
+        if (filters.region) params.region = filters.region
+        if (filters.category) params.category = filters.category
+        if (filters.createdAt) params.orderByDate = true
+        if (filters.modsOnly) params.noMods = true
+
+        let response;
+        switch (activeTab) {
+          case "users":
+            response = await axios.get("https://api.benchracershq.com/api/admin/users", {
+              params: {
+                search,
+                region: filters.region || undefined,
+                orderByDate: filters.createdAt || undefined,
+                orderByName: !filters.createdAt || undefined
+              }
+            })
+            setData(response.data.users)
+            break
+          case "entries":
+            response = await axios.get("https://api.benchracershq.com/api/admin/entries", { params })
+            setData(response.data.entries)
+            break
+          case "mods":
+            if (filters.modsOnly) params.usedByEntry = true
+            response = await axios.get("https://api.benchracershq.com/api/admin/mods", { params })
+            setData(response.data.mods)
+            break
+          case "tags":
+            response = await axios.get("https://api.benchracershq.com/api/admin/tags")
+            setData(response.data.tags)
+            break
+          case "photos":
+            response = await axios.get("https://api.benchracershq.com/api/admin/photos", {
+              params: {
+                search: filters.modsOnly || undefined,
+                mainOnly: filters.region || undefined
+              }
+            })
+            setData(response.data.photos)
+            break
+          case "awards":
+            response = await axios.get("https://api.benchracershq.com/api/admin/awards", {
+              params: {
+                search,
+                type: filters.modsOnly || undefined,
+                user: filters.modsOnly || undefined
+              }
+            })
+            setData(response.data.awards)
+            break
+          default:
+            setData([])
+        }
+      } catch (err) {
+        console.error(`Error loading ${activeTab}:`, err)
+        setData([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [activeTab, search, filters])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -205,25 +280,21 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>jane@example.com</TableCell>
-                        <TableCell>Jane Doe</TableCell>
-                        <TableCell>West</TableCell>
-                        <TableCell>2024-02-01</TableCell>
-                        <TableCell>3</TableCell>
-                        <TableCell>Yes</TableCell>
-                        <TableCell>No</TableCell>
+                      {data.map((user) => (
+                    <TableRow key={user.userEmail}>
+                        <TableCell>{user.userEmail}</TableCell>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell>{user.region}</TableCell>
+                        <TableCell>{new Date(user.accountCreated).toLocaleDateString()}</TableCell>
+                        <TableCell>{user.totalEntries}</TableCell>
+                        <TableCell>{user.isVerified ? 'Yes' : 'No'}</TableCell>
+                        <TableCell>{user.isEditor ? 'Yes' : 'No'}</TableCell>
                         <TableCell>
-                          <UserModal mode="edit" userData={{
-                            email: "jane@example.com",
-                            name: "Jane Doe",
-                            region: "West",
-                            totalEntries: 3,
-                            isVerified: true,
-                            isEditor: false
-                          }} />
+                        <UserModal mode="edit" userData={user} />
                         </TableCell>
-                      </TableRow>
+                    </TableRow>
+                    ))}
+
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -251,37 +322,23 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>anthony@gmail.com</TableCell>
-                        <TableCell>Project Z</TableCell>
-                        <TableCell>Black</TableCell>
-                        <TableCell>Nissan</TableCell>
-                        <TableCell>350 Z</TableCell>
-                        <TableCell>2005</TableCell>
-                        <TableCell>$20,000</TableCell>
-                        <TableCell>10</TableCell>
-                        <TableCell>Track</TableCell>
-                        <TableCell>Oregon</TableCell>
-                        <TableCell>
-                          <EntryModal mode="edit" entryData={{
-                            email: "anthony@gmail.com",
-                            carName: "Project Z",
-                            carColor: "Black",
-                            carMake: "Nissan",
-                            carModel: "350 Z",
-                            carYear: "2005",
-                            totalCost: 20000,
-                            upvotes: 10,
-                            category: "Track",
-                            region: "Oregon",
-                            engine: "VQ35DE",
-                            transmission: "6-speed manual",
-                            drivetrain: "RWD",
-                            horsepower: 300,
-                            torque: 270
-                          }} />
-                        </TableCell>
-                      </TableRow>
+                      {data.map((entry) => (
+                        <TableRow key={entry.entryID}>
+                            <TableCell>{entry.userEmail}</TableCell>
+                            <TableCell>{entry.carName}</TableCell>
+                            <TableCell>{entry.carColor}</TableCell>
+                            <TableCell>{entry.carMake}</TableCell>
+                            <TableCell>{entry.carModel}</TableCell>
+                            <TableCell>{entry.carYear}</TableCell>
+                            <TableCell>${entry.totalCost}</TableCell>
+                            <TableCell>{entry.upvotes}</TableCell>
+                            <TableCell>{entry.category}</TableCell>
+                            <TableCell>{entry.region}</TableCell>
+                            <TableCell>
+                            <EntryModal mode="edit" entryData={entry} />
+                            </TableCell>
+                        </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -304,22 +361,19 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>HKS</TableCell>
-                        <TableCell>Exhaust</TableCell>
-                        <TableCell>$900</TableCell>
-                        <TableCell>Hi-Power Cat-Back Exhaust System</TableCell>
-                        <TableCell>https://hks.com/exhaust</TableCell>
+                      {data.map((mod) => (
+                    <TableRow key={mod.modID}>
+                        <TableCell>{mod.brand}</TableCell>
+                        <TableCell>{mod.category}</TableCell>
+                        <TableCell>${mod.cost}</TableCell>
+                        <TableCell>{mod.description}</TableCell>
+                        <TableCell>{mod.link}</TableCell>
                         <TableCell>
-                          <ModModal mode="edit" modData={{
-                            brand: "HKS",
-                            category: "Exhaust",
-                            cost: 900,
-                            description: "Hi-Power Cat-Back Exhaust System",
-                            link: "https://hks.com/exhaust"
-                          }} />
+                        <ModModal mode="edit" modData={mod} />
                         </TableCell>
-                      </TableRow>
+                    </TableRow>
+                    ))}
+
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -340,18 +394,16 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>1</TableCell>
-                        <TableCell>JDM</TableCell>
-                        <TableCell>15</TableCell>
-                        <TableCell>
-                          <TagModal mode="edit" tagData={{
-                            tagID: 1,
-                            tagName: "JDM",
-                            entryCount: 15
-                          }} />
-                        </TableCell>
-                      </TableRow>
+                      {data.map((tag) => (
+                        <TableRow key={tag.tagID}>
+                            <TableCell>{tag.tagID}</TableCell>
+                            <TableCell>{tag.tagName}</TableCell>
+                            <TableCell>{tag.entryCount}</TableCell>
+                            <TableCell>
+                            <TagModal mode="edit" tagData={tag} />
+                            </TableCell>
+                        </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -375,25 +427,21 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>101</TableCell>
-                        <TableCell>5</TableCell>
-                        <TableCell>entries/5/main.jpg</TableCell>
-                        <TableCell>Yes</TableCell>
-                        <TableCell>2024-05-01</TableCell>
-                        <TableCell>
-                          <div className="w-12 h-12 bg-gray-200 rounded"></div>
-                        </TableCell>
-                        <TableCell>
-                          <PhotoModal mode="edit" photoData={{
-                            photoID: 101,
-                            entryID: 5,
-                            s3Key: "entries/5/main.jpg",
-                            isMainPhoto: true,
-                            uploadDate: "2024-05-01"
-                          }} />
-                        </TableCell>
-                      </TableRow>
+                     {data.map((photo) => (
+                        <TableRow key={photo.photoID}>
+                            <TableCell>{photo.photoID}</TableCell>
+                            <TableCell>{photo.entryID}</TableCell>
+                            <TableCell>{photo.s3Key}</TableCell>
+                            <TableCell>{photo.isMainPhoto ? 'Yes' : 'No'}</TableCell>
+                            <TableCell>{new Date(photo.uploadDate).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                            <img src={`https://benchracers-photos.s3.us-west-2.amazonaws.com/${photo.s3Key}`} className="h-12 w-12 object-cover rounded" />
+                            </TableCell>
+                            <TableCell>
+                            <PhotoModal mode="edit" photoData={photo} />
+                            </TableCell>
+                        </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -415,20 +463,17 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>1</TableCell>
-                        <TableCell>anthony@gmail.com</TableCell>
-                        <TableCell>Best In Show</TableCell>
-                        <TableCell>2024-04-15</TableCell>
-                        <TableCell>
-                          <AwardModal mode="edit" awardData={{
-                            awardID: 1,
-                            userEmail: "anthony@gmail.com",
-                            awardType: "Best In Show",
-                            awardDate: "2024-04-15"
-                          }} />
-                        </TableCell>
-                      </TableRow>
+                      {data.map((award) => (
+                        <TableRow key={award.awardID}>
+                            <TableCell>{award.awardID}</TableCell>
+                            <TableCell>{award.userEmail}</TableCell>
+                            <TableCell>{award.awardType}</TableCell>
+                            <TableCell>{new Date(award.awardDate).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                            <AwardModal mode="edit" awardData={award} />
+                            </TableCell>
+                        </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </CardContent>
