@@ -1008,36 +1008,51 @@ router.put('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
 
 // Delete a mod
 router.delete('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const connection = await pool.getConnection();
   try {
+    await connection.beginTransaction();
+
     const { id } = req.params;
 
-    const [existingMods]: any = await pool.query(
+    // Check if mod exists
+    const [existingMods]: any = await connection.query(
       'SELECT modID FROM Mods WHERE modID = ?',
       [id]
     );
 
     if (existingMods.length === 0) {
+      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Mod not found'
       });
     }
 
-    await pool.query('DELETE FROM Mods WHERE modID = ?', [id]);
+    // Remove any entry-mod associations
+    await connection.query('DELETE FROM EntryMods WHERE modID = ?', [id]);
+
+    // Now delete the mod
+    await connection.query('DELETE FROM Mods WHERE modID = ?', [id]);
+
+    await connection.commit();
 
     res.status(200).json({
       success: true,
       message: 'Mod deleted successfully'
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error deleting mod:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete mod',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  } finally {
+    connection.release();
   }
 });
+
 
 router.get('/photos', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {

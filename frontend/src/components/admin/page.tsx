@@ -801,6 +801,8 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json"
   }
+  
+  console.log();
 
   try {
     if (mode === "edit") {
@@ -819,13 +821,14 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
 }
 
 const handleDelete = async () => {
+  if (!modData) return;
   const token = localStorage.getItem("token")
   const headers = {
     Authorization: `Bearer ${token}`
   }
 
   try {
-    await axios.delete(`https://api.benchracershq.com/api/admin/mods/`, {
+    await axios.delete(`https://api.benchracershq.com/api/admin/mods/${modData.modID}`, {
       headers,
       data: modData
     })
