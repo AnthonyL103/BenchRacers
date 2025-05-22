@@ -46,6 +46,25 @@ const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next:
   }
 };
 
+router.get('/reset', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await pool.query('CALL ResetCarShareDB();');
+
+    res.status(200).json({
+      success: true,
+      message: 'Database reset successfully'
+    });
+  } catch (error) {
+    console.error('Error resetting database:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset database',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+
 // =============== USER ROUTES ===============
 
 // Get all users

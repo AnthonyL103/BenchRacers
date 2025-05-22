@@ -1,0 +1,106 @@
+DELIMITER //
+
+CREATE PROCEDURE ResetCarShareDB()
+BEGIN
+  SET FOREIGN_KEY_CHECKS = 0;
+
+  DROP TABLE IF EXISTS EntryMods;
+  DROP TABLE IF EXISTS EntryPhotos;
+  DROP TABLE IF EXISTS EntryTags;
+  DROP TABLE IF EXISTS Tags;
+  DROP TABLE IF EXISTS Awards;
+  DROP TABLE IF EXISTS Entries;
+  DROP TABLE IF EXISTS Mods;
+  DROP TABLE IF EXISTS Users;
+
+  CREATE TABLE Users (
+    userEmail VARCHAR(60) PRIMARY KEY,
+    name VARCHAR(60) NOT NULL,
+    password VARCHAR(60) NOT NULL,
+    accountCreated DATETIME NOT NULL,
+    userIndex INT AUTO_INCREMENT UNIQUE,
+    totalEntries INT NOT NULL DEFAULT 0,
+    region VARCHAR(20) NOT NULL,
+    isVerified BOOLEAN NOT NULL DEFAULT FALSE,
+    verificationtoken VARCHAR(64),
+    resetToken VARCHAR(64),
+    resetTokenExpiration DATETIME,
+    isEditor BOOLEAN NOT NULL DEFAULT FALSE
+  );
+
+  CREATE TABLE Entries (
+    entryID INT AUTO_INCREMENT PRIMARY KEY,
+    userEmail VARCHAR(60) NOT NULL,
+    carName VARCHAR(100) NOT NULL,
+    carMake VARCHAR(50) NOT NULL,
+    carModel VARCHAR(50) NOT NULL,
+    carYear VARCHAR(4),
+    carColor VARCHAR(30),
+    description TEXT,
+    totalMods INT NOT NULL DEFAULT 0,
+    totalCost DECIMAL(10,2) NOT NULL DEFAULT 0,
+    category VARCHAR(30) NOT NULL,
+    region VARCHAR(50) NOT NULL,
+    upvotes INT NOT NULL DEFAULT 0,
+    engine VARCHAR(100),
+    transmission VARCHAR(50),
+    drivetrain VARCHAR(20),
+    horsepower INT,
+    torque INT,
+    viewCount INT NOT NULL DEFAULT 0,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
+  );
+
+  CREATE TABLE Mods (
+    modID INT AUTO_INCREMENT PRIMARY KEY,
+    brand VARCHAR(20) NOT NULL,
+    category VARCHAR(20) NOT NULL,
+    cost INT NOT NULL,
+    description VARCHAR(100),
+    link VARCHAR(30) NOT NULL
+  );
+
+  CREATE TABLE EntryMods (
+    entryID INT NOT NULL,
+    modID INT NOT NULL,
+    PRIMARY KEY (entryID, modID),
+    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
+    FOREIGN KEY (modID) REFERENCES Mods(modID)
+  );
+
+  CREATE TABLE EntryPhotos (
+    photoID INT AUTO_INCREMENT PRIMARY KEY,
+    entryID INT NOT NULL,
+    s3Key VARCHAR(255) NOT NULL,
+    isMainPhoto BOOLEAN NOT NULL DEFAULT FALSE,
+    uploadDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE
+  );
+
+  CREATE TABLE Tags (
+    tagID INT AUTO_INCREMENT PRIMARY KEY,
+    tagName VARCHAR(30) NOT NULL UNIQUE
+  );
+
+  CREATE TABLE EntryTags (
+    entryID INT NOT NULL,
+    tagID INT NOT NULL,
+    PRIMARY KEY (entryID, tagID),
+    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
+    FOREIGN KEY (tagID) REFERENCES Tags(tagID) ON DELETE CASCADE
+  );
+
+  CREATE TABLE Awards (
+    awardID INT AUTO_INCREMENT PRIMARY KEY,
+    userEmail VARCHAR(60) NOT NULL,
+    awardType VARCHAR(20) NOT NULL,
+    awardDate DATETIME NOT NULL,
+    FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
+  );
+
+  SET FOREIGN_KEY_CHECKS = 1;
+END //
+
+DELIMITER ;

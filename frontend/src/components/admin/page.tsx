@@ -121,7 +121,36 @@ const [loading, setLoading] = useState(false)
       <Navbar />
       <main className="flex-1 py-12">
         <div className="container">
-          <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+            <div className="flex flex-row justify-between">
+                <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+            <Button
+                    variant="destructive"
+                    onClick={async () => {
+                        try {
+                        const token = localStorage.getItem('token');
+                        const res = await fetch('/api/admin/reset', {
+                            method: 'GET',
+                            headers: {
+                            Authorization: `Bearer ${token}`,
+                            },
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('Database reset successfully');
+                        } else {
+                            alert('Reset failed: ' + data.message);
+                        }
+                        } catch (err) {
+                        console.error('Error resetting DB:', err);
+                        alert('An error occurred while resetting the database');
+                        }
+                    }}
+                    >
+                    RESET DATABASE
+                </Button>
+            </div>
+          
+
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="flex flex-wrap gap-2">
               {tabSections.map(tab => (
@@ -509,7 +538,7 @@ function AddEntityButton({ entityType }: { entityType: string }) {
     switch(entityType) {
       case "users":
         return {
-          email: "",
+          userEmail: "",
           name: "",
           password: "",
           region: "",
@@ -602,7 +631,7 @@ function AddEntityButton({ entityType }: { entityType: string }) {
 
 // User Modal Component
 interface UserData {
-  email: string;
+  userEmail: string;
   name: string;
   password?: string;
   region: string;
@@ -631,7 +660,7 @@ function UserModal({
   const isOpen = isControlled ? open : internalOpen
   const onOpenChange = isControlled ? setOpen : setInternalOpen
 
-  const [email, setEmail] = useState(userData?.email || "")
+  const [email, setEmail] = useState(userData?.userEmail || "")
   const [name, setName] = useState(userData?.name || "")
   const [password, setPassword] = useState("")
   const [region, setRegion] = useState(userData?.region || "")
@@ -653,16 +682,20 @@ function UserModal({
       isVerified,
       isEditor,
     }
-
+    
+    console.log(userData);
+    
+    
     try {
       if (mode === "edit") {
+        console.log("Editing user:", userData?.userEmail);
         await axios.put(
-          `https://api.benchracershq.com/api/admin/users/${email}`,
+          `https://api.benchracershq.com/api/admin/updateusers/${email}`,
           payload,
           { headers }
         )
       } else {
-        await axios.post(`https://api.benchracershq.com/api/admin/users`, {
+        await axios.post(`https://api.benchracershq.com/api/admin/addusers`, {
           email,
           ...payload,
         }, { headers })
@@ -680,7 +713,7 @@ function UserModal({
     const headers = { Authorization: `Bearer ${token}` }
 
     try {
-      await axios.delete(`https://api.benchracershq.com/api/admin/users/${email}`, {
+      await axios.delete(`https://api.benchracershq.com/api/admin/delusers/${email}`, {
         headers,
       })
       onOpenChange(false)
