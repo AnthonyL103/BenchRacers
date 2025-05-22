@@ -1,16 +1,8 @@
--- Project Step 2: DDL.sql
--- CarShare Database
--- Group 114: Anthony Li
--- Date: 4/28/2025
 
---Lots of changes were made, I made sure to include my insert statements to prove normalization, 
---and I also made sure to not hardcode foreign keys this time.
--- Disable the fk checks and auto-commit to decrease import errors
 SET FOREIGN_KEY_CHECKS=0;
 SET AUTOCOMMIT = 0;
 START TRANSACTION;
 
--- Drop the existing tables if they exist, so there are no duplicates
 DROP TABLE IF EXISTS EntryExteriorMods;
 DROP TABLE IF EXISTS EntryInteriorMods;
 DROP TABLE IF EXISTS EntryEngineMods;
@@ -21,8 +13,7 @@ DROP TABLE IF EXISTS Awards;
 DROP TABLE IF EXISTS Entries;
 DROP TABLE IF EXISTS Users;
 
--- Create the Users table
--- I increased the password size to fit bcypt hashing
+
 CREATE TABLE Users (
     userEmail VARCHAR(60) PRIMARY KEY,
     name VARCHAR(60) NOT NULL,
@@ -38,7 +29,6 @@ CREATE TABLE Users (
     isEditor BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Add a new table for car photos
 CREATE TABLE EntryPhotos (
     photoID INT AUTO_INCREMENT PRIMARY KEY,
     entryID INT NOT NULL,
@@ -48,7 +38,6 @@ CREATE TABLE EntryPhotos (
     FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE
 );
 
--- Create the Entries table
 CREATE TABLE Entries (
     entryID INT AUTO_INCREMENT PRIMARY KEY,
     userEmail VARCHAR(60) NOT NULL,
@@ -80,7 +69,6 @@ CREATE TABLE Tags (
     tagName VARCHAR(30) NOT NULL UNIQUE
 );
 
--- Create a table for associating tags with entries
 CREATE TABLE EntryTags (
     entryID INT NOT NULL,
     tagID INT NOT NULL,
@@ -89,7 +77,6 @@ CREATE TABLE EntryTags (
     FOREIGN KEY (tagID) REFERENCES Tags(tagID) ON DELETE CASCADE
 );
 
--- Created the Awards table
 CREATE TABLE Awards (
     awardID INT AUTO_INCREMENT PRIMARY KEY,
     userEmail VARCHAR(60) NOT NULL,
@@ -98,7 +85,6 @@ CREATE TABLE Awards (
     FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
 );
 
--- Create the EngineMods table
 CREATE TABLE Mods (
     modID INT AUTO_INCREMENT PRIMARY KEY,
     brand VARCHAR(20) NOT NULL,
@@ -109,7 +95,6 @@ CREATE TABLE Mods (
 );
 
 
--- Create the EntryEngineMods intersection table
 CREATE TABLE EntryMods (
     entryID INT NOT NULL,
     modID INT NOT NULL,
