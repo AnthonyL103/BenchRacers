@@ -13,14 +13,12 @@ const dbconfig_1 = require("./dbconfig");
 function initialize() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Test connection to RDS
             const connected = yield (0, dbconfig_1.testConnection)();
             if (!connected) {
                 console.error('Failed to connect to RDS. Please check your credentials and network.');
                 process.exit(1);
             }
             console.log('Connection to RDS successful. Initializing database schema...');
-            // Initialize database schema
             const initialized = yield (0, dbconfig_1.initializeDatabase)();
             if (initialized) {
                 console.log('Database schema initialized successfully!');
@@ -37,5 +35,4 @@ function initialize() {
         }
     });
 }
-// Run the initialization
 initialize();

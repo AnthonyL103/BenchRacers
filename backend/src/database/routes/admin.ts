@@ -1,4 +1,3 @@
-// Admin Routes
 import { Router, Request, Response, NextFunction } from 'express';
 import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
@@ -10,12 +9,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const router = Router();
 
-// Define a custom interface to extend the Request type
 interface AuthenticatedRequest extends Request {
   user?: jwt.JwtPayload | string;
 }
 
-// Admin authentication middleware
 const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   
@@ -26,11 +23,9 @@ const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next:
   const token = authHeader.split(' ')[1];
   
   try {
-    // Verify the JWT token
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     req.user = decoded;
     
-    // Check if user is an admin/editor
     const [users]: any = await pool.query(
       'SELECT isEditor FROM Users WHERE userEmail = ?',
       [decoded.userEmail]
@@ -65,9 +60,7 @@ router.get('/reset', authenticateAdmin, async (req: AuthenticatedRequest, res: R
 });
 
 
-// =============== USER ROUTES ===============
 
-// Get all users
 router.get('/users', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { search, region, orderByDate, orderByName } = req.query;
@@ -80,19 +73,16 @@ router.get('/users', authenticateAdmin, async (req: AuthenticatedRequest, res: R
     
     const queryParams: any[] = [];
     
-    // Add search filter if provided
     if (search) {
       query += ` AND (userEmail LIKE ? OR name LIKE ?)`;
       queryParams.push(`%${search}%`, `%${search}%`);
     }
     
-    // Add region filter if provided
     if (region && region !== 'false') {
       query += ` AND region = ?`;
       queryParams.push(region);
     }
     
-    // Add ordering
     if (orderByDate && orderByDate !== 'false') {
       query += ` ORDER BY accountCreated DESC`;
     } else if (orderByName && orderByName !== 'false') {
@@ -117,7 +107,6 @@ router.get('/users', authenticateAdmin, async (req: AuthenticatedRequest, res: R
   }
 });
 
-// Get a specific user
 router.get('/users/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { email } = req.params;
@@ -150,7 +139,6 @@ router.get('/users/:email', authenticateAdmin, async (req: AuthenticatedRequest,
   }
 });
 
-// Create a new user
 router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -167,7 +155,6 @@ router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, re
       });
     }
     
-    // Check if user already exists
     const [existingUsers]: any = await connection.query(
       'SELECT userEmail FROM Users WHERE userEmail = ?',
       [email]
@@ -181,7 +168,6 @@ router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, re
       });
     }
     
-    // Insert new user
     await connection.query(
       `INSERT INTO Users 
        (userEmail, name, password, region, accountCreated, totalEntries, isVerified, isEditor)
@@ -208,7 +194,6 @@ router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, re
   }
 });
 
-// Update a user
 router.put('/updateusers/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -218,7 +203,6 @@ router.put('/updateusers/:email', authenticateAdmin, async (req: AuthenticatedRe
     const { email } = req.params;
     const { name, password, region, isVerified, isEditor } = req.body;
     
-    // Check if user exists
     const [existingUsers]: any = await connection.query(
       'SELECT userEmail FROM Users WHERE userEmail = ?',
       [email]
@@ -293,7 +277,6 @@ router.put('/updateusers/:email', authenticateAdmin, async (req: AuthenticatedRe
   }
 });
 
-// Delete a user
 router.delete('/delusers/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -302,7 +285,6 @@ router.delete('/delusers/:email', authenticateAdmin, async (req: AuthenticatedRe
     
     const { email } = req.params;
     
-    // Check if user exists
     const [existingUsers]: any = await connection.query(
       'SELECT userEmail FROM Users WHERE userEmail = ?',
       [email]
@@ -316,7 +298,6 @@ router.delete('/delusers/:email', authenticateAdmin, async (req: AuthenticatedRe
       });
     }
     
-    // Delete the user (will cascade to entries and other related tables)
     await connection.query('DELETE FROM Users WHERE userEmail = ?', [email]);
     
     await connection.commit();
@@ -338,9 +319,7 @@ router.delete('/delusers/:email', authenticateAdmin, async (req: AuthenticatedRe
   }
 });
 
-// =============== ENTRIES ROUTES ===============
 
-// Get all entries
 router.get('/entries', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { search, region, category, noMods } = req.query;
@@ -354,30 +333,25 @@ router.get('/entries', authenticateAdmin, async (req: AuthenticatedRequest, res:
     
     const queryParams: any[] = [];
     
-    // Add search filter if provided
     if (search) {
       query += ` AND (e.userEmail LIKE ? OR e.carName LIKE ? OR e.carMake LIKE ? OR e.carModel LIKE ?)`;
       queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     
-    // Add region filter if provided
     if (region && region !== 'false') {
       query += ` AND e.region = ?`;
       queryParams.push(region);
     }
     
-    // Add category filter if provided
     if (category && category !== 'false') {
       query += ` AND e.category = ?`;
       queryParams.push(category);
     }
     
-    // Add no mods filter if provided
     if (noMods && noMods !== 'false') {
       query += ` AND e.totalMods = 0`;
     }
     
-    // Order by newest first
     query += ` ORDER BY e.createdAt DESC`;
     
     const [entries]: any = await pool.query(query, queryParams);
@@ -396,12 +370,10 @@ router.get('/entries', authenticateAdmin, async (req: AuthenticatedRequest, res:
   }
 });
 
-// Get a specific entry
 router.get('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     
-    // Get entry with photos in a single query
     const [results]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -431,7 +403,6 @@ router.get('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, 
     
     const entry = results[0];
     
-    // Process photo data
     if (entry.photoIDs && entry.allPhotoKeys) {
       const photoIDs = entry.photoIDs.split(',');
       const photoKeys = entry.allPhotoKeys.split(',');
@@ -449,10 +420,8 @@ router.get('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, 
       entry.allPhotoKeys = [];
     }
     
-    // Process tags
     entry.tags = entry.tags ? entry.tags.split(',') : [];
     
-    // Get mods associated with this entry
     const [mods]: any = await pool.query(`
       SELECT m.modID, m.brand, m.category, m.cost, m.description, m.link
       FROM EntryMods em
@@ -476,7 +445,6 @@ router.get('/entries/:id', authenticateAdmin, async (req: AuthenticatedRequest, 
   }
 });
 
-// Create a new entry
 router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -489,7 +457,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
       drivetrain, horsepower, torque, photos, tags, mods
     } = req.body;
     
-    // Validate required fields
     if (!email || !carName || !carMake || !carModel || !category || !region) {
       connection.release();
       return res.status(400).json({
@@ -498,7 +465,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
       });
     }
     
-    // Verify user exists
     const [users]: any = await connection.query(
       'SELECT userEmail FROM Users WHERE userEmail = ?',
       [email]
@@ -512,10 +478,8 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
       });
     }
     
-    // Calculate total mods count
     const totalMods = mods && Array.isArray(mods) ? mods.length : 0;
     
-    // Insert the new entry
     const [result]: any = await connection.query(
       `INSERT INTO Entries 
        (userEmail, carName, carMake, carModel, carYear, carColor, description,
@@ -532,7 +496,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
     
     const entryID = result.insertId;
     
-    // Add photos if provided
     if (photos && Array.isArray(photos) && photos.length > 0) {
       const photoValues = photos.map((photo: any) => [
         entryID,
@@ -547,7 +510,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
       );
     }
     
-    // Add mods if provided
     if (mods && Array.isArray(mods) && mods.length > 0) {
       const modValues = mods.map((modId: number) => [entryID, modId]);
       
@@ -557,11 +519,8 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
       );
     }
     
-    // Add tags if provided
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Process each tag
       for (const tagName of tags) {
-        // Check if tag already exists
         const [existingTags]: any = await connection.query(
           'SELECT tagID FROM Tags WHERE tagName = ?',
           [tagName]
@@ -572,7 +531,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
         if (existingTags.length > 0) {
           tagID = existingTags[0].tagID;
         } else {
-          // Create new tag
           const [tagResult]: any = await connection.query(
             'INSERT INTO Tags (tagName) VALUES (?)',
             [tagName]
@@ -581,7 +539,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
           tagID = tagResult.insertId;
         }
         
-        // Link tag to entry
         await connection.query(
           'INSERT INTO EntryTags (entryID, tagID) VALUES (?, ?)',
           [entryID, tagID]
@@ -589,7 +546,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
       }
     }
     
-    // Update user's totalEntries count
     await connection.query(
       'UPDATE Users SET totalEntries = totalEntries + 1 WHERE userEmail = ?',
       [email]
@@ -615,7 +571,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
   }
 });
 
-// Update an existing entry
 router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -629,7 +584,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       drivetrain, horsepower, torque, photos, tags, mods
     } = req.body;
     
-    // Check if entry exists
     const [existingEntries]: any = await connection.query(
       'SELECT entryID, userEmail FROM Entries WHERE entryID = ?',
       [id]
@@ -646,7 +600,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
     const originalEmail = existingEntries[0].userEmail;
     const emailChanged = email && email !== originalEmail;
     
-    // If email is changing, verify the new user exists
     if (emailChanged) {
       const [users]: any = await connection.query(
         'SELECT userEmail FROM Users WHERE userEmail = ?',
@@ -662,10 +615,8 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       }
     }
     
-    // Calculate total mods count
     const totalMods = mods && Array.isArray(mods) ? mods.length : 0;
     
-    // Update the entry
     await connection.query(
       `UPDATE Entries 
        SET userEmail = ?, carName = ?, carMake = ?, carModel = ?, carYear = ?, 
@@ -681,9 +632,7 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       ]
     );
     
-    // Update photos if provided
     if (photos && Array.isArray(photos)) {
-      // Delete existing photos
       await connection.query('DELETE FROM EntryPhotos WHERE entryID = ?', [id]);
       
       if (photos.length > 0) {
@@ -701,9 +650,7 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       }
     }
     
-    // Update mods if provided
     if (mods && Array.isArray(mods)) {
-      // Delete existing mod associations
       await connection.query('DELETE FROM EntryMods WHERE entryID = ?', [id]);
       
       if (mods.length > 0) {
@@ -716,15 +663,11 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       }
     }
     
-    // Update tags if provided
     if (tags && Array.isArray(tags)) {
-      // Delete existing tag associations
       await connection.query('DELETE FROM EntryTags WHERE entryID = ?', [id]);
       
       if (tags.length > 0) {
-        // Process each tag
         for (const tagName of tags) {
-          // Check if tag already exists
           const [existingTags]: any = await connection.query(
             'SELECT tagID FROM Tags WHERE tagName = ?',
             [tagName]
@@ -735,7 +678,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
           if (existingTags.length > 0) {
             tagID = existingTags[0].tagID;
           } else {
-            // Create new tag
             const [tagResult]: any = await connection.query(
               'INSERT INTO Tags (tagName) VALUES (?)',
               [tagName]
@@ -744,7 +686,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
             tagID = tagResult.insertId;
           }
           
-          // Link tag to entry
           await connection.query(
             'INSERT INTO EntryTags (entryID, tagID) VALUES (?, ?)',
             [id, tagID]
@@ -753,7 +694,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       }
     }
     
-    // If user email changed, update both users' totalEntries counts
     if (emailChanged) {
       await connection.query(
         'UPDATE Users SET totalEntries = totalEntries - 1 WHERE userEmail = ?',
@@ -785,7 +725,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
   }
 });
 
-// Delete an entry
 router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -794,7 +733,6 @@ router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedReq
     
     const { id } = req.params;
     
-    // Check if entry exists and get user email
     const [existingEntries]: any = await connection.query(
       'SELECT entryID, userEmail FROM Entries WHERE entryID = ?',
       [id]
@@ -810,10 +748,8 @@ router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedReq
     
     const userEmail = existingEntries[0].userEmail;
     
-    // Delete the entry (will cascade to photos, tags, and mods)
     await connection.query('DELETE FROM Entries WHERE entryID = ?', [id]);
     
-    // Update user's totalEntries count
     await connection.query(
       'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
       [userEmail]
@@ -838,9 +774,7 @@ router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedReq
   }
 });
 
-// =============== MODS ROUTES ===============
 
-// Get all mods
 router.get('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { search, category, brand, usedByEntry } = req.query;
@@ -852,7 +786,6 @@ router.get('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: Re
     
     const queryParams: any[] = [];
     
-    // Add join if filtering by entry
     if (usedByEntry && usedByEntry !== 'false') {
       query = `
         SELECT m.modID, m.brand, m.category, m.cost, m.description, m.link, e.entryID
@@ -864,25 +797,21 @@ router.get('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: Re
     
     query += ` WHERE 1=1`;
     
-    // Add search filter if provided
     if (search) {
       query += ` AND (m.brand LIKE ? OR m.description LIKE ?)`;
       queryParams.push(`%${search}%`, `%${search}%`);
     }
     
-    // Add category filter if provided
     if (category && category !== 'false') {
       query += ` AND m.category = ?`;
       queryParams.push(category);
     }
     
-    // Add brand filter if provided
     if (brand && brand !== 'false') {
       query += ` AND m.brand = ?`;
       queryParams.push(brand);
     }
     
-    // Add ordering
     query += ` ORDER BY m.brand, m.category`;
     
     const [mods]: any = await pool.query(query, queryParams);
@@ -901,7 +830,6 @@ router.get('/mods', authenticateAdmin, async (req: AuthenticatedRequest, res: Re
   }
 });
 
-// Get a specific mod
 router.get('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -920,7 +848,6 @@ router.get('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
       });
     }
     
-    // Get entries using this mod
     const [entries]: any = await pool.query(`
       SELECT e.entryID, e.carName, e.carMake, e.carModel
       FROM Entries e
@@ -947,7 +874,6 @@ router.get('/mods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res
   }
 });
 
-// Create a new mod
 router.post('/addmods', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('Creating mod:', req.body);
@@ -1026,7 +952,6 @@ router.put('/updatemods/:id', authenticateAdmin, async (req: AuthenticatedReques
 });
 
 
-// Delete a mod
 router.delete('/delmods/:id', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   try {
@@ -1034,7 +959,6 @@ router.delete('/delmods/:id', authenticateAdmin, async (req: AuthenticatedReques
 
     const { id } = req.params;
 
-    // Check if mod exists
     const [existingMods]: any = await connection.query(
       'SELECT modID FROM Mods WHERE modID = ?',
       [id]
@@ -1048,10 +972,8 @@ router.delete('/delmods/:id', authenticateAdmin, async (req: AuthenticatedReques
       });
     }
 
-    // Remove any entry-mod associations
     await connection.query('DELETE FROM EntryMods WHERE modID = ?', [id]);
 
-    // Now delete the mod
     await connection.query('DELETE FROM Mods WHERE modID = ?', [id]);
 
     await connection.commit();

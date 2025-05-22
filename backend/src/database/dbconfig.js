@@ -19,9 +19,7 @@ const promise_1 = __importDefault(require("mysql2/promise"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-// Load environment variables
 dotenv_1.default.config();
-// Database configuration
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -30,19 +28,15 @@ const dbConfig = {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    multipleStatements: true // Enable multiple statements
+    multipleStatements: true
 };
-// Create connection poolff
 const pool = promise_1.default.createPool(dbConfig);
 exports.pool = pool;
-// Function to initialize database
 function initializeDatabase() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             console.log('Starting database initialization...');
-            // Read the SQL script
             const sqlScript = fs_1.default.readFileSync(path_1.default.join(__dirname, './ddl.sql'), 'utf8');
-            // Get a connection from the pool
             const connection = yield pool.getConnection();
             try {
                 console.log('Executing SQL script...');
@@ -55,7 +49,6 @@ function initializeDatabase() {
                 return false;
             }
             finally {
-                // Release the connection back to the pool
                 connection.release();
             }
         }
@@ -65,7 +58,6 @@ function initializeDatabase() {
         }
     });
 }
-// Test connection function
 function testConnection() {
     return __awaiter(this, void 0, void 0, function* () {
         try {

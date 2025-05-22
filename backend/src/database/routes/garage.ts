@@ -9,7 +9,6 @@ import { FieldPacket, ResultSetHeader } from 'mysql2/promise';
 config();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Configure AWS S3
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -20,7 +19,6 @@ const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'your-bucket-name';
 
 const router = Router();
 
-// Define a custom interface to extend the Request type
 interface AuthenticatedRequest extends Request {
   user?: jwt.JwtPayload | string;
 }
@@ -35,16 +33,14 @@ const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFu
   const token = authHeader.split(' ')[1];
   
   try {
-    // Verify the JWT token
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // Attach the user data to the request
+    req.user = decoded; 
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 
-// Generate presigned URL for S3 upload
 router.get('/s3/presigned-url', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { fileName, fileType } = req.query;
@@ -56,16 +52,14 @@ router.get('/s3/presigned-url', authenticateUser, async (req: AuthenticatedReque
       });
     }
     
-    // Generate a unique key for the file
     const user = req.user as any;
     const key = `users/${user.userEmail}/${Date.now()}-${fileName.replace(/\s+/g, '_')}`;
     
-    // Create presigned URL
     const presignedUrl = s3.getSignedUrl('putObject', {
       Bucket: BUCKET_NAME,
       Key: key,
       ContentType: fileType,
-      Expires: 300 // URL expires in 5 minutes
+      Expires: 300 
     });
     
     res.status(200).json({
@@ -83,9 +77,7 @@ router.get('/s3/presigned-url', authenticateUser, async (req: AuthenticatedReque
   }
 });
 
-// Update an existing car with photos
 router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  // Use a connection for transaction
   const connection = await pool.getConnection();
   
   try {
@@ -94,7 +86,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     const user = req.user as any;
     const entryID = parseInt(req.params.entryID);
     
-    // Validate that entryID is provided and is a number
     if (!entryID || isNaN(entryID)) {
       connection.release();
       return res.status(400).json({
@@ -109,7 +100,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
     
-    // Validate required fields
     if (!carName || !carMake || !carModel || !carTrim || !category || !region) {
       connection.release();
       return res.status(400).json({
@@ -126,7 +116,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       });
     }
     
-    // Check if the car entry exists and belongs to the user
     const [existingEntry]: any = await connection.query(
       'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
@@ -140,7 +129,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       });
     }
     
-    // Update the car entry
     await connection.query(
       `UPDATE Entries SET 
         carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, carTrim = ?,
@@ -156,14 +144,12 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       ]
     );
     
-    // Handle photos: Delete existing photos and add new ones
-    // First, delete existing photo associations
+  
     await connection.query(
       'DELETE FROM EntryPhotos WHERE entryID = ?',
       [entryID]
     );
     
-    // Then add new photos
     if (photos.length > 0) {
       const photoValues = photos.map((photo: any) => [
         entryID,
@@ -178,14 +164,12 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       );
     }
     
-    // Handle mods: Delete existing mods and add new ones
-    // First, delete existing mod associations
+    
     await connection.query(
       'DELETE FROM EntryMods WHERE entryID = ?',
       [entryID]
     );
     
-    // Then add new mods
     if (mods && Array.isArray(mods) && mods.length > 0) {
       const modValues = mods.map((modId: number) => [entryID, modId]);
       
@@ -195,31 +179,25 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       );
     }
     
-    // Handle tags: Delete existing tags and add new ones
-    // First, delete existing tag associations
+
     await connection.query(
       'DELETE FROM EntryTags WHERE entryID = ?',
       [entryID]
     );
     
-    // Process new tags
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Get all existing tags in one query
       const [existingTags]: any = await connection.query(
         'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
         [tags]
       );
       
-      // Create map for quick lookups
       const existingTagsMap = new Map();
       existingTags.forEach((tag: any) => {
         existingTagsMap.set(tag.tagName, tag.tagID);
       });
       
-      // Find tags that need to be created
       const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
       
-      // Batch insert new tags if needed
       if (tagsToCreate.length > 0) {
         const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
         
@@ -228,14 +206,12 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
           [tagInsertValues]
         );
         
-        // Add newly created tags to map
         let newTagId = tagResult.insertId;
         tagsToCreate.forEach((tag: string) => {
           existingTagsMap.set(tag, newTagId++);
         });
       }
       
-      // Prepare values for batch insert of tag associations
       const tagAssociationValues = [];
       for (const tag of tags) {
         const tagID = existingTagsMap.get(tag);
@@ -244,7 +220,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
         }
       }
       
-      // Batch insert all tag associations
       if (tagAssociationValues.length > 0) {
         await connection.query(
           'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
@@ -253,10 +228,8 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       }
     }
     
-    // Commit transaction
     await connection.commit();
     
-    // Get updated car and photos in a single query
     const [results]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -275,12 +248,10 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       GROUP BY e.entryID
     `, [entryID]);
     
-    // Process the car with its photos and tags
     const car = results[0];
     car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
     car.tags = car.tags ? car.tags.split(',') : [];
     
-    // Get associated mods
     const [modResults]: any = await pool.query(`
       SELECT m.modID, m.brand, m.cost, m.description, m.category, m.link
       FROM EntryMods em
@@ -296,7 +267,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       car
     });
   } catch (error) {
-    // Rollback transaction on error
     await connection.rollback();
     
     console.error('Error updating car:', error);
@@ -306,22 +276,18 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   } finally {
-    // Release connection
     connection.release();
   }
 });
-// Get all available mods - OPTIMIZED QUERY
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('Fetching all mods');
-    // This query is already optimal - using indexes on category and brand
     const [mods]: any = await pool.query(
       `SELECT modID as id, brand, category, cost, description, link 
        FROM Mods
        ORDER BY category, brand`
     );
     
-    // Return as a flat array
     res.status(200).json({
       success: true,
       mods: mods
@@ -337,12 +303,10 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
 });
 
 
-// Get user's cars with photos, tags, and mods - OPTIMIZED QUERY
 router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user as any;
     
-    // Step 1: Fetch cars with photos and tags in one query
     const [carsResults]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -362,14 +326,11 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
       ORDER BY e.createdAt DESC
     `, [user.userEmail]);
     
-    // Process basic car data
     const carIds = carsResults.map((car: any) => car.entryID);
     
-    // Step 2: If there are cars, fetch all mods in a single query
     let modsMap = new Map();
     
     if (carIds.length > 0) {
-      // Get all mods for all cars in one query
       const [modsResults]: any = await pool.query(`
         SELECT 
           em.entryID, 
@@ -379,7 +340,6 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
         WHERE em.entryID IN (?)
       `, [carIds]);
       
-      // Group mods by car ID
       modsResults.forEach((mod: any) => {
         if (!modsMap.has(mod.entryID)) {
           modsMap.set(mod.entryID, []);
@@ -395,7 +355,6 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
       });
     }
     
-    // Step 3: Combine everything
     const cars = carsResults.map((car: any) => ({
       ...car,
       allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
@@ -417,13 +376,11 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
   }
 });
 
-// Get a specific car by ID with photos and tags - OPTIMIZED QUERY
 router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { entryID } = req.params;
     const user = req.user as any;
     
-    // OPTIMIZATION: Use JOIN instead of subquery, get car, photos, and tags in a single query
     const [results]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -455,7 +412,6 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     
     const car = results[0];
     
-    // Process the concatenated photo data into an array of photo objects
     if (car.photoIDs && car.allPhotoKeys) {
       const photoIDs = car.photoIDs.split(',');
       const photoKeys = car.allPhotoKeys.split(',');
@@ -475,7 +431,6 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       car.allPhotoKeys = [];
     }
     
-    // Process the concatenated tag data into an array of tag objects
     if (car.tagIDs && car.tagNames) {
       const tagIDs = car.tagIDs.split(',');
       const tagNames = car.tagNames.split(',');
@@ -488,7 +443,6 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       car.tags = [];
     }
     
-    // Get mods associated with this car
     const [mods]: any = await pool.query(`
       SELECT m.modID, m.brand, m.category, m.cost, m.description, m.link
       FROM EntryMods em
@@ -498,7 +452,6 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     
     car.mods = mods || [];
     
-    // Clean up temporary fields
     delete car.photoIDs;
     delete car.photoMainFlags;
     delete car.photoUploadDates;
@@ -519,9 +472,7 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
   }
 });
 
-// Add a new car with photos - OPTIMIZED QUERIES
 router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  // Use a connection for transaction
   const connection = await pool.getConnection();
   
   try {
@@ -534,9 +485,8 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
     
-    // Validate required fields
     if (!carName || !carMake || !carModel || !carTrim || !category || !region) {
-      connection.release(); // OPTIMIZATION: Early release on validation failure
+      connection.release(); 
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
@@ -544,14 +494,13 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     }
     
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
-      connection.release(); // OPTIMIZATION: Early release on validation failure
+      connection.release(); 
       return res.status(400).json({
         success: false,
         message: 'At least one photo is required'
       });
     }
     
-    // Insert the new car
     const [result]: any = await connection.query(
       `INSERT INTO Entries 
        (userEmail, carName, carMake, carModel, carYear, carColor, carTrim, description,
@@ -568,7 +517,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     
     const entryID = result.insertId;
     
-    // OPTIMIZATION: Batch insert photos
     if (photos.length > 0) {
       const photoValues = photos.map((photo: any) => [
         entryID,
@@ -583,7 +531,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       );
     }
     
-    // OPTIMIZATION: Batch insert mods associations
     if (mods && Array.isArray(mods) && mods.length > 0) {
       const modValues = mods.map((modId: number) => [entryID, modId]);
       
@@ -593,24 +540,19 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       );
     }
     
-    // OPTIMIZATION: Process tags more efficiently
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Get all existing tags in one query
       const [existingTags]: any = await connection.query(
         'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
         [tags]
       );
       
-      // Create map for quick lookups
       const existingTagsMap = new Map();
       existingTags.forEach((tag: any) => {
         existingTagsMap.set(tag.tagName, tag.tagID);
       });
       
-      // Find tags that need to be created
       const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
       
-      // Batch insert new tags if needed
       if (tagsToCreate.length > 0) {
         const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
         
@@ -619,14 +561,12 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
           [tagInsertValues]
         );
         
-        // Add newly created tags to map
         let newTagId = tagResult.insertId;
         tagsToCreate.forEach((tag: string) => {
           existingTagsMap.set(tag, newTagId++);
         });
       }
       
-      // Prepare values for batch insert of tag associations
       const tagAssociationValues = [];
       for (const tag of tags) {
         const tagID = existingTagsMap.get(tag);
@@ -635,7 +575,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
         }
       }
       
-      // Batch insert all tag associations
       if (tagAssociationValues.length > 0) {
         await connection.query(
           'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
@@ -644,16 +583,13 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       }
     }
     
-    // Increment user's totalEntries count
     await connection.query(
       'UPDATE Users SET totalEntries = totalEntries + 1 WHERE userEmail = ?',
       [user.userEmail]
     );
     
-    // Commit transaction
     await connection.commit();
     
-    // OPTIMIZATION: Get new car and photos in a single query
     const [results]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -669,7 +605,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       GROUP BY e.entryID
     `, [entryID]);
     
-    // Process the car with its photos
     const car = results[0];
     car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
     
@@ -679,7 +614,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       car
     });
   } catch (error) {
-    // Rollback transaction on error
     await connection.rollback();
     
     console.error('Error adding car:', error);
@@ -689,21 +623,18 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   } finally {
-    // Release connection
     connection.release();
   }
 });
 
 
 
-// Define types for your database entities
 interface EntryPhoto {
     s3Key: string;
     entryID: number;
     isMainPhoto?: boolean;
 }
   
-// Delete car - OPTIMIZED QUERY
 router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -713,7 +644,6 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
     
     await connection.beginTransaction();
     
-    // OPTIMIZATION: Only select needed fields
     const [existingCars]: [any[], any] = await connection.query(
       'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
@@ -728,20 +658,17 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
       });
     }
     
-    // Get photos
     const [photos] = await connection.query(
       'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
       [entryID]
     ) as [EntryPhoto[], any];
     
-    // OPTIMIZATION: Perform delete and update operations in one transaction
-    // Delete the car (with cascading deletes for related records)
+    
     await connection.query(
       'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
     );
     
-    // Update user stats
     await connection.query(
       'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
       [user.userEmail]
@@ -749,8 +676,7 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
     
     await connection.commit();
     
-    // Process photos - no more TypeScript errors
-    // This happens after we've already responded to the client
+    
     if (photos.length > 0) {
       setTimeout(async () => {
         try {
@@ -784,9 +710,7 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
   }
 });
   
-// Update a car including photos - OPTIMIZED QUERIES
 router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-  // Use a connection for transaction
   const connection = await pool.getConnection();
   
   try {
@@ -800,7 +724,6 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
     
-    // OPTIMIZATION: Only select needed fields
     const [existingCars]: any = await connection.query(
       'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
@@ -815,7 +738,6 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       });
     }
     
-    // Update the car
     await connection.query(
       `UPDATE Entries 
        SET carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, 
@@ -831,12 +753,9 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       ]
     );
     
-    // OPTIMIZATION: Batch insert photos if provided
     if (photos && Array.isArray(photos) && photos.length > 0) {
-      // Delete existing photos
       await connection.query('DELETE FROM EntryPhotos WHERE entryID = ?', [entryID]);
       
-      // Batch insert new photos
       const photoValues = photos.map((photo: any) => [
         entryID,
         photo.s3Key,
@@ -850,13 +769,10 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       );
     }
     
-    // OPTIMIZATION: Batch insert mods if provided
     if (mods && Array.isArray(mods)) {
-      // Delete existing associations
       await connection.query('DELETE FROM EntryMods WHERE entryID = ?', [entryID]);
       
       if (mods.length > 0) {
-        // Batch insert new associations
         const modValues = mods.map((modId: number) => [entryID, modId]);
         
         await connection.query(
@@ -866,28 +782,22 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       }
     }
     
-    // OPTIMIZATION: Process tags more efficiently
     if (tags && Array.isArray(tags)) {
-      // Delete existing tag associations
       await connection.query('DELETE FROM EntryTags WHERE entryID = ?', [entryID]);
       
       if (tags.length > 0) {
-        // Get all existing tags in one query
         const [existingTags]: any = await connection.query(
           'SELECT tagID, tagName FROM Tags WHERE tagName IN (?)',
           [tags]
         );
         
-        // Create map for quick lookups
         const existingTagsMap = new Map();
         existingTags.forEach((tag: any) => {
           existingTagsMap.set(tag.tagName, tag.tagID);
         });
         
-        // Find tags that need to be created
         const tagsToCreate = tags.filter((tag: string) => !existingTagsMap.has(tag));
         
-        // Batch insert new tags if needed
         if (tagsToCreate.length > 0) {
           const tagInsertValues = tagsToCreate.map((tag: string) => [tag]);
           
@@ -896,14 +806,12 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
             [tagInsertValues]
           );
           
-          // Add newly created tags to map
           let newTagId = tagResult.insertId;
           tagsToCreate.forEach((tag: string) => {
             existingTagsMap.set(tag, newTagId++);
           });
         }
         
-        // Prepare values for batch insert of tag associations
         const tagAssociationValues = [];
         for (const tag of tags) {
           const tagID = existingTagsMap.get(tag);
@@ -912,7 +820,6 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
           }
         }
         
-        // Batch insert all tag associations
         if (tagAssociationValues.length > 0) {
           await connection.query(
             'INSERT INTO EntryTags (entryID, tagID) VALUES ?',
@@ -922,10 +829,8 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       }
     }
     
-    // Commit transaction
     await connection.commit();
     
-    // OPTIMIZATION: Get updated car and photos in a single query
     const [results]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -941,7 +846,6 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       GROUP BY e.entryID
     `, [entryID]);
     
-    // Process the car with its photos
     const car = results[0];
     car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
     
@@ -951,7 +855,6 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       car
     });
   } catch (error) {
-    // Rollback transaction on error
     await connection.rollback();
     
     console.error('Error updating car:', error);
@@ -961,12 +864,10 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   } finally {
-    // Release connection
     connection.release();
   }
 });
 
-// Delete a car - OPTIMIZED QUERY (this endpoint seems redundant with /delete)
 router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
@@ -976,7 +877,6 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
     const { entryID } = req.params;
     const user = req.user as any;
     
-    // OPTIMIZATION: Only select needed fields
     const [existingCars]: any = await connection.query(
       'SELECT entryID FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
@@ -991,20 +891,17 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
       });
     }
     
-    // Get photos before deleting
     const [photos]: any = await connection.query(
       'SELECT s3Key FROM EntryPhotos WHERE entryID = ?',
       [entryID]
     );
     
-    // OPTIMIZATION: Use transaction for both operations
-    // Delete the car (with cascading deletes for related records)
+ 
     await connection.query(
       'DELETE FROM Entries WHERE entryID = ? AND userEmail = ?',
       [entryID, user.userEmail]
     );
     
-    // Update user's entry count
     await connection.query(
       'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
       [user.userEmail]
@@ -1012,9 +909,7 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
     
     await connection.commit();
     
-    // Optionally process S3 deletions asynchronously
     if (photos.length > 0) {
-      // Don't wait for this to complete before responding
       setTimeout(async () => {
         try {
           await Promise.all(photos.map((photo: any) => 

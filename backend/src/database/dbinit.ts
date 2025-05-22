@@ -2,7 +2,6 @@ import { initializeDatabase, testConnection } from './dbconfig';
 
 async function initialize() {
   try {
-    // Test connection to RDS
     const connected = await testConnection();
     
     if (!connected) {
@@ -12,7 +11,6 @@ async function initialize() {
     
     console.log('Connection to RDS successful. Initializing database schema...');
     
-    // Initialize database schema
     const initialized = await initializeDatabase();
     
     if (initialized) {
@@ -29,5 +27,4 @@ async function initialize() {
   }
 }
 
-// Run the initialization
 initialize();

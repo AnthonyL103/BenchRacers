@@ -86,14 +86,12 @@ BEGIN
     FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
   );
 
-  -- 🔧 Optimized Indexes
   ALTER TABLE Entries ADD INDEX idx_entries_userEmail (userEmail);
   ALTER TABLE EntryPhotos ADD INDEX idx_entryphotos_entryID (entryID);
   ALTER TABLE EntryMods ADD INDEX idx_entrymods_entryID (entryID), ADD INDEX idx_entrymods_modID (modID);
   ALTER TABLE EntryTags ADD INDEX idx_entrytags_entryID (entryID), ADD INDEX idx_entrytags_tagID (tagID);
   ALTER TABLE Awards ADD INDEX idx_awards_userEmail (userEmail);
 
-  -- Sample Data Inserts
 
   INSERT INTO Mods (brand, category, cost, description, link) VALUES
     ('K&N', 'engine', 80, 'Cold Air Intake', 'https://blah.com/kn'),

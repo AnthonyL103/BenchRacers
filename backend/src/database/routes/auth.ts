@@ -1,4 +1,3 @@
-// Optimized Auth Routes - Focusing Only on Database Query Optimization
 import { Router, Request, Response } from 'express';
 import { config } from 'dotenv';
 import bcrypt from 'bcrypt';
@@ -13,12 +12,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const router = Router();
 
-// Login route with optimized queries
 router.post('/login', async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
       
-      // Check if email and password are provided
       if (!email || !password) {
         return res.status(400).json({ 
           success: false,
@@ -27,7 +24,6 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      // OPTIMIZATION: Only select needed fields rather than SELECT *
       const [users]: any = await pool.query(
         'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken FROM Users WHERE userEmail = ?', 
         [email]
@@ -41,7 +37,6 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      // Check if password is correct
       const user = users[0];
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
@@ -52,18 +47,14 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      // Check if email is verified
       if (!user.isVerified) {
-        // Generate a new verification token for convenience
         const verificationToken = uuidv4();
         
-        // OPTIMIZATION: Direct update without querying first
         await pool.query(
           'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
           [verificationToken, email]
         );
   
-        // Send a new verification email
         const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
         const msg = {
           to: email,
@@ -81,7 +72,6 @@ router.post('/login', async (req: Request, res: Response) => {
           console.log('[LOGIN] New verification email sent');
         } catch (sendErr) {
           console.error('[LOGIN] Failed to send new verification email', sendErr);
-          // Continue with response even if email fails
         }
         
         return res.status(403).json({ 
@@ -91,7 +81,6 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      // Generate token for authenticated user
       const token = jwt.sign(
         {
           userEmail: user.userEmail,
@@ -107,7 +96,6 @@ router.post('/login', async (req: Request, res: Response) => {
         { expiresIn: '7d' }
       );
   
-      // Return successful login response
       res.status(200).json({
         success: true,
         message: 'Login successful',
@@ -132,11 +120,9 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 });
   
-// Signup route with optimized queries
 router.post('/signup', async (req: Request, res: Response) => {
     console.log('[SIGNUP] Received signup request');
     
-    // OPTIMIZATION: Use a single connection with transaction for multiple operations
     const connection = await pool.getConnection();
     
     try {
@@ -145,11 +131,9 @@ router.post('/signup', async (req: Request, res: Response) => {
       const { email, name, password, region } = req.body;
       console.log('[SIGNUP] Request body:', { email, name, password: !!password, region });
   
-      // Validate input fields
       if (!email || !name || !password || !region) {
         console.warn('[SIGNUP] Missing required fields');
         
-        // OPTIMIZATION: Release connection early if validation fails
         connection.release();
         
         return res.status(400).json({ 
@@ -165,7 +149,6 @@ router.post('/signup', async (req: Request, res: Response) => {
         });
       }
   
-      // Password strength validation (optional)
       if (password.length < 8) {
         connection.release();
         return res.status(400).json({
@@ -175,7 +158,6 @@ router.post('/signup', async (req: Request, res: Response) => {
         });
       }
   
-      // OPTIMIZATION: Only select needed fields
       const [existingUsers]: any = await connection.query(
         'SELECT userEmail, isVerified FROM Users WHERE userEmail = ?', 
         [email]
@@ -186,9 +168,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       if (existingUsers.length > 0) {
         const existingUser = existingUsers[0];
         
-        // If user exists but isn't verified, we can offer to resend verification email
         if (!existingUser.isVerified) {
-          // Generate a new verification token
           const verificationToken = uuidv4();
           
           await connection.query(
@@ -198,7 +178,6 @@ router.post('/signup', async (req: Request, res: Response) => {
           
           await connection.commit();
   
-          // Send verification email
           const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
           const msg = {
             to: email,
@@ -227,7 +206,6 @@ router.post('/signup', async (req: Request, res: Response) => {
           });
         }
         
-        // User exists and is verified
         console.warn('[SIGNUP] User already exists:', email);
         
         await connection.rollback();
@@ -240,14 +218,12 @@ router.post('/signup', async (req: Request, res: Response) => {
         });
       }
   
-      // Create new user
       const hashedPassword = await bcrypt.hash(password, 10);
       const verificationToken = uuidv4();
       const accountCreated = new Date();
   
       console.log('[SIGNUP] Inserting new user');
       
-      // OPTIMIZATION: Simplified insert with fewer parameters and defaults
       await connection.query(
         `INSERT INTO Users 
          (userEmail, name, password, accountCreated, totalEntries, region, isEditor, isVerified, verificationToken) 
@@ -259,7 +235,6 @@ router.post('/signup', async (req: Request, res: Response) => {
       
       console.log('[SIGNUP] Inserted user successfully');
   
-      // Send verification email
       const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
       console.log('[SIGNUP] Generated verification URL:', verificationUrl);
   
@@ -283,7 +258,6 @@ router.post('/signup', async (req: Request, res: Response) => {
         throw sendErr;
       }
   
-      // Generate JWT token for the new user
       const token = jwt.sign(
         { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false },
         JWT_SECRET,
@@ -301,7 +275,6 @@ router.post('/signup', async (req: Request, res: Response) => {
         user: { userEmail: email, name, accountCreated, totalEntries: 0, region, isEditor: false, isVerified: false }
       });
     } catch (error) {
-      // OPTIMIZATION: Ensure rollback on error
       await connection.rollback();
       connection.release();
       
@@ -314,7 +287,6 @@ router.post('/signup', async (req: Request, res: Response) => {
     }
 });
   
-// Email verification route with optimized queries
 router.get('/verify', async (req: Request, res: Response) => {
   try {
     const { token } = req.query;
@@ -322,13 +294,11 @@ router.get('/verify', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid verification token' });
     }
 
-    // OPTIMIZATION: Use UPDATE with direct check instead of SELECT first
     const [result]: any = await pool.query(
       'UPDATE Users SET isVerified = TRUE, verificationToken = NULL WHERE verificationToken = ?',
       [token]
     );
     
-    // Check if any rows were affected
     if (result.affectedRows === 0) {
       return res.status(400).json({ message: 'Invalid token' });
     }
@@ -340,7 +310,6 @@ router.get('/verify', async (req: Request, res: Response) => {
   }
 });
 
-// Forgot password route with optimized queries
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -348,17 +317,14 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    // OPTIMIZATION: Only select the email field
     const [users]: any = await pool.query(
       'SELECT userEmail FROM Users WHERE userEmail = ?', 
       [email]
     );
     
-    // Always return same message for security
     const standardResponse = { message: 'If registered, a reset link will be sent.' };
     
     if (users.length === 0) {
-      // Add slight delay to prevent timing attacks
       await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 100));
       return res.status(200).json(standardResponse);
     }
@@ -392,9 +358,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
   }
 });
 
-// Reset password route with optimized queries
 router.post('/reset-password', async (req: Request, res: Response) => {
-  // OPTIMIZATION: Use a single connection with transaction
   const connection = await pool.getConnection();
   
   try {
@@ -406,7 +370,6 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Token and password required' });
     }
 
-    // OPTIMIZATION: Only select the userEmail field
     const [users]: any = await connection.query(
       'SELECT userEmail FROM Users WHERE resetToken = ? AND resetTokenExpiration > NOW()',
       [token]
@@ -430,7 +393,6 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Password has been reset. You can now login.' });
   } catch (error) {
-    // OPTIMIZATION: Ensure rollback on error
     await connection.rollback();
     connection.release();
     

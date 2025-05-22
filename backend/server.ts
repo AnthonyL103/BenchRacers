@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 import { pool } from './src/database/dbconfig';
 import authRoutes from './src/database/routes/auth';
 import garageRoutes from './src/database/routes/garage'; 
-import adminRoutes from './src/database/routes/admin'; // Import the admin routes
+import adminRoutes from './src/database/routes/admin'; 
 
 config();
 
@@ -13,10 +13,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Register routes
 app.use('/api/users', authRoutes);
-app.use('/api/garage', garageRoutes); // Add the cars routes under /api/cars
-app.use('/api/admin', adminRoutes); // Add the admin routes under /api/admin
+app.use('/api/garage', garageRoutes);
+app.use('/api/admin', adminRoutes); 
 
 const PORT = process.env.PORT || 3000;
 app.get('/health', (req, res) => {
@@ -27,7 +26,6 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
   console.log('Shutting down gracefully');
   pool.end();

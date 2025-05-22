@@ -2,7 +2,7 @@ module.exports = {
     apps: [
       {
         name: "benchracers-backend",
-        script: "./server.js", // after compiling with tsc
+        script: "./server.js", 
         instances: 1,
         env: {
           NODE_ENV: "production",
