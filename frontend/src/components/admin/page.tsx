@@ -128,7 +128,7 @@ const [loading, setLoading] = useState(false)
                     onClick={async () => {
                         try {
                         const token = localStorage.getItem('token');
-                        const res = await fetch('/api/admin/reset', {
+                        const res = await fetch('https://api.benchracershq.com/api/admin/reset', {
                             method: 'GET',
                             headers: {
                             Authorization: `Bearer ${token}`,

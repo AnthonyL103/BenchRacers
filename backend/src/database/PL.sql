@@ -21,6 +21,7 @@ BEGIN
     carModel VARCHAR(50) NOT NULL,
     carYear VARCHAR(4),
     carColor VARCHAR(30),
+    carTrim VARCHAR(50),
     description TEXT,
     totalMods INT NOT NULL DEFAULT 0,
     totalCost DECIMAL(10,2) NOT NULL DEFAULT 0,
