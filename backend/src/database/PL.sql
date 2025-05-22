@@ -3,6 +3,7 @@ DELIMITER //
 CREATE PROCEDURE ResetCarShareDB()
 BEGIN
   SET FOREIGN_KEY_CHECKS = 0;
+  START TRANSACTION;
 
   DROP TABLE IF EXISTS EntryMods;
   DROP TABLE IF EXISTS EntryPhotos;
@@ -11,22 +12,6 @@ BEGIN
   DROP TABLE IF EXISTS Awards;
   DROP TABLE IF EXISTS Entries;
   DROP TABLE IF EXISTS Mods;
-  DROP TABLE IF EXISTS Users;
-
-  CREATE TABLE Users (
-    userEmail VARCHAR(60) PRIMARY KEY,
-    name VARCHAR(60) NOT NULL,
-    password VARCHAR(60) NOT NULL,
-    accountCreated DATETIME NOT NULL,
-    userIndex INT AUTO_INCREMENT UNIQUE,
-    totalEntries INT NOT NULL DEFAULT 0,
-    region VARCHAR(20) NOT NULL,
-    isVerified BOOLEAN NOT NULL DEFAULT FALSE,
-    verificationtoken VARCHAR(64),
-    resetToken VARCHAR(64),
-    resetTokenExpiration DATETIME,
-    isEditor BOOLEAN NOT NULL DEFAULT FALSE
-  );
 
   CREATE TABLE Entries (
     entryID INT AUTO_INCREMENT PRIMARY KEY,
@@ -100,6 +85,58 @@ BEGIN
     FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE
   );
 
+  -- Sample Data Inserts
+
+  INSERT INTO Mods (brand, category, cost, description, link) VALUES
+    ('K&N', 'engine', 80, 'Cold Air Intake', 'https://blah.com/kn'),
+    ('Borla', 'engine', 1250, 'Cat-Back Exhaust', 'https://blah.com/borla'),
+    ('Recaro', 'interior', 2000, 'Racing Seats', 'https://blah.com/recaro'),
+    ('Volk', 'exterior', 3250, 'TE37 Wheels', 'https://blah.com/volk'),
+    ('GReddy', 'engine', 7000, 'Turbo Kit', 'https://blah.com/greddy');
+
+  INSERT INTO Entries (
+    userEmail, carName, carMake, carModel, carYear, carColor, description,
+    totalMods, totalCost, category, region, upvotes,
+    engine, transmission, drivetrain, horsepower, torque, viewCount, createdAt, updatedAt
+  ) VALUES
+    ((SELECT userEmail FROM Users WHERE name = 'Anthony' LIMIT 1), 'Civic', 'Honda', 'Civic', '2015', 'Black', 'JDM Civic build.', 5, 8500.00, 'JDM', 'PNW', 45, 'K20 Turbo', 'Manual', 'FWD', 350, 280, 120, NOW(), NOW()),
+    ((SELECT userEmail FROM Users WHERE name = 'Dan' LIMIT 1), 'Mustang', 'Ford', 'Mustang', '2017', 'Blue', 'Custom Mustang GT.', 8, 22500.00, 'Muscle', 'PNW', 132, 'Coyote V8', 'Auto', 'RWD', 480, 420, 240, NOW(), NOW()),
+    ((SELECT userEmail FROM Users WHERE name = 'Alex' LIMIT 1), 'WRX STI', 'Subaru', 'WRX', '2019', 'Green', 'Built for rally.', 10, 18500.00, 'Rally', 'Midwest', 95, 'EJ25', 'Manual', 'AWD', 310, 290, 180, NOW(), NOW());
+
+  INSERT INTO Awards (userEmail, awardType, awardDate) VALUES
+    ((SELECT userEmail FROM Users WHERE name = 'Anthony' LIMIT 1), 'Best JDM', '2025-02-15'),
+    ((SELECT userEmail FROM Users WHERE name = 'Alex' LIMIT 1), 'Editor''s Choice', '2024-03-01'),
+    ((SELECT userEmail FROM Users WHERE name = 'Dan' LIMIT 1), 'Best American Muscle', '2022-03-05');
+
+  INSERT INTO Tags (tagName) VALUES
+    ('Turbo'), ('Widebody'), ('Show Car'), ('Track'), ('JDM');
+
+  INSERT INTO EntryTags (entryID, tagID) VALUES
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Turbo' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'JDM' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Widebody' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Show Car' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Turbo' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Track' LIMIT 1));
+
+  INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto) VALUES
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), 's3/civic_main33.jpg', TRUE),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), 's3/civic_side2232.jpg', FALSE),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), 's3/mustang_main676.jpg', TRUE),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), 's3/wrx_main565.jpg', TRUE);
+
+  INSERT INTO EntryMods (entryID, modID) VALUES
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'K&N' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Borla' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Recaro' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Volk' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Borla' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Volk' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'GReddy' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'K&N' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'GReddy' LIMIT 1));
+
+  COMMIT;
   SET FOREIGN_KEY_CHECKS = 1;
 END //
 
