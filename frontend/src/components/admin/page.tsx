@@ -611,63 +611,155 @@ interface UserData {
   isEditor: boolean;
 }
 
-function UserModal({ mode = "edit", userData, open, setOpen }: { mode?: string; userData: UserData; open?: boolean; setOpen?: (open: boolean) => void }) {
-    const title = mode === "edit" ? "Edit User" : "Add User"
-    const buttonText = mode === "edit" ? "Save Changes" : "Add User"
-    const button2Text = mode === "edit" ? "Delete User" : "Delete User"
-    
-    // For edit modals where open/setOpen isn't passed as props
-    const [internalOpen, setInternalOpen] = useState(false)
-    const isControlled = typeof open !== 'undefined' && typeof setOpen !== 'undefined'
-    const isOpen = isControlled ? open : internalOpen
-    const onOpenChange = isControlled ? setOpen : setInternalOpen
-  
-    const handleSubmit = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+function UserModal({
+  mode = "edit",
+  userData,
+  open,
+  setOpen,
+}: {
+  mode?: string
+  userData?: UserData
+  open?: boolean
+  setOpen?: (open: boolean) => void
+}) {
+  const title = mode === "edit" ? "Edit User" : "Add User"
+  const buttonText = mode === "edit" ? "Save Changes" : "Add User"
+  const button2Text = "Delete User"
+
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = typeof open !== "undefined" && typeof setOpen !== "undefined"
+  const isOpen = isControlled ? open : internalOpen
+  const onOpenChange = isControlled ? setOpen : setInternalOpen
+
+  const [email, setEmail] = useState(userData?.email || "")
+  const [name, setName] = useState(userData?.name || "")
+  const [password, setPassword] = useState("")
+  const [region, setRegion] = useState(userData?.region || "")
+  const [totalEntries] = useState(userData?.totalEntries || 0) // display only
+  const [isVerified, setIsVerified] = useState(userData?.isVerified || false)
+  const [isEditor, setIsEditor] = useState(userData?.isEditor || false)
+
+  const handleSubmit = async () => {
+    const token = localStorage.getItem("token")
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     }
-    
-    const handleDelete = () => {
-      // Handle form submission logic here
-      onOpenChange(false)
+
+    const payload = {
+      name,
+      password,
+      region,
+      isVerified,
+      isEditor,
     }
-  
-    return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-         {!isControlled && mode === "edit" && (
-          <DialogTrigger asChild>
-            <Button size="sm">Edit</Button>
-          </DialogTrigger>
-        )}
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white">{title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input placeholder="Email" defaultValue={userData.email} />
-            <Input placeholder="Name" defaultValue={userData.name} />
-            <Input placeholder="Password" type="password" defaultValue="" />
-            <Input placeholder="Region" defaultValue={userData.region} />
-            <Input placeholder="Total Entries" type="number" defaultValue={userData.totalEntries} />
-            
-            <div className="flex flex-row items-center gap-2">
-              <Checkbox defaultChecked={userData.isVerified} />
-              <span className="text-white">Is Verified</span>
-            </div>
-            
-            <div className="flex flex-row items-center gap-2">
-              <Checkbox defaultChecked={userData.isEditor} />
-              <span className="text-white">Is Editor</span>
-            </div>
-          </div>
-          <DialogFooter className="pt-4">
-            <Button type="button" onClick={handleSubmit}>{buttonText}</Button>
-            <Button type="button" onClick={handleDelete}>{button2Text}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    )
+
+    try {
+      if (mode === "edit") {
+        await axios.put(
+          `https://api.benchracershq.com/api/admin/users/${email}`,
+          payload,
+          { headers }
+        )
+      } else {
+        await axios.post(`https://api.benchracershq.com/api/admin/users`, {
+          email,
+          ...payload,
+        }, { headers })
+      }
+
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to submit user:", err)
+    }
   }
+
+  const handleDelete = async () => {
+    if (!email) return
+    const token = localStorage.getItem("token")
+    const headers = { Authorization: `Bearer ${token}` }
+
+    try {
+      await axios.delete(`https://api.benchracershq.com/api/admin/users/${email}`, {
+        headers,
+      })
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Failed to delete user:", err)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      {!isControlled && mode === "edit" && (
+        <DialogTrigger asChild>
+          <Button size="sm">Edit</Button>
+        </DialogTrigger>
+      )}
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={mode === "edit"}
+          />
+          <Input
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Input
+            placeholder="Region"
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+          />
+          <Input
+            placeholder="Total Entries"
+            type="number"
+            value={totalEntries}
+            disabled
+          />
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={isVerified}
+              onCheckedChange={(val) => setIsVerified(!!val)}
+            />
+            <span className="text-white">Is Verified</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={isEditor}
+              onCheckedChange={(val) => setIsEditor(!!val)}
+            />
+            <span className="text-white">Is Editor</span>
+          </div>
+        </div>
+        <DialogFooter className="pt-4">
+          <Button type="submit" onClick={handleSubmit}>
+            {buttonText}
+          </Button>
+          {mode === "edit" && (
+            <Button type="submit" onClick={handleDelete}>
+              {button2Text}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // Entry Modal Component
 interface EntryData {
@@ -972,7 +1064,7 @@ function TagModal({
 
     try {
       if (mode === "edit" && tagData?.tagID !== undefined) {
-        await axios.put(`https://api.benchracershq.com/api/admin/tags/${tagData.tagID}`, { tagName }, { headers })
+        await axios.put(`https://api.benchracershq.com/api/admin/updatetags/${tagData.tagID}`, { tagName }, { headers })
       } else {
         await axios.post(`https://api.benchracershq.com/api/admin/addtags`, { tagName }, { headers })
       }
@@ -1194,7 +1286,7 @@ function AwardModal({
     try {
       if (mode === "edit" && awardData?.awardID !== undefined) {
         await axios.put(
-          `https://api.benchracershq.com/api/admin/awards/${awardData.awardID}`,
+          `https://api.benchracershq.com/api/admin/updateawards/${awardData.awardID}`,
           payload,
           { headers }
         )
@@ -1219,7 +1311,7 @@ function AwardModal({
 
     try {
       await axios.delete(
-        `https://api.benchracershq.com/api/admin/awards/${awardData.awardID}`,
+        `https://api.benchracershq.com/api/admin/delawards/${awardData.awardID}`,
         { headers }
       )
       onOpenChange(false)

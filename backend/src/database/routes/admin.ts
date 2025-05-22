@@ -132,7 +132,7 @@ router.get('/users/:email', authenticateAdmin, async (req: AuthenticatedRequest,
 });
 
 // Create a new user
-router.post('/users', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
@@ -190,7 +190,7 @@ router.post('/users', authenticateAdmin, async (req: AuthenticatedRequest, res: 
 });
 
 // Update a user
-router.put('/users/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/updateusers/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
@@ -275,7 +275,7 @@ router.put('/users/:email', authenticateAdmin, async (req: AuthenticatedRequest,
 });
 
 // Delete a user
-router.delete('/users/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/delusers/:email', authenticateAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
