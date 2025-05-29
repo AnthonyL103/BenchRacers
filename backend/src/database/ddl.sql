@@ -109,3 +109,56 @@ ALTER TABLE EntryMods ADD INDEX idx_entrymods_entryID (entryID), ADD INDEX idx_e
 ALTER TABLE EntryTags ADD INDEX idx_entrytags_entryID (entryID), ADD INDEX idx_entrytags_tagID (tagID);
 ALTER TABLE Awards ADD INDEX idx_awards_userEmail (userEmail);
 
+/*
+
+
+  INSERT INTO Mods (brand, category, cost, description, link) VALUES
+    ('K&N', 'engine', 80, 'Cold Air Intake', 'https://blah.com/kn'),
+    ('Borla', 'engine', 1250, 'Cat-Back Exhaust', 'https://blah.com/borla'),
+    ('Recaro', 'interior', 2000, 'Racing Seats', 'https://blah.com/recaro'),
+    ('Volk', 'exterior', 3250, 'TE37 Wheels', 'https://blah.com/volk'),
+    ('GReddy', 'engine', 7000, 'Turbo Kit', 'https://blah.com/greddy');
+
+  INSERT INTO Entries (
+    userEmail, carName, carMake, carModel, carYear, carColor, description,
+    totalMods, totalCost, category, region, upvotes,
+    engine, transmission, drivetrain, horsepower, torque, viewCount, createdAt, updatedAt
+  ) VALUES
+    ((SELECT userEmail FROM Users WHERE name = 'Anthony' LIMIT 1), 'Civic', 'Honda', 'Civic', '2015', 'Black', 'JDM Civic build.', 5, 8500.00, 'JDM', 'PNW', 45, 'K20 Turbo', 'Manual', 'FWD', 350, 280, 120, NOW(), NOW()),
+    ((SELECT userEmail FROM Users WHERE name = 'Dan' LIMIT 1), 'Mustang', 'Ford', 'Mustang', '2017', 'Blue', 'Custom Mustang GT.', 8, 22500.00, 'Muscle', 'PNW', 132, 'Coyote V8', 'Auto', 'RWD', 480, 420, 240, NOW(), NOW()),
+    ((SELECT userEmail FROM Users WHERE name = 'Alex' LIMIT 1), 'WRX STI', 'Subaru', 'WRX', '2019', 'Green', 'Built for rally.', 10, 18500.00, 'Rally', 'Midwest', 95, 'EJ25', 'Manual', 'AWD', 310, 290, 180, NOW(), NOW());
+
+  INSERT INTO Awards (userEmail, awardType, awardDate) VALUES
+    ((SELECT userEmail FROM Users WHERE name = 'Anthony' LIMIT 1), 'Best JDM', '2025-02-15'),
+    ((SELECT userEmail FROM Users WHERE name = 'Alex' LIMIT 1), 'Editor''s Choice', '2024-03-01'),
+    ((SELECT userEmail FROM Users WHERE name = 'Dan' LIMIT 1), 'Best American Muscle', '2022-03-05');
+
+  INSERT INTO Tags (tagName) VALUES
+    ('Turbo'), ('Widebody'), ('Show Car'), ('Track'), ('JDM');
+
+  INSERT INTO EntryTags (entryID, tagID) VALUES
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Turbo' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'JDM' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Widebody' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Show Car' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Turbo' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT tagID FROM Tags WHERE tagName = 'Track' LIMIT 1));
+
+  INSERT INTO EntryPhotos (entryID, s3Key, isMainPhoto) VALUES
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), 's3/civic_main33.jpg', TRUE),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), 's3/civic_side2232.jpg', FALSE),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), 's3/mustang_main676.jpg', TRUE),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), 's3/wrx_main565.jpg', TRUE);
+
+  INSERT INTO EntryMods (entryID, modID) VALUES
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'K&N' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Borla' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Recaro' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Civic' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Volk' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Borla' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'Volk' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'Mustang' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'GReddy' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'K&N' LIMIT 1)),
+    ((SELECT entryID FROM Entries WHERE carName = 'WRX STI' LIMIT 1), (SELECT modID FROM Mods WHERE brand = 'GReddy' LIMIT 1));
+*/
+

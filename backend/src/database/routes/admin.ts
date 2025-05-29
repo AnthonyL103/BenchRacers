@@ -730,14 +730,14 @@ router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedReq
   
   try {
     await connection.beginTransaction();
-    
+
     const { id } = req.params;
-    
+
     const [existingEntries]: any = await connection.query(
-      'SELECT entryID, userEmail FROM Entries WHERE entryID = ?',
+      'SELECT entryID FROM Entries WHERE entryID = ?',
       [id]
     );
-    
+
     if (existingEntries.length === 0) {
       connection.release();
       return res.status(404).json({
@@ -745,25 +745,18 @@ router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedReq
         message: 'Entry not found'
       });
     }
-    
-    const userEmail = existingEntries[0].userEmail;
-    
-    await connection.query('DELETE FROM Entries WHERE entryID = ?', [id]);
-    
-    await connection.query(
-      'UPDATE Users SET totalEntries = GREATEST(totalEntries - 1, 0) WHERE userEmail = ?',
-      [userEmail]
-    );
-    
+
+    await connection.query('CALL DeleteEntryAndUpdateUser(?)', [id]);
+
     await connection.commit();
-    
+
     res.status(200).json({
       success: true,
       message: 'Entry deleted successfully'
     });
   } catch (error) {
     await connection.rollback();
-    console.error('Error deleting entry:', error);
+    console.error('Error deleting entry via procedure:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete entry',

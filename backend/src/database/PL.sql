@@ -146,4 +146,21 @@ BEGIN
   SET FOREIGN_KEY_CHECKS = 1;
 END //
 
+CREATE PROCEDURE DeleteEntryAndUpdateUser(IN entryIDToDelete INT)
+BEGIN
+  DECLARE userEmailToUpdate VARCHAR(60);
+
+  SELECT userEmail INTO userEmailToUpdate
+  FROM Entries
+  WHERE entryID = entryIDToDelete;
+
+  IF userEmailToUpdate IS NOT NULL THEN
+    DELETE FROM Entries WHERE entryID = entryIDToDelete;
+
+    UPDATE Users
+    SET totalEntries = GREATEST(totalEntries - 1, 0)
+    WHERE userEmail = userEmailToUpdate;
+  END IF;
+END //
+
 DELIMITER ;

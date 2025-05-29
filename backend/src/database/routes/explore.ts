@@ -23,7 +23,6 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    // For explore route, we can allow anonymous access
     req.user = null;
     return next();
   }
@@ -38,14 +37,12 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
   });
 };
 
-// POST /explore/cars - Fetch cars for exploration
 router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
   try {
     console.log('[EXPLORE] Received explore request');
     
     const { swipedCars = [], likedCars = [], limit = 10, region = null, category = null } = req.body;
     
-    // Validate limit
     const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 50);
     
     let query = `
@@ -84,35 +81,29 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     
     const queryParams: any[] = [];
     
-    // Exclude already swiped cars
     if (swipedCars.length > 0) {
       const placeholders = swipedCars.map(() => '?').join(',');
       query += ` AND e.entryID NOT IN (${placeholders})`;
       queryParams.push(...swipedCars);
     }
     
-    // Filter by region if specified
     if (region && region !== 'all') {
       query += ` AND e.region = ?`;
       queryParams.push(region);
     }
     
-    // Filter by category if specified
     if (category && category !== 'all') {
       query += ` AND e.category = ?`;
       queryParams.push(category);
     }
     
-    // Exclude user's own entries if authenticated
     if (req.user && req.user.userEmail) {
       query += ` AND e.userEmail != ?`;
       queryParams.push(req.user.userEmail);
     }
     
-    // Group by entry to handle the LEFT JOINs properly
     query += ` GROUP BY e.entryID`;
     
-    // Add random ordering and limit
     query += ` ORDER BY RAND() LIMIT ?`;
     queryParams.push(safeLimit);
     
@@ -126,7 +117,6 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     
     const [cars]: any = await pool.query(query, queryParams);
     
-    // Process the results to parse tags
     const processedCars = cars.map((car: any) => ({
       ...car,
       tags: car.tags ? car.tags.split(',') : []
