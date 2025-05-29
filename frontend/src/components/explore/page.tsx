@@ -28,13 +28,14 @@ export default function ExplorePage() {
     }
   }, [cars.length])
   
+  console.log("Cars in ExplorePage:", cars);
   const fetchCars = async () => {
     try {
       dispatch({
         type: CarActionTypes.FETCH_CARS_REQUEST
       })
       
-      const response = await fetch('/api/explore/cars', { // Updated endpoint
+      const response = await fetch('https://api.benchracershq.com/api/explore/cars', { 
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json',

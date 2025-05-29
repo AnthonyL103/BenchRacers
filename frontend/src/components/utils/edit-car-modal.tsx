@@ -598,9 +598,21 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Exotic">Exotic Car</SelectItem>
-                      <SelectItem value="Sport">Sports Car</SelectItem>
-                      <SelectItem value="Off-Road">Off Road Car</SelectItem>
+                      <SelectItem value="Track">Track</SelectItem>
+                      <SelectItem value="Drag">Drag</SelectItem>
+                      <SelectItem value="Drift">Drift</SelectItem>
+                      <SelectItem value="Street">Street</SelectItem>
+                      <SelectItem value="Sleeper">Sleeper</SelectItem>
+                      
+                      <SelectItem value="Off-Road">Trail</SelectItem>
+                      <SelectItem value="Off-Road">Overland</SelectItem>
+                      <SelectItem value="Off-Road">Crawler</SelectItem>
+                      <SelectItem value="Off-Road">Desert</SelectItem>
+                      
+                      <SelectItem value="Vintage">Vintage</SelectItem>
+                      <SelectItem value="Restomod">Restomod</SelectItem>
+                      <SelectItem value="Hotrod">Hotrod</SelectItem>
+                      <SelectItem value="Lowrider">Lowrider</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.category && <p className="text-xs text-red-500">{errors.category}</p>}

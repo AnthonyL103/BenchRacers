@@ -3,15 +3,28 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 interface Car {
   entryID: number | null;
   userID: string;
+  userName?: string;
   carName: string;
   carMake: string;
+  carModel: string;
+  carYear?: string;
   carColor?: string;
+  carTrim?: string;
   description?: string;
-  s3ContentID: string;
+  s3ContentID: string; 
   totalMods: number;
   totalCost: number;
+  category: string;
   region: string;
   upvotes: number;
+  engine?: string;
+  transmission?: string;
+  drivetrain?: string;
+  horsepower?: number;
+  torque?: number;
+  viewCount: number;
+  createdAt: string;
+  tags?: string[];
 }
 
 interface CarState {
@@ -59,7 +72,8 @@ export const CarActionTypes = {
   SELECT_CAR: 'SELECT_CAR',
   CLEAR_SELECTED_CAR: 'CLEAR_SELECTED_CAR',
   UPVOTE_CAR: 'UPVOTE_CAR',
-  CLEAR_ERROR: 'CLEAR_ERROR'
+  CLEAR_ERROR: 'CLEAR_ERROR',
+  INCREMENT_VIEW_COUNT: 'INCREMENT_VIEW_COUNT'
 };
 
 function carReducer(state: CarState, action: CarAction): CarState {
@@ -168,6 +182,18 @@ function carReducer(state: CarState, action: CarAction): CarState {
         ),
         selectedCar: state.selectedCar && state.selectedCar.entryID === action.payload 
           ? { ...state.selectedCar, upvotes: state.selectedCar.upvotes + 1 } 
+          : state.selectedCar
+      };
+    case CarActionTypes.INCREMENT_VIEW_COUNT:
+      return {
+        ...state,
+        cars: state.cars.map(car => 
+          car.entryID === action.payload 
+            ? { ...car, viewCount: car.viewCount + 1 } 
+            : car
+        ),
+        selectedCar: state.selectedCar && state.selectedCar.entryID === action.payload 
+          ? { ...state.selectedCar, viewCount: state.selectedCar.viewCount + 1 } 
           : state.selectedCar
       };
     case CarActionTypes.CLEAR_ERROR:
