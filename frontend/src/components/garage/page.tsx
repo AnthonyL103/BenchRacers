@@ -24,80 +24,41 @@ import { useNavigate } from 'react-router-dom'
 export default function GaragePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false)
   
-  // Get user and authentication state
   const { user, isAuthenticated } = useUser();
   
-  // Get garage data and functions
   const { cars, isLoading, error, fetchUserCars, deleteCar } = useGarage();
   
   const navigate = useNavigate();
   
-  // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth');
     }
   }, [isAuthenticated, navigate]);
   
-  // Fetch user's cars when the component mounts
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserCars();
     }
   }, [isAuthenticated, fetchUserCars]);
 
-  const addTag = (tag: string) => {
-    if (!selectedTags.includes(tag)) {
-      setSelectedTags([...selectedTags, tag])
-    }
-  }
   
-  const getImageSrc = (photoKey: string | null | undefined, carName: string): string => {
-    try {
-      return photoKey 
-        ? getS3ImageUrl(photoKey) 
-        : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(carName)}`;
-    } catch (error) {
-      console.error('Error getting image URL:', error);
-      return `/placeholder.svg?height=400&width=600&text=Error+Loading+Image`;
-    }
-  };
-  const removeTag = (tag: string) => {
-    setSelectedTags(selectedTags.filter((t) => t !== tag))
-  }
-
-  const handlePhotoUpload = () => {
-    // In a real app, this would handle file uploads
-    // For now, we'll just add a placeholder
-    setPhotoPreview([...photoPreview, `/placeholder.svg?height=600&width=800&text=Photo ${photoPreview.length + 1}`])
-  }
-
-  const removePhoto = (index: number) => {
-    const newPreviews = [...photoPreview]
-    newPreviews.splice(index, 1)
-    setPhotoPreview(newPreviews)
-  }
   
-  // Handle car deletion
   const handleDeleteCar = async (entryID: number) => {
     if (window.confirm("Are you sure you want to delete this car?")) {
       await deleteCar(entryID);
     }
   }
   
-  // Handle edit car
   const handleEditCar = (car: any) => {
   setSelectedCar(car);
   setIsEditModalOpen(true);
   };
 
-  // If authentication is still being checked, show a loading state
   if (!isAuthenticated) {
-    return null; // Will redirect through useEffect
+    return null; 
   }
 
   return (
@@ -254,7 +215,6 @@ export default function GaragePage() {
 
                 <TabsContent value="saved" className="space-y-6">
                   <h2 className="text-xl font-bold">Saved Builds</h2>
-                  {/* This would be populated by saved builds from your API */}
                   <Card className="bg-gray-900 border-gray-800 text-center p-12">
                     <div className="flex flex-col items-center gap-4">
                       <Heart className="h-16 w-16 text-gray-600" />
@@ -362,7 +322,6 @@ export default function GaragePage() {
       </main>
       <Footer />
 
-      {/* Add Car Modal - This would need to be updated to use the addCar function from useGarage */}
       <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
       <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
         {selectedCar && (

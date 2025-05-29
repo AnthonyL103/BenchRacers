@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AnimatePresence } from "framer-motion";
 import Home from './components/home';
 import AboutPage from './components/about/page';
-import CarDetailPage from './components/car/page';
 import ExplorePage from './components/explore/page';
 import FollowingPage from './components/following/page';
 import GaragePage from './components/garage/page';

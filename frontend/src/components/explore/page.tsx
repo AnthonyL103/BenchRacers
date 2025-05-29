@@ -11,7 +11,7 @@ import { Badge } from "../ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Input } from "../ui/input"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
-import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" // Import your car context
+import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" 
 
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState("swipe")
@@ -19,12 +19,10 @@ export default function ExplorePage() {
   const [swipedCars, setSwipedCars] = useState<string[]>([])
   const [likedCars, setLikedCars] = useState<string[]>([])
   
-  // Use your car context
   const { cars, isLoading, error } = useCarState()
   const dispatch = useCarDispatch()
   
   useEffect(() => {
-    // Fetch cars from the server when the component mounts
     if (cars.length === 0) {
       fetchCars()
     }
@@ -32,18 +30,21 @@ export default function ExplorePage() {
   
   const fetchCars = async () => {
     try {
-      // Dispatch loading state
       dispatch({
         type: CarActionTypes.FETCH_CARS_REQUEST
       })
       
-      const response = await fetch('http://getcarroute', {
-        method: 'POST', // Changed to POST since you're sending data
+      const response = await fetch('/api/explore/cars', { // Updated endpoint
+        method: 'POST', 
         headers: {
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ swipedCars, likedCars })
-      });
+        body: JSON.stringify({ 
+            swipedCars, 
+            likedCars,
+            limit: 10
+        })
+        });
       
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -51,7 +52,6 @@ export default function ExplorePage() {
       
       const newCars = await response.json();
       
-      // Update state with new cars
       dispatch({
         type: CarActionTypes.FETCH_CARS_SUCCESS,
         payload: newCars
@@ -79,14 +79,11 @@ export default function ExplorePage() {
     if (currentCarIndex < cars.length - 1) {
       setCurrentCarIndex(currentCarIndex + 1)
     } else {
-      // Out of cars, fetch more
       fetchCars()
-      // Reset index
       setCurrentCarIndex(0)
     }
   }
 
-  // If there are no cars or loading, show loading state
   if (isLoading && cars.length === 0) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -99,7 +96,6 @@ export default function ExplorePage() {
     )
   }
   
-  // If there's an error, show error message
   if (error && cars.length === 0) {
     return (
       <div className="flex flex-col min-h-screen">
@@ -112,7 +108,6 @@ export default function ExplorePage() {
     )
   }
   
-  // If we have no cars even after trying to load, show empty state
   if (cars.length === 0) {
     return (
       <div className="flex flex-col min-h-screen">

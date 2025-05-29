@@ -23,7 +23,6 @@ export function getLocation() {
   
   export const getRegionFromCoordinates = async (latitude: number, longitude: number) => {
     try {
-      // Using OpenCage Geocoder API - replace with your API keylj
       const response = await fetch(
         `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${OPENCAGEKEY}`
       );
@@ -31,9 +30,7 @@ export function getLocation() {
       const data = await response.json();
       
       if (data.results && data.results.length > 0) {
-        // Get state/province from components
         const components = data.results[0].components;
-        // Try different region identifiers
         const region = components.state || 
                       components.province || 
                       components.region || 
@@ -46,11 +43,10 @@ export function getLocation() {
       return "Unknown";
     } catch (error) {
       console.error("Error getting region:", error);
-      return "Unknown"; // Default fallback
+      return "Unknown"; 
     }
   };
   
-  // Fallback method using IP geolocation
   export const getRegionFromIP = async () => {
     try {
       const response = await fetch('https://ipapi.co/json/');
@@ -62,16 +58,13 @@ export function getLocation() {
     }
   };
   
-  // Combined function to get region with fallbacks
   export const getUserRegion = async (): Promise<string> => {
     try {
-      // First try using browser geolocation
       const { latitude, longitude } = await getLocation();
       return await getRegionFromCoordinates(latitude, longitude);
     } catch (error) {
       console.log("Geolocation failed, trying IP-based location", error);
       
-      // Fall back to IP-based geolocation
       return await getRegionFromIP();
     }
   };

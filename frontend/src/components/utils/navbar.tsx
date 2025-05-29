@@ -1,14 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Car, Compass, User, Home, Trophy, Users, LogOut } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "../../../lib/utils";
 import { useUser } from '../contexts/usercontext';
 
 export function Navbar() {
   const location = useLocation();
   const pathname = location.pathname;
   
-  // Use the simplified user context
   const { user, isAuthenticated, logout } = useUser();
 
   const routes = [
@@ -24,7 +23,6 @@ export function Navbar() {
   }
   console.log("User in Navbar:", user);
   
-  // Handle logout
   const handleLogout = () => {
     logout();
   };
@@ -56,7 +54,6 @@ export function Navbar() {
         </div>
         <div className="flex items-center gap-2">
           {isAuthenticated && user ? (
-            // Show user info and logout button when authenticated
             <div className="flex items-center gap-3">
               <div className="hidden sm:block">
                 <p className="text-sm text-white">Welcome, <span className="font-bold">{user.name}</span></p>
@@ -67,7 +64,6 @@ export function Navbar() {
               </Button>
             </div>
           ) : (
-            // Show login and signup buttons when not authenticated
             <>
               <Link to="/auth">
                 <Button variant="outline" className="hidden sm:flex items-center gap-1">

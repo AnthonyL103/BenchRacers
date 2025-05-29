@@ -18,7 +18,6 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  // Validate token exists
   useEffect(() => {
     if (!token) {
       setMessage({
@@ -31,7 +30,6 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Password match validation
     if (newPassword !== confirmPassword) {
       setMessage({
         text: "Passwords do not match",
@@ -40,7 +38,6 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // Password strength validation
     if (newPassword.length < 8) {
       setMessage({
         text: "Password must be at least 8 characters long",
@@ -72,7 +69,6 @@ export default function ResetPasswordPage() {
         type: "success"
       });
       
-      // Redirect to login page after successful reset
       setTimeout(() => {
         navigate("/auth");
       }, 3000);

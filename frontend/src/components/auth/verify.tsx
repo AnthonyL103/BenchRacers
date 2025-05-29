@@ -32,7 +32,6 @@ const VerifyEmail = () => {
       }
 
       try {
-        // Make API call to your backend
         const response = await axios.get(`https://api.benchracershq.com/api/users/verify`, {
           params: { token }
         });

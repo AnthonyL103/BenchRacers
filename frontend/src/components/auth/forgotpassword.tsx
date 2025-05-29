@@ -29,8 +29,7 @@ export default function ForgotPasswordPage() {
 
       const data = await response.json();
       
-      // The backend always returns 200 for security reasons (to prevent email enumeration)
-      // But we'll always show a success message
+   
       setMessage({
         text: "If an account with this email exists, a password reset link has been sent.",
         type: "success"

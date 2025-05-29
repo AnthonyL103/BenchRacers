@@ -13,7 +13,6 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1">
-        {/* Hero Sectionf*/}
         <section className="relative h-[80vh] flex items-center">
           <div className="absolute inset-0 z-0">
             <Image
@@ -50,7 +49,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* How It Works Section */}
         <section className="py-20 bg-gray-950">
           <div className="container">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">How It Works</h2>
@@ -80,7 +78,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Top Cars This Week */}
         <section className="py-20">
           <div className="container">
             <div className="flex justify-between items-center mb-12">
@@ -137,7 +134,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Call to Action */}
         <section className="py-20 bg-primary/10">
           <div className="container text-center space-y-8">
             <h2 className="text-3xl md:text-4xl font-bold">Ready to showcase your ride?</h2>

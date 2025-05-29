@@ -33,7 +33,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { set } from "date-fns"
 import { color } from "framer-motion"
 
-// Types for mods
 interface Mod {
   id: number;
   brand: string;
@@ -73,34 +72,27 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   
-  // Preset mods state
   const [Mods, setMods] = useState<Mod[]>([])
 
   
-  // Available mods from the database
   const [availableMods, setAvailableMods] = useState<Mod[]>([])
 
   
-  // Search states
-  const [ModSearch, setModSearch] = useState("")
+
 
   
-  // Dropdown states
-  const [openMods, setOpenMods] = useState(false)
+
 
   
-  // Loading states
   const [isLoadingMods, setIsLoadingMods] = useState(false)
     
   
   const [totalCost, setTotalCost] = useState(0)
   
-  // Form validation
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   
-  // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [modsSearchState, setModsSearchState] = useState({
@@ -133,12 +125,10 @@ const [openModsState, setOpenModsState] = useState({
     drivetrain: "",
   })
 
-  // Fetch available mods when the component mounts
   useEffect(() => {
     fetchAvailableMods();
   }, []);
   
-  // Calculate total cost when mods change
   useEffect(() => {
     const total = [
       ...Mods
@@ -151,7 +141,6 @@ const [openModsState, setOpenModsState] = useState({
     try {
         const token = localStorage.getItem('token');
         
-        // Fetch mods
         setIsLoadingMods(true);
         const modsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods', {
         headers: { 
@@ -160,13 +149,11 @@ const [openModsState, setOpenModsState] = useState({
         }   
         });
         
-        // Handle the data based on structure (whether it's flat or grouped)
+       
         if (Array.isArray(modsResponse.data.mods)) {
-        // If backend returns flat array (with the fix above)
         setAvailableMods(modsResponse.data.mods);
         } else {
-        // If backend still returns grouped object format
-        // Convert grouped object to flat array
+
         const flatMods = Object.entries(modsResponse.data.mods as Record<string, any[]>).flatMap(([category, mods]) => 
             mods.map(mod => ({...mod, category}))
         );
@@ -179,10 +166,6 @@ const [openModsState, setOpenModsState] = useState({
         setErrors(prev => ({ ...prev, mods: "Failed to load available modifications" }));
     }
     };
-
-    // 3. Add GroupBy functionality if still needed for display purposes
-    // This allows you to maintain a flat array for selection but group for UI
-    
 
   const removeTag = (tag: string) => {
     setSelectedTags(selectedTags.filter((t) => t !== tag))
@@ -201,7 +184,6 @@ const [openModsState, setOpenModsState] = useState({
     }
   }
 
-// Helper function to update a single category's dropdown state
   const updateOpenState = (category: string, isOpen: boolean) => {
     setOpenModsState(prev => ({
         ...prev,
@@ -210,17 +192,14 @@ const [openModsState, setOpenModsState] = useState({
   };
   
   const getFilteredModsByCategory = (category: string) => {
-    // First filter by category
     const modsByCategory = availableMods.filter(mod => 
         mod.category.toLowerCase() === category.toLowerCase()
     );
     
-    // If no search term, return all mods for this category
     if (!modsSearchState[category as keyof typeof modsSearchState].trim()) {
         return modsByCategory;
     }
     
-    // Further filter by search term
     const searchLower = modsSearchState[category as keyof typeof modsSearchState].toLowerCase();
     return modsByCategory.filter(mod => 
         mod.brand.toLowerCase().includes(searchLower) ||
@@ -228,21 +207,17 @@ const [openModsState, setOpenModsState] = useState({
     ); 
   };
 
-  // Add a mod to selected mods
   const addMod = (mod: Mod) => {
   if (!Mods.some(m => m.id === mod.id)) {
     setMods([...Mods, mod]);
   }
-  // Close the dropdown for the current category
   updateOpenState(mod.category.toLowerCase(), false);
 };
   
-  // Remove a mod from selected mods
   const removeMod = (id: number) => {
     setMods(Mods.filter(mod => mod.id !== id));
   };
   
-  // Create a reusable mod selection UI for each category
   const renderModSelectionForCategory = (category: string) => {
     const filteredMods = getFilteredModsByCategory(category);
     const isOpen = openModsState[category as keyof typeof openModsState];
@@ -317,18 +292,16 @@ const [openModsState, setOpenModsState] = useState({
 };
   
   
-  // Trigger file input click
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
-  // Handle file selection
-  // Handle file selection
+
 const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   const files = e.target.files;
   if (!files || files.length === 0) return;
 
-  // Calculate how many more photos we can add
+  
   const remainingSlots = 6 - photos.length;
   
   if (remainingSlots <= 0) {
@@ -336,39 +309,31 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     return;
   }
 
-  // Limit to remaining slots
   const newFiles = Array.from(files).slice(0, remainingSlots);
   
-  // Add new photos to the existing ones
   setPhotos(prevPhotos => [
     ...prevPhotos,
     ...newFiles.map((file: File) => ({
       file,
       preview: URL.createObjectURL(file),
-      isMainPhoto: prevPhotos.length === 0 // First photo is main if there are no existing photos
+      isMainPhoto: prevPhotos.length === 0 
     }))
   ]);
   
-  // Reset the file input
   e.target.value = '';
 };
 
 const removePhoto = (index: number) => {
   setPhotos(prevPhotos => {
-    // Create a copy of the photos array
     const newPhotos = [...prevPhotos];
     
-    // Check if we're removing the main photo
     const isRemovingMainPhoto = newPhotos[index].isMainPhoto;
     
-    // Revoke object URL to prevent memory leaks
     URL.revokeObjectURL(newPhotos[index].preview);
     
-    // Remove the photo at the specified index
     newPhotos.splice(index, 1);
     
-    // If we removed the main photo and there are other photos remaining,
-    // set the first one as the new main photo
+ 
     if (isRemovingMainPhoto && newPhotos.length > 0) {
       newPhotos[0].isMainPhoto = true;
     }
@@ -384,9 +349,7 @@ const removePhoto = (index: number) => {
 
     setIsLookingUpVin(true)
 
-    // Simulate API call to lookup VIN
     setTimeout(() => {
-      // Mock data - in a real app, this would come from a VIN decoder API
       setCarDetails({
         make: "Toyota",
         model: "Supra",
@@ -412,10 +375,8 @@ const removePhoto = (index: number) => {
     }))
   );
   };
-  // Upload image to S3
   const uploadToS3 = async (file: File): Promise<string> => {
     try {
-      // First request a presigned URL from your backend
       const presignedUrlResponse = await axios.get('https://api.benchracershq.com/api/garage/s3/presigned-url', {
         params: { 
           fileName: file.name,
@@ -428,19 +389,16 @@ const removePhoto = (index: number) => {
       
       const { url, key } = presignedUrlResponse.data;
       
-      // Upload directly to S3 using the presigned URL
       await axios.put(url, file, {
         headers: {
           'Content-Type': file.type
         },
         onUploadProgress: (progressEvent) => {
-          // Update progress for this specific file
           const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
           setUploadProgress(percentCompleted);
         }
       });
       
-      // Return the S3 object key to be stored in your database
       return key;
       
     } catch (error) {
@@ -449,7 +407,6 @@ const removePhoto = (index: number) => {
     }
   };
 
-  // Validate form before submission
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -464,14 +421,12 @@ const removePhoto = (index: number) => {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      // Show errors and don't proceed
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-    // Upload all images to S3
     const uploadedPhotos: { s3Key: string; isMainPhoto: boolean }[] = [];
     
     for (const photo of photos) {
@@ -483,15 +438,14 @@ const removePhoto = (index: number) => {
       });
     }
       
-      // Prepare the car entry data
-      // Replace this part in the handleSubmit function:
+     
         const entryData = {
             userEmail: user?.userEmail || "",
             carName: `${carDetails.year} ${carDetails.make} ${carDetails.model} ${carDetails.trim}`.trim(),
             carMake: carDetails.make,
             carModel: carDetails.model,
             carYear: carDetails.year,
-            carColor: carDetails.color, // You might want to add this field to your form
+            carColor: carDetails.color, 
             carTrim: carDetails.trim,
             description,
             totalMods: Mods.length,
@@ -501,21 +455,17 @@ const removePhoto = (index: number) => {
             engine: carDetails.engine,
             transmission: carDetails.transmission,
             drivetrain: carDetails.drivetrain,
-            // Change these lines to use undefined instead of null
-            horsepower: undefined, // Changed from null to undefined
-            torque: undefined,     // Changed from null to undefined
+            horsepower: undefined, 
+            torque: undefined,     
             
-            // Associated data
             photos: uploadedPhotos,
             tags: selectedTags,
             mods: Mods.map(mod => mod.id),
         
         };
       
-      // Send to backend via your addCar function
       await addCar(entryData);
       
-      // Success - close modal and reset form
       resetForm();
       onOpenChange(false);
       
@@ -529,13 +479,11 @@ const removePhoto = (index: number) => {
     }
   }
 
-  // Reset form after submission or when closing modal
   const resetForm = () => {
     setVin("");
     setVinLookupSuccess(false);
     setSelectedTags([]);
     setPhotoFiles([]);
-    // Revoke object URLs to prevent memory leaks
     photoPreview.forEach(url => URL.revokeObjectURL(url));
     setPhotoPreview([]);
     setDescription("");
@@ -559,7 +507,7 @@ const removePhoto = (index: number) => {
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
-      if (!newOpen) resetForm(); // Reset form when closing
+      if (!newOpen) resetForm(); 
       onOpenChange(newOpen);
     }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -568,7 +516,6 @@ const removePhoto = (index: number) => {
           <DialogDescription>Enter your car details and modifications to showcase your build</DialogDescription>
         </DialogHeader>
 
-        {/* Hidden file input for photos */}
         <input
           type="file"
           ref={fileInputRef}
@@ -829,7 +776,6 @@ const removePhoto = (index: number) => {
          </TabsContent>
 
          <TabsContent value="mods" className="space-y-6 py-4">
-           {/* Mod Category Tabs */}
            <DialogHeader>
                     <DialogTitle className="text-xl text-white">Modifications</DialogTitle>
                     <DialogDescription>Add modifications to your car</DialogDescription>
@@ -844,32 +790,26 @@ const removePhoto = (index: number) => {
                 <TabsTrigger value="brakes">Brakes</TabsTrigger>
             </TabsList>
 
-            {/* Exterior Mods Tab */}
             <TabsContent value="exterior" className="space-y-4 py-4">
                 {renderModSelectionForCategory("exterior")}
             </TabsContent>
 
-            {/* Interior Mods Tab */}
             <TabsContent value="interior" className="space-y-4 py-4">
                 {renderModSelectionForCategory("interior")}
             </TabsContent>
 
-            {/* Drivetrain Mods Tab */}
             <TabsContent value="drivetrain" className="space-y-4 py-4">
                 {renderModSelectionForCategory("drivetrain")}
             </TabsContent>
 
-            {/* Wheels Mods Tab */}
             <TabsContent value="wheels" className="space-y-4 py-4">
                 {renderModSelectionForCategory("wheels")}
             </TabsContent>
 
-            {/* Suspension Mods Tab */}
             <TabsContent value="suspension" className="space-y-4 py-4">
                 {renderModSelectionForCategory("suspension")}
             </TabsContent>
 
-            {/* Brakes Mods Tab */}
             <TabsContent value="brakes" className="space-y-4 py-4">
                 {renderModSelectionForCategory("brakes")}
             </TabsContent>
@@ -878,7 +818,6 @@ const removePhoto = (index: number) => {
             <div>
                 
                 
-                {/* Selected mods container */}
                 <div className="mt-4 mb-6">
                     <Label className="block mb-2 text-white">Selected Modifications</Label>
                     <div className="flex flex-wrap gap-2 p-3 bg-gray-800/50 rounded-md min-h-[60px]">

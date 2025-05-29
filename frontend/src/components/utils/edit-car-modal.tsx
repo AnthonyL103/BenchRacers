@@ -33,7 +33,6 @@ import {
 } from "../ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 
-// Types for mods
 interface Mod {
   id: number;
   brand: string;
@@ -43,9 +42,8 @@ interface Mod {
   link: string;
 }
 
-// Import your CarCreate type or define it here
 interface CarCreate {
-  entryID?: number; // Optional for new cars
+  entryID?: number; 
   userEmail: string;
   carName: string;
   carMake: string;
@@ -71,7 +69,7 @@ interface CarCreate {
 interface EditCarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  car: any; // Replace with your car type if you have one
+  car: any; 
 }
 
 export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
@@ -81,33 +79,25 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   const [activeTab, setActiveTab] = useState("basic")
   const [activeModTab, setActiveModTab] = useState("exterior")
 
-  const [vin, setVin] = useState("")
-  const [isLookingUpVin, setIsLookingUpVin] = useState(false)
-  const [vinLookupSuccess, setVinLookupSuccess] = useState(false)
+
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [description, setDescription] = useState("")
   
   
-  // Existing photos from the car
   const [existingPhotos, setExistingPhotos] = useState<any[]>([])
   
-  // Preset mods state
   const [mods, setMods] = useState<Mod[]>([])
   
-  // Available mods from the database
   const [availableMods, setAvailableMods] = useState<Mod[]>([])
   
-  // Loading states
   const [isLoadingMods, setIsLoadingMods] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   
-  // Form validation
   const [errors, setErrors] = useState<Record<string, string>>({})
   
-  // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [modsSearchState, setModsSearchState] = useState({
@@ -143,35 +133,29 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   
   const [totalCost, setTotalCost] = useState(0)
 
-  // Load car data when component mounts or car changes
   useEffect(() => {
     if (car && open) {
-      // Initialize state with car data
       const tags = Array.isArray(car.tags) 
         ? car.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.tagName) 
         : [];
       
       setSelectedTags(tags);
       
-      // Handle photos - initialize from car.photos or car.allPhotoKeys
       if (car.photos && Array.isArray(car.photos)) {
         setExistingPhotos(car.photos);
-        // Extract s3Keys for preview
         const keys = car.photos.map((p: any) => p.s3Key);
         setPhotoPreview(keys);
       } else if (car.allPhotoKeys && Array.isArray(car.allPhotoKeys)) {
         setPhotoPreview(car.allPhotoKeys);
-        // Convert to photo objects
         const photoObjects = car.allPhotoKeys.map((key: string, index: number) => ({
           s3Key: key,
-          isMainPhoto: index === 0 // First one is main by default
+          isMainPhoto: index === 0 
         }));
         setExistingPhotos(photoObjects);
       }
       
       setDescription(car.description || "");
       
-      // Initialize carDetails
       setCarDetails({
         entryID: car.entryID || "",
         make: car.carMake || "",
@@ -185,10 +169,9 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         drivetrain: car.drivetrain || "",
       });
       
-      // Initialize mods
       if (car.mods && Array.isArray(car.mods)) {
         const formattedMods = car.mods.map((mod: any) => ({
-            id: mod.modID || mod.id, // Normalize ID format
+            id: mod.modID || mod.id, 
             brand: mod.brand,
             cost: mod.cost,
             description: mod.description,
@@ -201,12 +184,10 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     }
   }, [car, open]);
 
-  // Fetch available mods when the component mounts
   useEffect(() => {
     fetchAvailableMods();
   }, []);
   
-  // Calculate total cost when mods change
   useEffect(() => {
     const total = mods.reduce((sum, mod) => sum + mod.cost, 0);
     setTotalCost(total);
@@ -216,7 +197,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     try {
       const token = localStorage.getItem('token');
       
-      // Fetch mods
       setIsLoadingMods(true);
       const modsResponse = await axios.get('https://api.benchracershq.com/api/garage/mods', {
         headers: { 
@@ -225,13 +205,10 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         }   
       });
       
-      // Handle the data based on structure (whether it's flat or grouped)
       if (Array.isArray(modsResponse.data.mods)) {
-        // If backend returns flat array (with the fix above)
         setAvailableMods(modsResponse.data.mods);
       } else {
-        // If backend still returns grouped object format
-        // Convert grouped object to flat array
+        
         const flatMods = Object.entries(modsResponse.data.mods as Record<string, any[]>).flatMap(([category, mods]) => 
           mods.map(mod => ({...mod, category}))
         );
@@ -263,8 +240,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   if (!selectedTags.includes(tag)) {
     setSelectedTags([...selectedTags, tag]);
   } else {
-    // Optional: Show a message that tag is already added
-    // You could use a toast notification here instead of an alert
+    
     console.log(`Tag "${tag}" is already added`);
   }
 };
@@ -274,17 +250,14 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   };
   
   const getFilteredModsByCategory = (category: string) => {
-    // First filter by category
     const modsByCategory = availableMods.filter(mod => 
       mod.category.toLowerCase() === category.toLowerCase()
     );
     
-    // If no search term, return all mods for this category
     if (!modsSearchState[category as keyof typeof modsSearchState].trim()) {
       return modsByCategory;
     }
     
-    // Further filter by search term
     const searchLower = modsSearchState[category as keyof typeof modsSearchState].toLowerCase();
     return modsByCategory.filter(mod => 
       mod.brand.toLowerCase().includes(searchLower) ||
@@ -292,27 +265,21 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     ); 
   };
 
-  // Add a mod to selected mods
-  // Enhanced addMod function to prevent duplicates
+  
  const addMod = (mod: Mod) => {
-  // Check if mod already exists by ID
   if (!mods.some(m => m.id === mod.id)) {
     setMods([...mods, mod]);
   } else {
-    // Optional: Show a message that mod is already added
     alert(`${mod.brand} is already added to your build`);
   }
   
-  // Close the dropdown for the current category
   updateOpenState(mod.category.toLowerCase(), false);
 };
   
-  // Remove a mod from selected mods
   const removeMod = (id: number) => {
     setMods(mods.filter(mod => mod.id !== id));
   };
   
-  // Create a reusable mod selection UI for each category
   const renderModSelectionForCategory = (category: string) => {
     const filteredMods = getFilteredModsByCategory(category);
     const isOpen = openModsState[category as keyof typeof openModsState];
@@ -387,17 +354,14 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     );
   };
   
-  // Trigger file input click
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
-  // Handle file selection
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
   
-    // Calculate how many more photos we can add
     const remainingSlots = 6 - (photoFiles.length + existingPhotos.length);
     
     if (remainingSlots <= 0) {
@@ -405,42 +369,32 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
       return;
     }
   
-    // Limit to remaining slots
     const newFiles = Array.from(files).slice(0, remainingSlots);
   
-    // Update files array
     setPhotoFiles(prevFiles => [...prevFiles, ...newFiles]);
   
-    // Create preview URLs for the new files
     const newPreviews = newFiles.map(file => URL.createObjectURL(file));
     setPhotoPreview(prevPreviews => [...prevPreviews, ...newPreviews]);
     
-    // Reset the file input so the same file can be selected again if needed
     e.target.value = '';
   };
 
   const removePhoto = (index: number) => {
-    // Check if this is an existing photo or a new upload
     if (index < existingPhotos.length) {
-      // Remove from existing photos
       const newExistingPhotos = [...existingPhotos];
       newExistingPhotos.splice(index, 1);
       setExistingPhotos(newExistingPhotos);
       
-      // Also update photoPreview
       const newPreviews = [...photoPreview];
       newPreviews.splice(index, 1);
       setPhotoPreview(newPreviews);
     } else {
-      // Calculate the index in the photoFiles array
       const fileIndex = index - existingPhotos.length;
       
-      // Remove from photoFiles
       const newFiles = [...photoFiles];
       newFiles.splice(fileIndex, 1);
       setPhotoFiles(newFiles);
       
-      // Remove from preview
       const newPreviews = [...photoPreview];
       newPreviews.splice(index, 1);
       URL.revokeObjectURL(photoPreview[index]);
@@ -448,28 +402,21 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     }
   };
 
-  // Set a photo as main photo
   const setMainPhoto = (index: number) => {
     if (index < existingPhotos.length) {
-      // Update existing photos
       const newExistingPhotos = existingPhotos.map((photo, i) => ({
         ...photo,
         isMainPhoto: i === index
       }));
       setExistingPhotos(newExistingPhotos);
     } else {
-      // This is a new photo, mark it as main
-      // We'll handle this during upload
-      // For now, just update UI
+      
       alert("New photos will be set as main when you save changes.");
     }
   };
 
-  // Upload image to S3
   const uploadToS3 = async (file: File): Promise<string> => {
-    try {
-      // First request a presigned URL from your backend
-      const presignedUrlResponse = await axios.get('https://api.benchracershq.com/api/garage/s3/presigned-url', {
+    try {      const presignedUrlResponse = await axios.get('https://api.benchracershq.com/api/garage/s3/presigned-url', {
         params: { 
           fileName: file.name,
           fileType: file.type
@@ -481,19 +428,16 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
       
       const { url, key } = presignedUrlResponse.data;
       
-      // Upload directly to S3 using the presigned URL
       await axios.put(url, file, {
         headers: {
           'Content-Type': file.type
         },
         onUploadProgress: (progressEvent) => {
-          // Update progress for this specific file
           const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
           setUploadProgress(percentCompleted);
         }
       });
       
-      // Return the S3 object key to be stored in your database
       return key;
       
     } catch (error) {
@@ -502,7 +446,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     }
   };
 
-  // Validate form before submission
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -519,14 +462,12 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
 
   const handleSubmit = async () => {
     if (!validateForm()) {
-      // Show errors and don't proceed
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-      // First, upload all new images to S3
       const uploadedPhotos: { s3Key: string; isMainPhoto: boolean }[] = [];
       
       for (let i = 0; i < photoFiles.length; i++) {
@@ -534,22 +475,19 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         const key = await uploadToS3(photoFiles[i]);
         uploadedPhotos.push({
           s3Key: key,
-          isMainPhoto: false // New uploads won't be main by default
+          isMainPhoto: false 
         });
       }
       
-      // Combine existing photos with new uploads
       let allPhotos = [
         ...existingPhotos,
         ...uploadedPhotos
       ];
       
-      // If there are no photos marked as main, make the first one the main photo
       if (allPhotos.length > 0 && !allPhotos.some(p => p.isMainPhoto)) {
         allPhotos[0].isMainPhoto = true;
       }
       
-      // Prepare the car entry data
       const entryData: CarCreate = {
         entryID: carDetails.entryID || undefined,
         userEmail: user?.userEmail || "",
@@ -570,16 +508,13 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         horsepower: car.horsepower,
         torque: car.torque,
         
-        // Associated data
         photos: allPhotos,
         tags: selectedTags,
         mods: mods.map(mod => mod.id),
       };
       
-      // Send to backend via your updateCar function
       await updateCar(entryData.entryID ?? 0, entryData);
       
-      // Success - close modal
       onOpenChange(false);
       
     } catch (error) {
@@ -595,8 +530,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
       if (!newOpen) {
-        // If closing, you might want to reset the form or refresh data
-        // resetForm(); 
+        
       }
       onOpenChange(newOpen);
     }}>
@@ -606,7 +540,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
           <DialogDescription>Update your car details and modifications</DialogDescription>
         </DialogHeader>
 
-        {/* Hidden file input for photos */}
         <input
           type="file"
           ref={fileInputRef}
@@ -782,14 +715,12 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                       <X className="h-4 w-4 bg-red-500 hover:bg-red-400" />
                     </button>
                     
-                    {/* Main photo indicator */}
                     {index < existingPhotos.length && existingPhotos[index].isMainPhoto && (
                       <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                         Main Photo
                       </div>
                     )}
                     
-                    {/* Set as main button */}
                     {index < existingPhotos.length && !existingPhotos[index].isMainPhoto && (
                       <button
                         onClick={() => setMainPhoto(index)}
@@ -835,7 +766,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
               <DialogDescription>Update modifications for your car</DialogDescription>
             </DialogHeader>
             
-            {/* Selected mods container */}
             <div className="mt-4 mb-6">
               <Label className="block mb-2 text-white">Selected Modifications</Label>
               <div className="flex flex-wrap gap-2 p-3 bg-gray-800/50 rounded-md min-h-[60px]">
@@ -861,7 +791,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
               </div>
             </div>
             
-            {/* Mod Category Tabs */}
             <Tabs value={activeModTab} onValueChange={setActiveModTab} className="mt-4">
               <TabsList className="grid grid-cols-6">
                 <TabsTrigger value="exterior">Exterior</TabsTrigger>
@@ -872,32 +801,26 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                 <TabsTrigger value="brakes">Brakes</TabsTrigger>
               </TabsList>
 
-              {/* Exterior Mods Tab */}
               <TabsContent value="exterior" className="space-y-4 py-4">
                 {renderModSelectionForCategory("exterior")}
               </TabsContent>
 
-              {/* Interior Mods Tab */}
               <TabsContent value="interior" className="space-y-4 py-4">
                 {renderModSelectionForCategory("interior")}
               </TabsContent>
 
-              {/* Drivetrain Mods Tab */}
               <TabsContent value="drivetrain" className="space-y-4 py-4">
                 {renderModSelectionForCategory("drivetrain")}
               </TabsContent>
 
-              {/* Wheels Mods Tab */}
               <TabsContent value="wheels" className="space-y-4 py-4">
                 {renderModSelectionForCategory("wheels")}
               </TabsContent>
 
-              {/* Suspension Mods Tab */}
               <TabsContent value="suspension" className="space-y-4 py-4">
                 {renderModSelectionForCategory("suspension")}
               </TabsContent>
 
-              {/* Brakes Mods Tab */}
               <TabsContent value="brakes" className="space-y-4 py-4">
                 {renderModSelectionForCategory("brakes")}
               </TabsContent>

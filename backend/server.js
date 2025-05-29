@@ -10,6 +10,7 @@ const dbconfig_1 = require("./src/database/dbconfig");
 const auth_1 = __importDefault(require("./src/database/routes/auth"));
 const garage_1 = __importDefault(require("./src/database/routes/garage"));
 const admin_1 = __importDefault(require("./src/database/routes/admin"));
+
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());

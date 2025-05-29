@@ -13,7 +13,6 @@ import { getUserRegion } from '../utils/getLocation';
 import { useLocation } from "react-router-dom";
 
 export default function AuthPage() {
-  // Use React Router's useSearchParams hook
   const { isLoading, login, setLoading, setError } = useUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -21,7 +20,6 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState(""); 
   const [errorMessage, setErrorMessage] = useState("");
   
-  // Get the signup parameter from the URL
   const showSignup = searchParams.get("signup") === "true";
   const [activeTab, setActiveTab] = useState(showSignup ? "signup" : "login");
   
@@ -29,7 +27,6 @@ export default function AuthPage() {
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
   
-  // Handle verification messages
   useEffect(() => {
     if (location.state && 
         'verificationMessage' in location.state && 
@@ -37,12 +34,10 @@ export default function AuthPage() {
       setVerificationMessage(location.state.verificationMessage as string);
       setVerificationStatus(location.state.verificationStatus as "success" | "error");
       
-      // Clear the message after 5 seconds
       const timer = setTimeout(() => {
         setVerificationMessage(null);
         setVerificationStatus(null);
         
-        // Clear the location state to prevent showing the message again on refresh
         window.history.replaceState({}, document.title);
       }, 5000);
       
@@ -50,7 +45,6 @@ export default function AuthPage() {
     }
   }, [location]);
 
-  // Update URL when tab changes
   useEffect(() => {
     if (activeTab === "signup") {
       navigate("/auth?signup=true", { replace: true });
@@ -59,29 +53,24 @@ export default function AuthPage() {
     }
   }, [activeTab, navigate]);
   
-  // Clear error when switching tabs
   useEffect(() => {
     setErrorMessage("");
     setError(null);
   }, [activeTab, setError]);
 
-  // Simplified login handler
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Set loading state
     setLoading(true);
-    setErrorMessage(""); // Clear any previous error messages
+    setErrorMessage(""); 
     
     try {
-      // Get form data
       const formData = new FormData(e.currentTarget);
       const email = formData.get('email') as string;
       const password = formData.get('password') as string;
       
       console.log("Attempting login with:", { email });
       
-      // Make API call
       const response = await fetch('https://api.benchracershq.com/api/users/login', {
         method: 'POST',
         headers: {
@@ -90,12 +79,10 @@ export default function AuthPage() {
         body: JSON.stringify({ email, password }),
       });
       
-      // Parse the response data
       const data = await response.json();
       console.log("Login response:", data);
       
       if (!response.ok) {
-        // Handle specific error codes
         if (data.errorCode === 'EMAIL_NOT_VERIFIED') {
           setErrorMessage("Please verify your email before logging in. Check your inbox for a verification email.");
         } else if (data.errorCode === 'INVALID_CREDENTIALS') {
@@ -110,14 +97,11 @@ export default function AuthPage() {
         return;
       }
       
-      // Handle successful login
       if (data.success && data.token) {
         console.log("Login successful, user data:", data.user);
         
-        // Call the login function from context with user data and token
         login(data.user, data.token);
         
-        // Navigate to home page
         navigate('/');
       } else {
         setErrorMessage('Invalid response from server');
@@ -132,7 +116,6 @@ export default function AuthPage() {
     }
   };
   
-  // Simplified signup handler
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -146,16 +129,13 @@ export default function AuthPage() {
     }
     
     try {
-      // Get form data
       const formData = new FormData(e.currentTarget);
       const email = formData.get('signup-email') as string;
       const name = formData.get('name') as string;
       
-      // Get user's region
       const region = await getUserRegion();
       console.log("User region:", region);
       
-      // Make API call with region included
       const response = await fetch('https://api.benchracershq.com/api/users/signup', {
         method: 'POST',
         headers: {
@@ -164,12 +144,10 @@ export default function AuthPage() {
         body: JSON.stringify({ email, name, password, region }),
       });
     
-      // Parse the response data
       const data = await response.json();
       console.log("Signup response:", data);
       
       if (!response.ok) {
-        // Handle specific error codes
         if (data.errorCode === 'USER_EXISTS') {
           setErrorMessage('An account with this email already exists.');
         } else if (data.errorCode === 'USER_EXISTS_NOT_VERIFIED') {
@@ -186,12 +164,9 @@ export default function AuthPage() {
         return;
       }
       
-      // Handle successful signup
       if (data.success && data.user && data.token) {
-        // Store the token and user data
         login(data.user, data.token);
         
-        // Show success alert
         alert("Account created successfully! Please check your email to verify your account.");
       } else {
         setErrorMessage('Invalid response from server');

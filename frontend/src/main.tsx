@@ -7,7 +7,6 @@ import { GarageProvider } from './components/contexts/garagecontext';
 
 const rootElement = document.getElementById('root');
 
-// Add a null check and type assertion
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement as HTMLElement);
   root.render(

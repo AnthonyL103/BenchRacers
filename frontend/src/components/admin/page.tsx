@@ -37,7 +37,7 @@ const [loading, setLoading] = useState(false)
     const fetchData = async () => {
       setLoading(true)
       try {
-        const token = localStorage.getItem("token") // or however you're storing it
+        const token = localStorage.getItem("token") 
         let params: any = {}
 
         if (search) params.search = search
@@ -529,10 +529,9 @@ const [loading, setLoading] = useState(false)
   )
 }
 
-// Add Button Component that shows appropriate modal for each entity type
 function AddEntityButton({ entityType }: { entityType: string }) {
   const [open, setOpen] = useState(false)
-  const buttonLabel = `Add ${entityType}`  // Remove 's' from plural
+  const buttonLabel = `Add ${entityType}`  
   
   const getEmptyData = () => {
     switch(entityType) {
@@ -629,7 +628,6 @@ function AddEntityButton({ entityType }: { entityType: string }) {
   )
 }
 
-// User Modal Component
 interface UserData {
   userEmail: string;
   name: string;
@@ -664,7 +662,7 @@ function UserModal({
   const [name, setName] = useState(userData?.name || "")
   const [password, setPassword] = useState("")
   const [region, setRegion] = useState(userData?.region || "")
-  const [totalEntries] = useState(userData?.totalEntries || 0) // display only
+  const [totalEntries] = useState(userData?.totalEntries || 0) 
   const [isVerified, setIsVerified] = useState(userData?.isVerified || false)
   const [isEditor, setIsEditor] = useState(userData?.isEditor || false)
 
@@ -794,7 +792,6 @@ function UserModal({
   )
 }
 
-// Entry Modal Component
 interface EntryData {
   entryID?: number;
   email: string;
@@ -949,7 +946,6 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
     )
   }
 
-// Mod Modal Component
 interface ModData {
   modID?: number;
   brand: string;
@@ -1059,7 +1055,6 @@ const handleDelete = async () => {
   )
 }
 
-// Tag Modal Component
 interface TagData {
   tagID: number;
   tagName: string;
@@ -1155,7 +1150,6 @@ function TagModal({
     </Dialog>
   )
 }
-// Photo Modal Component
 interface PhotoData {
   photoID: number;
   entryID: number;
@@ -1275,7 +1269,6 @@ function PhotoModal({
   )
 }
 
-// Award Modal Component
 interface AwardData {
   awardID: number;
   userEmail: string;

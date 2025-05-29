@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Input } from "../ui/input"
 import { Bell, Heart, Search, User, UserMinus, UserPlus } from "lucide-react"
 
-// Mock data for demonstration
 const followedUsers = [
   {
     id: "1",
@@ -152,7 +151,6 @@ export default function FollowingPage() {
   const [activeTab, setActiveTab] = useState("feed")
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Filter builds based on search query
   const filteredBuilds = followedUsers.flatMap((user) =>
     user.cars
       .filter(
@@ -163,7 +161,6 @@ export default function FollowingPage() {
       .map((car) => ({ ...car, user })),
   )
 
-  // Sort builds by update time (newest first)
   const sortedBuilds = [...filteredBuilds].sort((a, b) => (a.isNew && !b.isNew ? -1 : !a.isNew && b.isNew ? 1 : 0))
 
   return (

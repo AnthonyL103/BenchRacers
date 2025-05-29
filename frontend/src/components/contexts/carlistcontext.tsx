@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
-// Define the Car type based on your database schema
 interface Car {
   entryID: number | null;
   userID: string;
@@ -15,7 +14,6 @@ interface Car {
   upvotes: number;
 }
 
-// Define the initial state
 interface CarState {
   cars: Car[];
   selectedCar: Car | null;
@@ -23,13 +21,11 @@ interface CarState {
   error: string | null;
 }
 
-// Action type interface
 interface CarAction {
   type: string;
   payload?: any;
 }
 
-// Initial state
 const initialState: CarState = {
   cars: [],
   selectedCar: null,
@@ -37,7 +33,6 @@ const initialState: CarState = {
   error: null
 };
 
-// Get initial state from localStorage if available
 const getInitialState = (): CarState => {
   try {
     const savedState = localStorage.getItem('carState');
@@ -48,7 +43,6 @@ const getInitialState = (): CarState => {
   }
 };
 
-// Action types
 export const CarActionTypes = {
   FETCH_CARS_REQUEST: 'FETCH_CARS_REQUEST',
   FETCH_CARS_SUCCESS: 'FETCH_CARS_SUCCESS',
@@ -68,7 +62,6 @@ export const CarActionTypes = {
   CLEAR_ERROR: 'CLEAR_ERROR'
 };
 
-// Reducer function
 function carReducer(state: CarState, action: CarAction): CarState {
   switch (action.type) {
     case CarActionTypes.FETCH_CARS_REQUEST:
@@ -187,19 +180,15 @@ function carReducer(state: CarState, action: CarAction): CarState {
   }
 }
 
-// Create context with explicit types
 type CarStateContextType = CarState;
 type CarDispatchContextType = React.Dispatch<CarAction>;
 
-// Create context objects with default values
 const CarStateContext = createContext<CarStateContextType>(initialState);
 const CarDispatchContext = createContext<CarDispatchContextType>(() => null);
 
-// Provider component
 export function CarProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(carReducer, getInitialState());
 
-  // This effect ensures state is saved whenever it changes
   useEffect(() => {
     localStorage.setItem('carState', JSON.stringify(state));
   }, [state]);
@@ -213,7 +202,6 @@ export function CarProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Custom hooks to use state and dispatch
 export function useCarState() {
   const context = useContext(CarStateContext);
   if (!context) {
@@ -230,7 +218,6 @@ export function useCarDispatch() {
   return context;
 }
 
-// Hook that provides both state and dispatch
 export function useCar() {
   const state = useCarState();
   const dispatch = useCarDispatch();

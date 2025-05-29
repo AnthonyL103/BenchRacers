@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// Define the User type based on your database schema
 export interface User {
   userEmail: string;
   name: string;
@@ -13,7 +12,6 @@ export interface User {
 }
 
 
-// Define the context state
 interface UserContextState {
   user: User | null;
   isAuthenticated: boolean;
@@ -25,10 +23,8 @@ interface UserContextState {
   setLoading: (isLoading: boolean) => void;
 }
 
-// Create context
 const UserContext = createContext<UserContextState | undefined>(undefined);
 
-// Get initial state from localStorage
 const getStoredUser = (): User | null => {
   try {
     const storedUser = localStorage.getItem('user');
@@ -39,14 +35,12 @@ const getStoredUser = (): User | null => {
   }
 };
 
-// Provider component
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(getStoredUser());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getStoredUser());
   const [isLoading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Login function
   const login = (userData: User, token: string) => {
     console.log("Setting user in context:", userData);
     setUser(userData);
@@ -56,7 +50,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('token', token);
   };
 
-  // Logout function
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
@@ -64,7 +57,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token');
   };
 
-  // Check if token exists on load
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -90,7 +82,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Hook to use the user context
 export function useUser() {
   const context = useContext(UserContext);
   if (context === undefined) {
