@@ -13,12 +13,16 @@ import { Input } from "../ui/input"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
 import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" 
 import { getS3ImageUrl } from "../utils/s3helper"
+import { set } from "date-fns"
 
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState("swipe")
   const [currentCarIndex, setCurrentCarIndex] = useState(0)
   const [swipedCars, setSwipedCars] = useState<string[]>([])
   const [likedCars, setLikedCars] = useState<string[]>([])
+  const [filteredcars, setFilteredCars] = useState<typeof cars>([])
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
   
   const { cars, isLoading, error } = useCarState()
   const dispatch = useCarDispatch()
@@ -39,6 +43,33 @@ export default function ExplorePage() {
     console.log("🟦 Cars state updated in component:", cars);
   }, [cars])
   
+  const handlefilter = (filter: string) => {
+    if (activeFilter === filter) {
+        setActiveFilter(null);
+        setFilteredCars(cars); 
+        return;
+    }
+    
+    setActiveFilter(filter);
+    
+    if (filter === "all") {
+        setFilteredCars(cars);
+    }
+    else if (filter === "JDM") {
+        console.log(cars);
+        setFilteredCars(cars.filter(car => car.tags?.includes("JDM")));
+    }
+    else if (filter === "European") {
+        setFilteredCars(cars.filter(car => car.tags?.includes("European")));
+    }
+    else if (filter === "American") {
+        setFilteredCars(cars.filter(car => car.tags?.includes("American")));
+    }
+    else {
+        console.error("Unknown filter type:", filter);
+    }
+};
+  
   const handleLike = async (carId: string) => {
     console.log("🚀 likeCars called with carID:", carId)
     try {
@@ -46,6 +77,7 @@ export default function ExplorePage() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'authorization': `Bearer ${localStorage.getItem('token') || ''}`
             },
             body: JSON.stringify({ carId })
         });
@@ -56,6 +88,7 @@ export default function ExplorePage() {
         const data = await response.json();
         console.log("🚀 likeCars API response data:", data);
         
+        console.log("🚀 likeCars success:", data.success);
         if (data.success) {
             setSwipedCars(prev => [...prev, carId])
             goToNextCar()
@@ -113,6 +146,8 @@ export default function ExplorePage() {
         type: CarActionTypes.FETCH_CARS_SUCCESS,
         payload: newCars
       });
+      
+      setFilteredCars(cars);
       
       console.log("🚀 FETCH_CARS_SUCCESS dispatched");
       
@@ -270,25 +305,37 @@ export default function ExplorePage() {
                 <TabsTrigger value="grid">Grid View</TabsTrigger>
                 <TabsTrigger value="swipe">Swipe View</TabsTrigger>
               </TabsList>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  All
+             <div className="flex gap-2">
+                <Button 
+                    variant={activeFilter === "JDM" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => handlefilter("JDM")}
+                    className={activeFilter === "JDM" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                    JDM
                 </Button>
-                <Button variant="outline" size="sm">
-                  JDM
+                <Button 
+                    variant={activeFilter === "European" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => handlefilter("European")}
+                    className={activeFilter === "European" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                    European
                 </Button>
-                <Button variant="outline" size="sm">
-                  European
+                <Button 
+                    variant={activeFilter === "American" ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => handlefilter("American")}
+                    className={activeFilter === "American" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                    American
                 </Button>
-                <Button variant="outline" size="sm">
-                  American
-                </Button>
-              </div>
+                </div>
             </div>
 
             <TabsContent value="grid" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {cars.map((car, i) => (
+                {filteredcars.map((car, i) => (
                   <Link href={`/car/${car.entryID}`} key={car.entryID}>
                     <Card className="overflow-hidden bg-gray-900 border-gray-800 swipe-card car-card-shadow">
                       <div className="relative h-64">
