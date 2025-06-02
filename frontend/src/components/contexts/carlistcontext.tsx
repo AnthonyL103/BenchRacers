@@ -46,16 +46,6 @@ const initialState: CarState = {
   error: null
 };
 
-const getInitialState = (): CarState => {
-  try {
-    const savedState = localStorage.getItem('carState');
-    return savedState ? JSON.parse(savedState) : initialState;
-  } catch (error) {
-    console.error('Error loading state from localStorage:', error);
-    return initialState;
-  }
-};
-
 export const CarActionTypes = {
   FETCH_CARS_REQUEST: 'FETCH_CARS_REQUEST',
   FETCH_CARS_SUCCESS: 'FETCH_CARS_SUCCESS',
@@ -77,26 +67,39 @@ export const CarActionTypes = {
 };
 
 function carReducer(state: CarState, action: CarAction): CarState {
+  console.log('🔴 Reducer called:', action.type, 'Payload:', action.payload);
+  console.log('🔴 Current state before:', state);
+  
   switch (action.type) {
     case CarActionTypes.FETCH_CARS_REQUEST:
-      return {
+      const requestState = {
         ...state,
         isLoading: true,
         error: null
       };
+      console.log('🟡 FETCH_CARS_REQUEST new state:', requestState);
+      return requestState;
+      
     case CarActionTypes.FETCH_CARS_SUCCESS:
-      return {
+      const successState = {
         ...state,
         cars: action.payload,
         isLoading: false,
         error: null
       };
+      console.log('🟢 FETCH_CARS_SUCCESS new state:', successState);
+      console.log('🟢 Cars array length:', Array.isArray(action.payload) ? action.payload.length : 'Not an array');
+      return successState;
+      
     case CarActionTypes.FETCH_CARS_FAILURE:
-      return {
+      const failureState = {
         ...state,
         isLoading: false,
         error: action.payload
       };
+      console.log('🔴 FETCH_CARS_FAILURE new state:', failureState);
+      return failureState;
+      
     case CarActionTypes.ADD_CAR_REQUEST:
       return {
         ...state,
@@ -202,6 +205,7 @@ function carReducer(state: CarState, action: CarAction): CarState {
         error: null
       };
     default:
+      console.log('🔴 Unknown action type:', action.type);
       return state;
   }
 }
@@ -213,11 +217,15 @@ const CarStateContext = createContext<CarStateContextType>(initialState);
 const CarDispatchContext = createContext<CarDispatchContextType>(() => null);
 
 export function CarProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(carReducer, getInitialState());
+  // TEMPORARILY DISABLE LOCALSTORAGE - use fresh state every time
+  const [state, dispatch] = useReducer(carReducer, initialState);
 
-  useEffect(() => {
-    localStorage.setItem('carState', JSON.stringify(state));
-  }, [state]);
+  // DISABLE localStorage for debugging
+  // useEffect(() => {
+  //   localStorage.setItem('carState', JSON.stringify(state));
+  // }, [state]);
+
+  console.log('🔵 CarProvider current state:', state);
 
   return (
     <CarStateContext.Provider value={state as CarStateContextType}>
@@ -233,6 +241,7 @@ export function useCarState() {
   if (!context) {
     throw new Error('useCarState must be used within a CarProvider');
   }
+  console.log('🔵 useCarState returning:', context);
   return context;
 }
 

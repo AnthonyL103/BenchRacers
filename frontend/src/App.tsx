@@ -13,6 +13,7 @@ import VerifyEmail from './components/auth/verify';
 import ForgotPasswordPage from './components/auth/forgotpassword';
 import ResetPasswordPage from './components/auth/resetpassword';
 import AdminPage from './components/admin/page';
+import { CarProvider } from './components/contexts/carlistcontext';
 
 
 const AnimatedRoutes = () => {
@@ -42,8 +43,10 @@ const AnimatedRoutes = () => {
 
 const App = () => {
   return (
-    <Router>      
+    <Router>     
+    <CarProvider>
         <AnimatedRoutes />
+    </CarProvider>
     </Router>
   );
 };

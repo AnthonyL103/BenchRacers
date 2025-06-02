@@ -153,14 +153,7 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
         errorCode: 'MISSING_CAR_ID'
       });
     }
-    
-    if (!req.user || !req.user.userEmail) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required to like cars',
-        errorCode: 'AUTH_REQUIRED'
-      });
-    }
+
     
     console.log('[EXPLORE] Processing like for car:', carId, 'by user:', req.user.userEmail);
     
