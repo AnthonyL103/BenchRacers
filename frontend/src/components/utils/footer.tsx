@@ -9,10 +9,8 @@ export function Footer() {
       <div className="container py-8 md:py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Car className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">Bench Racers</span>
-            </div>
+            <img src="/BenchRacersLogo.png" alt="Bench Racers Logo" className="bg-white h-20 w-20" />
+              
             <p className="text-sm text-gray-400">
               The ultimate platform for car enthusiasts to showcase, vote, and get inspired.
             </p>

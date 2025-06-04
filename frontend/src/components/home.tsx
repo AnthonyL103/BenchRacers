@@ -26,8 +26,10 @@ export default function Home() {
           </div>
           <div className="container relative z-10">
             <div className="max-w-2xl space-y-6">
-              <Badge className="text-lg py-1.5 px-3 bg-primary text-white">Bench Racers</Badge>
-              <h1 className="text-4xl md:text-6xl font-bold">Rate. Build. Inspire.</h1>
+               
+                <h1 className="text-4xl md:text-6xl font-bold">Rate. Build. Inspire.</h1>
+               
+              
               <p className="text-xl text-gray-200">
                 The ultimate platform for car enthusiasts to showcase their builds, vote on others, and get inspired.
               </p>
