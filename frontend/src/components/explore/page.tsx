@@ -490,16 +490,7 @@ const fetchCars = async () => {
                                 <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
                                 <span className="text-sm">{currentCar.upvotes || 0}</span>
                             </div>
-                            {currentCar.viewCount && (
-                                <div className="bg-black/70 rounded-full px-3 py-1">
-                                <span className="text-sm">{currentCar.viewCount} views</span>
-                                </div>
-                            )}
-                            {currentCar.commentCount && (
-                                <div className="bg-black/70 rounded-full px-3 py-1">
-                                <span className="text-sm">{currentCar.commentCount} comments</span>
-                                </div>
-                            )}
+
                             </div>
 
                             <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
@@ -615,7 +606,10 @@ const fetchCars = async () => {
                                 e.preventDefault();
                                 handleComment(currentCar.entryID?.toString() || "");
                             }}
-                            title={!isAuthenticated ? "Login to comment" : "Comment on this car"}
+                            title={!isAuthenticated 
+                                ? "Login to comment" 
+                                : `Comment on this car - ${currentCar.commentCount || 0} comments`
+                                }
                             >
                             <MessageCircle className="h-5 w-5 mr-2" />
                             {isAuthenticated ? 'Comment' : 'Login to Comment'}
@@ -692,14 +686,6 @@ const fetchCars = async () => {
                                 <span>${car.totalCost?.toLocaleString()}</span>
                             )}
                             </div>
-                            <div className="flex gap-3">
-                            {car.viewCount && (
-                                <span>{car.viewCount} views</span>
-                            )}
-                            {car.commentCount && (
-                                <span>{car.commentCount} comments</span>
-                            )}
-                            </div>
                         </div>
                         )}
 
@@ -732,7 +718,10 @@ const fetchCars = async () => {
                                 e.preventDefault();
                                 handleComment(car.entryID?.toString() || "");
                             }}
-                            title={!isAuthenticated ? "Login to comment" : "Comment on this car"}
+                            title={!isAuthenticated 
+                                ? "Login to comment" 
+                                : `Comment on this car - ${currentCar.commentCount || 0} comments`
+                                }
                             >
                             <MessageCircle className="h-4 w-4 mr-1" />
                             {isAuthenticated ? 'Comment' : 'Login to Comment'}
