@@ -17,6 +17,7 @@ interface Car {
   category: string;
   region: string;
   upvotes: number;
+  commentCount?: number;  // Add this line
   engine?: string;
   transmission?: string;
   drivetrain?: string;

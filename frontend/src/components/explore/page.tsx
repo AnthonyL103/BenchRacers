@@ -15,15 +15,23 @@ import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlist
 import { getS3ImageUrl } from "../utils/s3helper"
 import { set } from "date-fns"
 import { useUser } from '../contexts/usercontext';
+import { Textarea } from "../ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
 
 export default function ExplorePage() {
   const { user, isAuthenticated } = useUser();
-  const [activeTab, setActiveTab] = useState("swipe")
-  const [currentCarIndex, setCurrentCarIndex] = useState(0)
-  const [swipedCars, setSwipedCars] = useState<string[]>([])
-  const [likedCars, setLikedCars] = useState<string[]>([])
-  const [filteredcars, setFilteredCars] = useState<typeof cars>([])
+  const [activeTab, setActiveTab] = useState("swipe");
+  const [currentCarIndex, setCurrentCarIndex] = useState(0);
+  const [swipedCars, setSwipedCars] = useState<string[]>([]);
+  const [likedCars, setLikedCars] = useState<string[]>([]);
+  const [filteredcars, setFilteredCars] = useState<typeof cars>([]);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [comments, setComments] = useState<any[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   
   const { cars, isLoading, error } = useCarState()
@@ -105,20 +113,130 @@ export default function ExplorePage() {
   }
 };
 
-const handleComment = (carId: string) => {
+const fetchComments = async (entryID: string, page = 1, limit = 20) => {
+  try {
+    const response = await fetch(`https://api.benchracershq.com/api/explore/getcomments/${entryID}?page=${page}&limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': `Bearer ${localStorage.getItem('token') || ''}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch comments');
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    throw error;
+  }
+};
+
+const addComment = async (entryID: string, commentText: string, parentCommentID = null) => {
+  try {
+    const response = await fetch('https://api.benchracershq.com/api/explore/addcomments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': `Bearer ${localStorage.getItem('token') || ''}`
+      },
+      body: JSON.stringify({
+        entryID,
+        commentText,
+        parentCommentID
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to add comment');
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    throw error;
+  }
+};
+
+
+const handleComment = async (carId: string) => {
   if (!isAuthenticated) {
-    // Redirect to auth page or show modal
     window.location.href = '/auth';
     return;
   }
   
-  // Add your comment functionality here
-  console.log("Comment on car:", carId);
-  // For now, just redirect to the car detail page
-  window.location.href = `/car/${carId}`;
-};
+  setSelectedCarId(carId);
+  setShowCommentModal(true);
+  setIsLoadingComments(true);
   
-  const fetchCars = async () => {
+  try {
+    const commentsData = await fetchComments(carId);
+    if (commentsData.success) {
+      setComments(commentsData.data.comments);
+    }
+  } catch (error) {
+    console.error('Error loading comments:', error);
+  } finally {
+    setIsLoadingComments(false);
+  }
+};
+
+const handleSubmitComment = async () => {
+  if (!commentText.trim() || !selectedCarId || isSubmittingComment) return;
+  
+  setIsSubmittingComment(true);
+  
+  try {
+    const result = await addComment(selectedCarId, commentText.trim());
+    if (result.success) {
+      // Add new comment to the list
+      setComments(prev => [result.data, ...prev]);
+      setCommentText("");
+      
+      // Update the car's comment count in the local state
+      const updatedCars = cars.map(car => 
+        car.entryID?.toString() === selectedCarId 
+          ? { ...car, commentCount: (car.commentCount || 0) + 1 }
+          : car
+      );
+      
+      dispatch({
+        type: CarActionTypes.FETCH_CARS_SUCCESS,
+        payload: updatedCars
+      });
+    }
+  } catch (error) {
+    console.error('Error submitting comment:', error);
+    alert('Failed to submit comment. Please try again.');
+  } finally {
+    setIsSubmittingComment(false);
+  }
+};
+
+const CommentItem = ({ comment }: { comment: any }) => (
+  <div className="border-b border-gray-700 pb-3 mb-3 last:border-b-0">
+    <div className="flex justify-between items-start mb-2">
+      <span className="font-semibold text-white">{comment.userName}</span>
+      <span className="text-xs text-gray-400">
+        {new Date(comment.createdAt).toLocaleDateString()}
+      </span>
+    </div>
+    <p className="text-gray-300 text-sm">{comment.commentText}</p>
+    {comment.replies && comment.replies.length > 0 && (
+      <div className="ml-4 mt-3 space-y-2">
+        {comment.replies.map((reply: any) => (
+          <CommentItem key={reply.commentID} comment={reply} />
+        ))}
+      </div>
+    )}
+  </div>
+);
+  
+const fetchCars = async () => {
     console.log("🚀 fetchCars called");
     try {
       console.log("🚀 About to dispatch FETCH_CARS_REQUEST");
@@ -366,6 +484,7 @@ const handleComment = (carId: string) => {
                             </Link>
 
                             {/* Top stats overlay */}
+                           {/* Top stats overlay */}
                             <div className="absolute top-4 left-4 flex gap-2 z-10">
                             <div className="flex items-center gap-1 bg-black/70 rounded-full px-3 py-1">
                                 <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
@@ -374,6 +493,11 @@ const handleComment = (carId: string) => {
                             {currentCar.viewCount && (
                                 <div className="bg-black/70 rounded-full px-3 py-1">
                                 <span className="text-sm">{currentCar.viewCount} views</span>
+                                </div>
+                            )}
+                            {currentCar.commentCount && (
+                                <div className="bg-black/70 rounded-full px-3 py-1">
+                                <span className="text-sm">{currentCar.commentCount} comments</span>
                                 </div>
                             )}
                             </div>
@@ -557,18 +681,26 @@ const handleComment = (carId: string) => {
                         </div>
 
                         {/* Stats */}
-                        {(car.totalMods || car.totalCost || car.viewCount) && (
-                            <div className="flex justify-between text-xs text-gray-400">
+                        {/* Stats */}
+                        {(car.totalMods || car.totalCost || car.viewCount || car.commentCount) && (
+                        <div className="flex justify-between text-xs text-gray-400">
+                            <div className="flex gap-3">
                             {car.totalMods && (
                                 <span>{car.totalMods} mods</span>
                             )}
                             {car.totalCost && (
                                 <span>${car.totalCost?.toLocaleString()}</span>
                             )}
+                            </div>
+                            <div className="flex gap-3">
                             {car.viewCount && (
                                 <span>{car.viewCount} views</span>
                             )}
+                            {car.commentCount && (
+                                <span>{car.commentCount} comments</span>
+                            )}
                             </div>
+                        </div>
                         )}
 
                         {/* Description */}
@@ -654,6 +786,57 @@ const handleComment = (carId: string) => {
           </Tabs>
         </div>
       </main>
+       <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] bg-gray-900 text-white border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Comments</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Comment form */}
+            {isAuthenticated && (
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="Write a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                  rows={3}
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-400">
+                    {commentText.length}/1000 characters
+                  </span>
+                  <Button 
+                    onClick={handleSubmitComment}
+                    disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Comments list */}
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {isLoadingComments ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">Loading comments...</p>
+                </div>
+              ) : comments.length > 0 ? (
+                comments.map((comment) => (
+                  <CommentItem key={comment.commentID} comment={comment} />
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No comments yet. Be the first to comment!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Footer />
     </div>
   )
