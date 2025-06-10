@@ -699,6 +699,8 @@ function UserModal({
           ...payload,
         }, { headers })
       }
+      window.location.reload();
+
 
       onOpenChange(false)
     } catch (err) {
@@ -715,6 +717,8 @@ function UserModal({
       await axios.delete(`https://api.benchracershq.com/api/admin/delusers/${email}`, {
         headers,
       })
+      window.location.reload();
+
       onOpenChange(false)
     } catch (err) {
       console.error("Failed to delete user:", err)
@@ -854,9 +858,12 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
         } else {
             await axios.post(`https://api.benchracershq.com/api/admin/addentries`, entryPayload, { headers });
         }
+        
+        window.location.reload();
 
         onOpenChange(false)
         } catch (err) {
+            
             console.error("Failed to submit entry:", err)
         }
     }
@@ -872,6 +879,9 @@ function EntryModal({ mode = "edit", entryData, open, setOpen }: { mode?: string
         } catch (err) {
             console.error("Failed to delete entry:", err)
         }
+        
+        window.location.reload();
+
         onOpenChange(false)
     }
   
@@ -988,7 +998,7 @@ const title: any = mode === "edit" ? "Edit Modification" : "Add Modification"
     } else {
     await axios.post(`https://api.benchracershq.com/api/admin/addmods`, modPayload, { headers });
     }
-
+    window.location.reload();
     onOpenChange(false)
   } catch (err) {
     console.error("Failed to submit mod:", err)
@@ -1007,6 +1017,8 @@ const handleDelete = async () => {
       headers,
       data: modData
     })
+    window.location.reload();
+
     onOpenChange(false)
   } catch (err) {
     console.error("Failed to delete mod:", err)
@@ -1097,6 +1109,8 @@ function TagModal({
       } else {
         await axios.post(`https://api.benchracershq.com/api/admin/addtags`, { tagName }, { headers })
       }
+      window.location.reload();
+
       onOpenChange(false)
     } catch (err) {
       console.error("Failed to submit tag:", err)
@@ -1113,6 +1127,8 @@ function TagModal({
 
     try {
       await axios.delete(`https://api.benchracershq.com/api/admin/tags/${tagData.tagID}`, { headers })
+      window.location.reload();
+
       onOpenChange(false)
     } catch (err) {
       console.error("Failed to delete tag:", err)
@@ -1199,6 +1215,8 @@ function PhotoModal({
       } else {
         await axios.post(`https://api.benchracershq.com/api/admin/addphotos`, payload, { headers })
       }
+      window.location.reload();
+
       onOpenChange(false)
     } catch (err) {
       console.error("Failed to submit photo:", err)
@@ -1214,6 +1232,8 @@ function PhotoModal({
 
     try {
       await axios.delete(`https://api.benchracershq.com/api/admin/delphotos/${photoData.photoID}`, { headers })
+      window.location.reload();
+
       onOpenChange(false)
     } catch (err) {
       console.error("Failed to delete photo:", err)
@@ -1324,6 +1344,7 @@ function AwardModal({
           { headers }
         )
       }
+      window.location.reload();
 
       onOpenChange(false)
     } catch (err) {
@@ -1341,6 +1362,8 @@ function AwardModal({
         `https://api.benchracershq.com/api/admin/delawards/${awardData.awardID}`,
         { headers }
       )
+      window.location.reload();
+
       onOpenChange(false)
     } catch (err) {
       console.error("Failed to delete award:", err)
