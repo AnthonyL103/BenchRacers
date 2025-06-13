@@ -49,19 +49,6 @@ BEGIN
     link VARCHAR(30) NOT NULL
   );
   
-  CREATE TABLE Comments (
-    commentID INT AUTO_INCREMENT PRIMARY KEY,
-    entryID INT NOT NULL,
-    userEmail VARCHAR(60) NOT NULL,
-    commentText TEXT NOT NULL,
-    parentCommentID INT NULL,
-    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    isDeleted BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (entryID) REFERENCES Entries(entryID) ON DELETE CASCADE,
-    FOREIGN KEY (userEmail) REFERENCES Users(userEmail) ON DELETE CASCADE,
-    FOREIGN KEY (parentCommentID) REFERENCES Comments(commentID) ON DELETE CASCADE
-);
 
   CREATE TABLE EntryMods (
     entryID INT NOT NULL,
@@ -106,10 +93,7 @@ BEGIN
   ALTER TABLE EntryMods ADD INDEX idx_entrymods_entryID (entryID), ADD INDEX idx_entrymods_modID (modID);
   ALTER TABLE EntryTags ADD INDEX idx_entrytags_entryID (entryID), ADD INDEX idx_entrytags_tagID (tagID);
   ALTER TABLE Awards ADD INDEX idx_awards_userEmail (userEmail);
-  ALTER TABLE Comments ADD INDEX idx_comments_entryID (entryID);
-  ALTER TABLE Comments ADD INDEX idx_comments_userEmail (userEmail);
-  ALTER TABLE Comments ADD INDEX idx_comments_parentID (parentCommentID);
-  ALTER TABLE Comments ADD INDEX idx_comments_created (createdAt);
+  
 
 
   INSERT INTO Mods (brand, category, cost, description, link) VALUES

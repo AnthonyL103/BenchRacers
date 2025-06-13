@@ -13,14 +13,41 @@ import { Users, Car, Wrench, Tag, ImageIcon, Trophy, Plus } from "lucide-react"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
+
 import axios from "axios"
 import { m } from "framer-motion"
 
 export default function AdminPage() {
+    
+   
   const [activeTab, setActiveTab] = useState("users")
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState({ region: false, category: false, modsOnly: false, createdAt: false })
   
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const tabParam = urlParams.get('tab')
+      const validTabs = ["users", "entries", "mods", "tags", "photos", "awards"]
+      
+      if (tabParam && validTabs.includes(tabParam)) {
+        setActiveTab(tabParam)
+      }
+    }
+  }, [])
+
+interface HandleTabChange {
+    (newTab: string): void
+}
+
+const handleTabChange: HandleTabChange = (newTab) => {
+    setActiveTab(newTab)
+    if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.set('tab', newTab)
+        window.history.replaceState({}, '', url.toString())
+    }
+}
   const tabSections = [
     { value: "users", label: "Users", icon: <Users className="w-4 h-4 mr-1" /> },
     { value: "entries", label: "Entries", icon: <Car className="w-4 h-4 mr-1" /> },
@@ -125,7 +152,6 @@ const [loading, setLoading] = useState(false)
                 <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
             <Button
                     variant="destructive"
-                    disabled={true}
                     onClick={async () => {
                         try {
                         const token = localStorage.getItem('token');
@@ -152,7 +178,7 @@ const [loading, setLoading] = useState(false)
             </div>
           
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="flex flex-wrap gap-2">
               {tabSections.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value} className="flex items-center">
