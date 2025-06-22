@@ -15,26 +15,25 @@ export default function Home() {
       <main className="flex-1">
         <section className="relative h-[80vh] flex items-center">
           <div className="absolute inset-0 z-0">
-            <Image
-              src="/placeholder.svg?height=1080&width=1920"
+            <img
+              src="/homepagebackground.jpg"
               alt="Featured car"
-              fill
               className="object-cover"
-              priority
+              
             />
             <div className="absolute inset-0 hero-gradient" />
           </div>
           <div className="container relative z-10">
             <div className="max-w-2xl space-y-6">
                
-                <h1 className="text-4xl md:text-6xl font-bold">Rate. Build. Inspire.</h1>
+                <h1 className="text-4xl md:text-6xl font-bold text-white">Rate. Build. Inspire.</h1>
                
               
               <p className="text-xl text-gray-200">
                 The ultimate platform for car enthusiasts to showcase their builds, vote on others, and get inspired.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link href="/upload">
+                <Link href="/garage">
                   <Button size="lg" className="gap-2">
                     <Upload className="h-5 w-5" />
                     Upload Your Car
@@ -136,14 +135,14 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-20 bg-primary/10">
+        <section className="py-20 bg-gray-900">
           <div className="container text-center space-y-8">
-            <h2 className="text-3xl md:text-4xl font-bold">Ready to showcase your ride?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white">Ready to showcase your ride?</h2>
             <p className="text-xl text-gray-300 max-w-2xl mx-auto">
               Join thousands of car enthusiasts who are already sharing their builds and getting feedback.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/upload">
+              <Link href="/garage">
                 <Button size="lg" className="gap-2">
                   <Upload className="h-5 w-5" />
                   Upload Your Car

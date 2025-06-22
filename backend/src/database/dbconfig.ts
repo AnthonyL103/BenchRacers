@@ -11,9 +11,17 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 20,           // Increase this
   queueLimit: 0,
-  multipleStatements: true 
+  multipleStatements: true,
+  // Add these timeout settings:
+  acquireTimeout: 60000,         // 60 seconds to get connection from pool
+  timeout: 30000,                // 30 seconds for queries to complete
+  reconnect: true,
+  keepAliveInitialDelay: 0,
+  enableKeepAlive: true,
+  // Connection health settings:
+  ssl: undefined, // or configure SSL properly if needed
 };
 
 
@@ -47,6 +55,8 @@ async function initializeDatabase(): Promise<boolean> {
     return false;
   }
 }
+
+
 
 async function testConnection(): Promise<boolean> {
   try {
