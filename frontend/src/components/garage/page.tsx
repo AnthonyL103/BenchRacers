@@ -120,9 +120,9 @@ export default function GaragePage() {
 
             <div className="w-full md:w-2/3">
               <Tabs defaultValue="my-cars">
-                <TabsList className="grid grid-cols-3 mb-8">
+                <TabsList className="grid grid-cols-2 mb-8">
                   <TabsTrigger value="my-cars">My Cars</TabsTrigger>
-                  <TabsTrigger value="saved">Saved Builds</TabsTrigger>
+                
                   <TabsTrigger value="stats">My Stats</TabsTrigger>
                 </TabsList>
 
@@ -211,22 +211,6 @@ export default function GaragePage() {
                       ))}
                     </div>
                   )}
-                </TabsContent>
-
-                <TabsContent value="saved" className="space-y-6">
-                  <h2 className="text-xl font-bold">Saved Builds</h2>
-                  <Card className="bg-gray-900 border-gray-800 text-center p-12">
-                    <div className="flex flex-col items-center gap-4">
-                      <Heart className="h-16 w-16 text-gray-600" />
-                      <h2 className="text-2xl font-bold">No saved builds yet</h2>
-                      <p className="text-gray-400 max-w-md mx-auto">
-                        When you save other users' car builds, they will appear here for easy reference.
-                      </p>
-                      <Button onClick={() => navigate('/explore')} className="mt-4">
-                        Explore Cars
-                      </Button>
-                    </div>
-                  </Card>
                 </TabsContent>
 
                 <TabsContent value="stats" className="space-y-6">

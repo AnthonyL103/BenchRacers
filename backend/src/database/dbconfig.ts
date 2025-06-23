@@ -11,17 +11,15 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 20,           // Increase this
+  connectionLimit: 20,           
   queueLimit: 0,
   multipleStatements: true,
-  // Add these timeout settings:
-  acquireTimeout: 60000,         // 60 seconds to get connection from pool
-  timeout: 30000,                // 30 seconds for queries to complete
+  acquireTimeout: 60000,         
+  timeout: 30000,                
   reconnect: true,
   keepAliveInitialDelay: 0,
   enableKeepAlive: true,
-  // Connection health settings:
-  ssl: undefined, // or configure SSL properly if needed
+  ssl: undefined, 
 };
 
 

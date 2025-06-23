@@ -3,7 +3,6 @@ import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { pool } from '../dbconfig';
 
-// Extend Express Request interface to include 'user'
 declare global {
   namespace Express {
     interface Request {
@@ -17,7 +16,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const router = Router();
 
-// Middleware to verify JWT token (optional for explore route)
 const authenticateToken = (req: Request, res: Response, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -141,7 +139,6 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
-// POST /explore/like - Like a car
 router.post('/like', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { carId } = req.body;
@@ -169,7 +166,6 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
     try {
       await connection.beginTransaction();
       
-      // Check if car exists
       const [cars]: any = await connection.query(
         'SELECT entryID, userEmail, upvotes FROM Entries WHERE entryID = ?',
         [carId]
@@ -187,31 +183,23 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       
       const car = cars[0];
       
-      // Prevent self-liking
       if (car.userEmail === req.user.userEmail) {
         await connection.rollback();
         connection.release();
         return res.status(400).json({
           success: false,
-          message: 'Cannot like your own car',
+          message: 'Cannot like your own car please pass',
           errorCode: 'SELF_LIKE_FORBIDDEN'
         });
       }
       
-      // Check if already liked (optional: implement likes tracking table)
-      // For now, we'll just increment the upvotes
       
-      // Increment upvotes
       await connection.query(
         'UPDATE Entries SET upvotes = upvotes + 1 WHERE entryID = ?',
         [carId]
       );
       
-      // Optional: Track the like in a separate table
-      // await connection.query(
-      //   'INSERT IGNORE INTO Likes (userEmail, entryID, likedAt) VALUES (?, ?, NOW())',
-      //   [req.user.userEmail, carId]
-      // );
+     
       
       await connection.commit();
       connection.release();
@@ -240,7 +228,6 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
-// POST /explore/report - Report a car (optional)
 router.post('/report', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { carId, reason } = req.body;
@@ -263,7 +250,6 @@ router.post('/report', authenticateToken, async (req: Request, res: Response) =>
     
     console.log('[EXPLORE] Processing report for car:', carId, 'by user:', req.user.userEmail);
     
-    // Check if car exists
     const [cars]: any = await pool.query(
       'SELECT entryID FROM Entries WHERE entryID = ?',
       [carId]
@@ -277,11 +263,6 @@ router.post('/report', authenticateToken, async (req: Request, res: Response) =>
       });
     }
     
-    // Insert report (you'll need to create a Reports table)
-    // await pool.query(
-    //   'INSERT INTO Reports (reporterEmail, entryID, reason, reportedAt) VALUES (?, ?, ?, NOW())',
-    //   [req.user.userEmail, carId, reason]
-    // );
     
     console.log('[EXPLORE] Report processed successfully');
     
@@ -300,7 +281,6 @@ router.post('/report', authenticateToken, async (req: Request, res: Response) =>
   }
 });
 
-// GET /explore/stats - Get exploration statistics (optional)
 router.get('/stats', async (req: Request, res: Response) => {
   try {
     console.log('[EXPLORE] Fetching stats');
@@ -379,9 +359,6 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 
-// Add these comment routes to your existing router
-
-// GET /explore/comments/:entryID - Get all comments for an entry
 router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { entryID } = req.params;
@@ -414,7 +391,6 @@ router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res:
       });
     }
 
-    // Get top-level comments first
     const [topLevelComments]: any = await pool.query(`
       SELECT 
         c.commentID,
@@ -436,7 +412,6 @@ router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res:
       LIMIT ? OFFSET ?
     `, [entryID, safeLimit, safeOffset]);
 
-    // Get replies for each top-level comment
     const commentsWithReplies = await Promise.all(
       topLevelComments.map(async (comment: any) => {
         const [replies]: any = await pool.query(`
@@ -465,7 +440,6 @@ router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res:
       })
     );
 
-    // Get total comment count
     const [totalCount]: any = await pool.query(
       'SELECT COUNT(*) as total FROM Comments WHERE entryID = ? AND parentCommentID IS NULL AND isDeleted = FALSE',
       [entryID]
