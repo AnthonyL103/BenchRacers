@@ -62,7 +62,7 @@ export default function GaragePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-950">
       <Navbar />
       <main className="flex-1 py-12">
         <div className="container">
@@ -120,7 +120,7 @@ export default function GaragePage() {
 
             <div className="w-full md:w-2/3">
               <Tabs defaultValue="my-cars">
-                <TabsList className="grid grid-cols-2 mb-8">
+                <TabsList className="grid grid-cols-2 mb-8 bg-gray-900 text-white">
                   <TabsTrigger value="my-cars">My Cars</TabsTrigger>
                 
                   <TabsTrigger value="stats">My Stats</TabsTrigger>
@@ -223,7 +223,7 @@ export default function GaragePage() {
                         <BarChart3 className="h-4 w-4 text-gray-400" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold">{cars.reduce((total, car) => total + car.upvotes, 0)}</div>
+                        <div className="text-3xl font-bold text-white">{cars.reduce((total, car) => total + car.upvotes, 0)}</div>
                         <p className="text-sm text-gray-400">Across all your cars</p>
                       </CardContent>
                     </Card>
@@ -234,7 +234,7 @@ export default function GaragePage() {
                         <LineChart className="h-4 w-4 text-gray-400" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold">{cars.length}</div>
+                        <div className="text-3xl font-bold text-white">{cars.length}</div>
                         <p className="text-sm text-gray-400">In your garage</p>
                       </CardContent>
                     </Card>
@@ -245,7 +245,7 @@ export default function GaragePage() {
                         <Trophy className="h-4 w-4 text-gray-400" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold">{cars.reduce((total, car) => total + car.totalMods, 0)}</div>
+                        <div className="text-3xl font-bold text-white">{cars.reduce((total, car) => total + car.totalMods, 0)}</div>
                         <p className="text-sm text-gray-400">Across all your cars</p>
                       </CardContent>
                     </Card>
@@ -256,16 +256,14 @@ export default function GaragePage() {
                       <CardTitle>Performance Overview</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-[300px] flex items-center justify-center border border-dashed border-gray-700 rounded-lg">
-                        <p className="text-gray-400">Performance chart would be displayed here</p>
-                      </div>
+                      
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
                         <Card className="bg-gray-800 border-gray-700">
                           <CardHeader className="pb-2">
                             <CardTitle className="text-sm">Total Cost</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold">${cars.reduce((total, car) => total + car.totalCost, 0).toLocaleString()}</div>
+                            <div className="text-2xl font-bold text-white">${cars.reduce((total, car) => total + Number(car.totalCost), 0).toLocaleString()}</div>
                             <p className="text-xs text-gray-400">Total investment</p>
                           </CardContent>
                         </Card>
@@ -274,10 +272,11 @@ export default function GaragePage() {
                             <CardTitle className="text-sm">Average Cost</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold">
+                            <div className="text-2xl font-bold text-white">
                               ${cars.length > 0 
-                                ? Math.round(cars.reduce((total, car) => total + car.totalCost, 0) / cars.length).toLocaleString() 
-                                : 0}
+                                ? Math.round(cars.reduce((total, car) => total + Number(car.totalCost), 0) / cars.length).toLocaleString()
+                                : 0
+                              }
                             </div>
                             <p className="text-xs text-gray-400">Per car</p>
                           </CardContent>
@@ -287,7 +286,7 @@ export default function GaragePage() {
                             <CardTitle className="text-sm">Most Popular Car</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-lg font-bold truncate">
+                            <div className="text-lg font-bold truncate text-white">
                               {cars.length > 0 
                                 ? cars.reduce((prev, current) => (prev.upvotes > current.upvotes) ? prev : current).carName
                                 : 'None'}

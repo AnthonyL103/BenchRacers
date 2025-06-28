@@ -182,16 +182,25 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-black">
       <Navbar />
-      <main className="flex-1 py-12">
-        <div className="container max-w-md">
+      
+      <main className="flex-1">
+            <div className="absolute inset-0 z-0">
+            <img
+            src="/cars-6248512_1920.jpg"
+            alt="Featured car"
+            className="w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="container max-w-md relative z-10">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Car className="h-12 w-12 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Welcome to Bench Racers</h1>
-            <p className="text-gray-400 mt-2">The ultimate car enthusiast community</p>
+            <h1 className="text-3xl font-bold text-white">Welcome to Bench Racers</h1>
+            <p className="text-gray-400">The ultimate car enthusiast community</p>
           </div>
           
           {verificationMessage && (
@@ -204,17 +213,17 @@ export default function AuthPage() {
             </div>
           )}
 
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="bg-gray-900 border-gray-800 ">
             <CardHeader>
               <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid grid-cols-2 w-full">
                   <TabsTrigger value="login">Login</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
                 </TabsList>
-                <TabsContent value="login" className="mt-4">
+                <TabsContent value="login" className="mt-2">
                   <CardDescription>Enter your credentials to access your account</CardDescription>
                 </TabsContent>
-                <TabsContent value="signup" className="mt-4">
+                <TabsContent value="signup" className="mt-2">
                   <CardDescription>Create a new account to join our community</CardDescription>
                 </TabsContent>
               </Tabs>
@@ -246,58 +255,67 @@ export default function AuthPage() {
                 </form>
               ) : (
                 <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2 text-white">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" name="name" className="text-black" placeholder="John Doe" required />
-                  </div>
-                  <div className="space-y-2 text-white">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input 
-                      id="signup-email" 
-                      name="signup-email" 
-                      type="email" 
-                      className="text-black"
-                      placeholder="your@email.com" 
-                      required 
-                    />
-                  </div>
-                  <div className="space-y-2 text-white">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input 
-                      id="signup-password" 
-                      name="signup-password"
-                      value={password} 
-                      className="text-black"
-                      onChange={(e) => setPassword(e.target.value)} 
-                      type="password" 
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2 text-white">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input 
-                      id="confirm-password" 
-                      name="confirm-password"
-                      value={confirmPassword} 
-                      className="text-black"
-                      onChange={(e) => setConfirmPassword(e.target.value)} 
-                      type="password" 
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center"> 
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                    <div className="space-y-1 text-white">
+                        <Label htmlFor="name">Full Name</Label>
+                        <Input id="name" name="name" className="text-black" placeholder="John Doe" required />
+                    </div>
+                    <div className="space-y-1 text-white">
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input 
+                        id="signup-email" 
+                        name="signup-email" 
+                        type="email" 
+                        className="text-black"
+                        placeholder="your@email.com" 
+                        required 
+                        />
+                    </div>
+                    </div>
+
+                    <div className="space-y-4">
+                    <div className="space-y-1 text-white">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input 
+                        id="signup-password" 
+                        name="signup-password"
+                        value={password} 
+                        className="text-black"
+                        onChange={(e) => setPassword(e.target.value)} 
+                        type="password" 
+                        required
+                        />
+                    </div>
+                    <div className="space-y-1 text-white">
+                        <Label htmlFor="confirm-password">Confirm Password</Label>
+                        <Input 
+                        id="confirm-password" 
+                        name="confirm-password"
+                        value={confirmPassword} 
+                        className="text-black"
+                        onChange={(e) => setConfirmPassword(e.target.value)} 
+                        type="password" 
+                        required
+                        />
+                    </div>
+                    </div>
+                </div>
+                
+                {/* Error message and button stay full width */}
+                <div className="flex items-center"> 
                     {errorMessage && (
-                      <p className="text-red-500 text-sm font-medium mb-2">{errorMessage}</p>
+                    <p className="text-red-500 text-sm font-medium mb-2">{errorMessage}</p>
                     )}
-                  </div>
-                 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                </div>
+                
+                <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Creating Account..." : "Create Account"}
-                  </Button>
+                </Button>
                 </form>
               )}
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
+            <CardFooter className="flex flex-col ">
               <div className="relative w-full">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-700"></div>
@@ -307,7 +325,7 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mt-2">
                 <Button variant="outline" className="gap-2" type="button">
                   <Google className="h-4 w-4" />
                   Google

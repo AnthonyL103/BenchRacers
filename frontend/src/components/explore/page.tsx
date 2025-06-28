@@ -828,12 +828,14 @@ const fetchCars = async () => {
                 </div>
                 </DialogContent>
                 </Dialog>
-                <Footer />
+                
             </Tabs>
             
              
           </div>
+         
         </div>
+         <Footer />
       </div>
     </div>
   );

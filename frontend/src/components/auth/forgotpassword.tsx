@@ -49,12 +49,20 @@ export default function ForgotPasswordPage() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1 py-12">
-        <div className="container max-w-md">
+        <div className="absolute inset-0 z-0">
+            <img
+            src="miata-6564096_1920.jpg"
+            alt="Featured car"
+            className="w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="container max-w-md relative z-10">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Car className="h-12 w-12 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Reset Your Password</h1>
+            <h1 className="text-3xl font-bold text-white">Reset Your Password</h1>
             <p className="text-gray-400 mt-2">Enter your email to receive a reset link</p>
           </div>
 
