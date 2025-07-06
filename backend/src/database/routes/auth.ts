@@ -47,7 +47,7 @@ router.post('/login', async (req: Request, res: Response) => {
       }
   
       const [users]: any = await pool.query(
-        'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken FROM Users WHERE userEmail = ?', 
+        'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken, profilephotokey FROM Users WHERE userEmail = ?', 
         [email]
       );
       
@@ -112,7 +112,8 @@ router.post('/login', async (req: Request, res: Response) => {
           totalEntries: user.totalEntries,
           region: user.region,
           isEditor: user.isEditor,
-          isVerified: user.isVerified
+          isVerified: user.isVerified,
+          profilephotokey: user.profilephotokey
         },
         JWT_SECRET,
         { expiresIn: '7d' }
@@ -129,7 +130,8 @@ router.post('/login', async (req: Request, res: Response) => {
           userIndex: user.userIndex,
           totalEntries: user.totalEntries,
           region: user.region,
-          isEditor: user.isEditor
+          isEditor: user.isEditor,
+          profilephotokey: user.profilephotokey
         }
       });
     } catch (error) {
