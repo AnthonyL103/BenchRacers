@@ -551,7 +551,7 @@ const fetchCars = async () => {
 
                   <div className="w-full max-w-4xl">
                     <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white">
-                      <div className="relative h-[70vh]">
+                      <div className="relative h-[60vh]">
                          <img
                             src={currentCar.s3ContentID 
                                 ? getS3ImageUrl(currentCar.s3ContentID)
