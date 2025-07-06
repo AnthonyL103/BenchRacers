@@ -461,6 +461,11 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     res.status(200).json(standardResponse);
   } catch (error) {
     console.error('Forgot password error:', error);
+    // Add this wherever you're catching the SendGrid error:
+    if (error && typeof error === 'object' && 'response' in error && (error as any).response?.body) {
+      console.log('SendGrid Error Details:', JSON.stringify((error as any).response.body, null, 2));
+    }
+    console.log('API Key being used:', process.env.SENDGRID_API_KEY ? 'Key exists' : 'Key missing');
     res.status(500).json({ message: 'Server error during reset request' });
   }
 });
