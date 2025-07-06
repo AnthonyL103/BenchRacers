@@ -506,4 +506,133 @@ router.post('/reset-password', async (req: Request, res: Response) => {
   }
 });
 
+router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const { firstName, lastName, email, profilePictureKey } = req.body;
+    
+    const userEmail = (req.user as any)?.userEmail;
+    
+    if (!userEmail) {
+      await connection.rollback();
+      connection.release();
+      return res.status(401).json({ 
+        success: false,
+        message: 'User authentication failed' 
+      });
+    }
+    
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (firstName !== undefined) {
+      updates.push('firstName = ?');
+      values.push(firstName);
+    }
+    
+    if (lastName !== undefined) {
+      updates.push('lastName = ?');
+      values.push(lastName);
+    }
+    
+    if (firstName !== undefined || lastName !== undefined) {
+      const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+      updates.push('name = ?');
+      values.push(fullName);
+    }
+    
+    if (email !== undefined && email !== userEmail) {
+      const [existingUsers]: any = await connection.query(
+        'SELECT userEmail FROM Users WHERE userEmail = ? AND userEmail != ?',
+        [email, userEmail]
+      );
+      
+      if (existingUsers.length > 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(409).json({
+          success: false,
+          message: 'Email already in use by another account'
+        });
+      }
+      
+      updates.push('userEmail = ?');
+      values.push(email);
+    }
+    
+    if (profilePictureKey !== undefined) {
+      updates.push('profilePictureKey = ?');
+      values.push(profilePictureKey);
+    }
+    
+    if (updates.length === 0) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({
+        success: false,
+        message: 'No valid fields to update'
+      });
+    }
+    
+    values.push(userEmail);
+    
+    await connection.query(
+      `UPDATE Users SET ${updates.join(', ')} WHERE userEmail = ?`,
+      values
+    );
+    
+    const [updatedUsers]: any = await connection.query(
+      `SELECT userEmail, name, firstName, lastName, accountCreated, userIndex, 
+              totalEntries, region, isEditor, isVerified, profilePictureKey 
+       FROM Users WHERE userEmail = ?`,
+      [email || userEmail] 
+    );
+    
+    if (updatedUsers.length === 0) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({
+        success: false,
+        message: 'User not found after update'
+      });
+    }
+    
+    await connection.commit();
+    connection.release();
+    
+    const updatedUser = updatedUsers[0];
+    
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        userEmail: updatedUser.userEmail,
+        name: updatedUser.name,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        accountCreated: updatedUser.accountCreated,
+        userIndex: updatedUser.userIndex,
+        totalEntries: updatedUser.totalEntries,
+        region: updatedUser.region,
+        isEditor: updatedUser.isEditor,
+        isVerified: updatedUser.isVerified,
+        profilePictureKey: updatedUser.profilePictureKey
+      }
+    });
+    
+  } catch (error) {
+    await connection.rollback();
+    connection.release();
+    
+    console.error('Profile update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during profile update'
+    });
+  }
+});
+
 export default router;

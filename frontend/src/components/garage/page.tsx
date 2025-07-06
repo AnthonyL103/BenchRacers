@@ -74,7 +74,10 @@ export default function GaragePage() {
                 <CardHeader className="text-center">
                   <div className="flex justify-center mb-4">
                     <Avatar className="h-24 w-24">
-                      <AvatarImage src="/placeholder.svg?height=200&width=200" alt="User" />
+                      <AvatarImage src={user?.profilephotokey 
+                                ? getS3ImageUrl(user?.profilephotokey)
+                                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                            } alt="User" />
                       <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                   </div>

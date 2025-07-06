@@ -10,7 +10,6 @@ export interface User {
   isEditor: boolean;
   isVerified?: boolean;
   profilephotokey: string;
-  
 }
 
 
@@ -23,6 +22,7 @@ interface UserContextState {
   logout: () => void;
   setError: (error: string | null) => void;
   setLoading: (isLoading: boolean) => void;
+  updateUser: (updates: Partial<User>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextState | undefined>(undefined);
@@ -58,6 +58,56 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
+  
+  const updateUser = async (updates: Partial<User>) => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    // Call your API to update user profile
+    const response = await fetch('https://api.benchracershq.com/api/profile/update', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update profile');
+    }
+
+    const updatedUser: User | null = user
+      ? {
+          userEmail: updates.userEmail ?? user.userEmail,
+          name: updates.name ?? user.name,
+          accountCreated: updates.accountCreated ?? user.accountCreated,
+          userIndex: updates.userIndex ?? user.userIndex,
+          totalEntries: updates.totalEntries ?? user.totalEntries,
+          region: updates.region ?? user.region,
+          isEditor: updates.isEditor ?? user.isEditor,
+          isVerified: updates.isVerified ?? user.isVerified,
+          profilephotokey: updates.profilephotokey ?? user.profilephotokey,
+        }
+      : null;
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+
+  } catch (error: any) {
+    console.error('Error updating user:', error);
+    setError(error.message || 'Failed to update profile');
+    throw error; 
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -75,6 +125,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         error,
         login,
         logout,
+        updateUser,
         setError,
         setLoading
       }}
