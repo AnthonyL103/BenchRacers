@@ -60,54 +60,61 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
   
   const updateUser = async (updates: Partial<User>) => {
-  try {
-    setLoading(true);
-    setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('https://api.benchracershq.com/api/users/profile/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile');
+      }
+
+      const responseData = await response.json();
+      
+      if (responseData.user) {
+        setUser(responseData.user);
+        localStorage.setItem('user', JSON.stringify(responseData.user));
+      } else {
+        const updatedUser: User | null = user
+          ? {
+              userEmail: updates.userEmail ?? user.userEmail,
+              name: updates.name ?? user.name,
+              accountCreated: updates.accountCreated ?? user.accountCreated,
+              userIndex: updates.userIndex ?? user.userIndex,
+              totalEntries: updates.totalEntries ?? user.totalEntries,
+              region: updates.region ?? user.region,
+              isEditor: updates.isEditor ?? user.isEditor,
+              isVerified: updates.isVerified ?? user.isVerified,
+              profilephotokey: updates.profilephotokey ?? user.profilephotokey,
+            }
+          : null;
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      setError(error.message || 'Failed to update profile');
+      throw error; 
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Call your API to update user profile
-    const response = await fetch('https://api.benchracershq.com/api/profile/update', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(updates)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to update profile');
-    }
-
-    const updatedUser: User | null = user
-      ? {
-          userEmail: updates.userEmail ?? user.userEmail,
-          name: updates.name ?? user.name,
-          accountCreated: updates.accountCreated ?? user.accountCreated,
-          userIndex: updates.userIndex ?? user.userIndex,
-          totalEntries: updates.totalEntries ?? user.totalEntries,
-          region: updates.region ?? user.region,
-          isEditor: updates.isEditor ?? user.isEditor,
-          isVerified: updates.isVerified ?? user.isVerified,
-          profilephotokey: updates.profilephotokey ?? user.profilephotokey,
-        }
-      : null;
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-
-  } catch (error: any) {
-    console.error('Error updating user:', error);
-    setError(error.message || 'Failed to update profile');
-    throw error; 
-  } finally {
-    setLoading(false);
-  }
-};
 
   useEffect(() => {
     const token = localStorage.getItem('token');

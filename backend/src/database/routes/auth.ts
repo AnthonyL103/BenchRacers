@@ -512,7 +512,8 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
   try {
     await connection.beginTransaction();
     
-    const { firstName, lastName, email, profilePictureKey } = req.body;
+    // Fix: Use lowercase 'k' to match frontend
+    const { name, email, profilephotokey } = req.body;
     
     const userEmail = (req.user as any)?.userEmail;
     
@@ -528,20 +529,9 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     const updates: string[] = [];
     const values: any[] = [];
     
-    if (firstName !== undefined) {
-      updates.push('firstName = ?');
-      values.push(firstName);
-    }
-    
-    if (lastName !== undefined) {
-      updates.push('lastName = ?');
-      values.push(lastName);
-    }
-    
-    if (firstName !== undefined || lastName !== undefined) {
-      const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+    if (name !== undefined) {
       updates.push('name = ?');
-      values.push(fullName);
+      values.push(name);
     }
     
     if (email !== undefined && email !== userEmail) {
@@ -563,9 +553,9 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
       values.push(email);
     }
     
-    if (profilePictureKey !== undefined) {
-      updates.push('profilePictureKey = ?');
-      values.push(profilePictureKey);
+    if (profilephotokey !== undefined) {
+      updates.push('profilephotokey = ?');
+      values.push(profilephotokey);
     }
     
     if (updates.length === 0) {
@@ -585,8 +575,8 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     );
     
     const [updatedUsers]: any = await connection.query(
-      `SELECT userEmail, name, firstName, lastName, accountCreated, userIndex, 
-              totalEntries, region, isEditor, isVerified, profilePictureKey 
+      `SELECT userEmail, name, accountCreated, userIndex, 
+              totalEntries, region, isEditor, isVerified, profilephotokey 
        FROM Users WHERE userEmail = ?`,
       [email || userEmail] 
     );
@@ -611,15 +601,13 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
       user: {
         userEmail: updatedUser.userEmail,
         name: updatedUser.name,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
         accountCreated: updatedUser.accountCreated,
         userIndex: updatedUser.userIndex,
         totalEntries: updatedUser.totalEntries,
         region: updatedUser.region,
         isEditor: updatedUser.isEditor,
         isVerified: updatedUser.isVerified,
-        profilePictureKey: updatedUser.profilePictureKey
+        profilephotokey: updatedUser.profilephotokey  
       }
     });
     

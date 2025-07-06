@@ -25,7 +25,7 @@ interface EditProfileModalProps {
 }
 
 export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) {
-  const { user} = useUser();
+  const { user, updateUser} = useUser();
 
   const [activeTab, setActiveTab] = useState("profile")
   
@@ -181,21 +181,23 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
     setSuccessMessage("");
     
     try {
-      let profilePictureKey = profileData.currentProfilePicture;
+      let profilephotokey = profileData.currentProfilePicture;
       
       // Upload new profile picture if one was selected
       if (profilePictureFile) {
         setUploadProgress(0);
-        profilePictureKey = await uploadToS3(profilePictureFile);
+        profilephotokey = await uploadToS3(profilePictureFile);
       }
       
       const updateData = {
         name: profileData.name,
         email: profileData.email,
-        profilePictureKey: profilePictureKey
+        profilephotokey: profilephotokey
       };
       
       // update data
+      
+      await updateUser(updateData);
       
       setSuccessMessage("Profile updated successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);

@@ -32,7 +32,10 @@ export default function GaragePage() {
   
   const { cars, isLoading, error, fetchUserCars, deleteCar } = useGarage();
   
+  
   const navigate = useNavigate();
+  
+  console.log("prof photo key",user?.profilephotokey);
   
   useEffect(() => {
     if (!isAuthenticated) {
