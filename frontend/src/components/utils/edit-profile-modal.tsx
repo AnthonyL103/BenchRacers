@@ -29,18 +29,15 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
 
   const [activeTab, setActiveTab] = useState("profile")
   
-  // Profile state
   const [profileData, setProfileData] = useState({
     name: user?.name || "",
     email: user?.userEmail || "",
     currentProfilePicture: user?.profilephotokey || ""
   })
   
-  // Profile picture state
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null)
   const [profilePicturePreview, setProfilePicturePreview] = useState<string>("")
   
-  // Password state
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -52,7 +49,6 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
     confirm: false
   })
   
-  // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -60,7 +56,6 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize profile data when modal opens
   useEffect(() => {
     if (open && user) {
       setProfileData({

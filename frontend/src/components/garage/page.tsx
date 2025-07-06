@@ -35,7 +35,6 @@ export default function GaragePage() {
   
   const navigate = useNavigate();
   
-  console.log("prof photo key",user?.profilephotokey);
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -77,7 +76,7 @@ export default function GaragePage() {
                 <CardHeader className="text-center">
                   <div className="flex justify-center mb-4">
                     <Avatar className="h-24 w-24">
-                      <AvatarImage src={user?.profilephotokey 
+                      <AvatarImage className="w-full h-full object-cover object-center" src={user?.profilephotokey 
                                 ? getS3ImageUrl(user?.profilephotokey)
                                 : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
                             } alt="User" />

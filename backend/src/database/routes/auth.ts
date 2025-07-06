@@ -333,7 +333,7 @@ router.get('/verify', async (req: Request, res: Response) => {
 });
 
 
-router.post('/change-password', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/change-password', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
     const connection = await pool.getConnection();
     
     try {
