@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { config } from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -11,6 +11,28 @@ sgMail.setApiKey(process.env.MAILERKEY || '');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const router = Router();
+
+interface AuthenticatedRequest extends Request {
+  user?: jwt.JwtPayload | string;
+}
+
+const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded; 
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
+};
 
 router.post('/login', async (req: Request, res: Response) => {
     try {
@@ -308,6 +330,89 @@ router.get('/verify', async (req: Request, res: Response) => {
     console.error('Verification error:', error);
     res.status(500).json({ message: 'Server error during verification' });
   }
+});
+
+
+router.post('/change-password', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+    const connection = await pool.getConnection();
+    
+    try {
+        await connection.beginTransaction();
+        
+        const { currentPassword, newPassword } = req.body;
+        
+        const userEmail = (req.user as any)?.userEmail;
+        
+        if (!userEmail) {
+            await connection.rollback();
+            connection.release();
+            return res.status(401).json({ message: 'User authentication failed' });
+        }
+        
+        if (!currentPassword) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ message: 'Current password is required' });
+        }
+        
+        if (!newPassword) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ message: 'New password is required' });
+        }
+        
+        if (newPassword.length < 8) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+        }
+        
+        const [users]: any = await connection.query(
+            'SELECT userEmail, password FROM Users WHERE userEmail = ?',
+            [userEmail]
+        );
+        
+        if (users.length === 0) {
+            await connection.rollback();
+            connection.release();
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const user = users[0];
+        
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        
+        if (!isCurrentPasswordValid) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+        
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+        
+        await connection.query(
+            'UPDATE Users SET password = ? WHERE userEmail = ?',
+            [hashedNewPassword, userEmail]
+        );
+
+        await connection.commit();
+        connection.release();
+
+        res.status(200).json({ 
+            success: true,
+            message: 'Password changed successfully' 
+        });
+        
+    } catch (error) {
+        await connection.rollback();
+        connection.release();
+        
+        console.error('Change password error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Server error during password change' 
+        });
+    }
 });
 
 router.post('/forgot-password', async (req: Request, res: Response) => {

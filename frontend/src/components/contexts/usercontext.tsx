@@ -9,6 +9,8 @@ export interface User {
   region: string;
   isEditor: boolean;
   isVerified?: boolean;
+  profilephotokey: string;
+  
 }
 
 

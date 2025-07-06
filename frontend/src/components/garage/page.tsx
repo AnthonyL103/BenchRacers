@@ -20,11 +20,13 @@ import { EditCarModal } from "../utils/edit-car-modal"
 import { useUser } from '../contexts/usercontext'
 import { useGarage } from '../contexts/garagecontext'
 import { useNavigate } from 'react-router-dom'
+import {EditProfileModal} from '../utils/edit-profile-modal'
 
 export default function GaragePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false)
+  const [isEditProfileModalOpen, setIsEditProfileModal] = useState(false);
   
   const { user, isAuthenticated } = useUser();
   
@@ -110,7 +112,7 @@ export default function GaragePage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full gap-2">
+                  <Button variant="outline" className="w-full gap-2" onClick={() => setIsEditProfileModal(true)}>
                     <Settings className="h-4 w-4" />
                     Edit Profile
                   </Button>
@@ -304,9 +306,8 @@ export default function GaragePage() {
         </div>
       </main>
       <Footer />
-
-      <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
-      <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
+        <EditProfileModal open={isEditProfileModalOpen} onOpenChange={setIsEditProfileModal} />
+        <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
         {selectedCar && (
         <EditCarModal 
             open={isEditModalOpen} 
