@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { Button } from "../ui/button"
+import { ModsTabContent } from "./modsTabcontent";
 import {
   Dialog,
   DialogContent,
@@ -221,79 +222,6 @@ const [openModsState, setOpenModsState] = useState({
   const removeMod = (id: number) => {
     setMods(Mods.filter(mod => mod.id !== id));
   };
-  
-  const renderModSelectionForCategory = (category: string) => {
-    const filteredMods = getFilteredModsByCategory(category);
-    const isOpen = openModsState[category as keyof typeof openModsState];
-    const searchTerm = modsSearchState[category as keyof typeof modsSearchState];
-    
-    return (
-        <div className="space-y-4">
-        <Popover 
-            open={isOpen} 
-            onOpenChange={(open) => updateOpenState(category, open)}
-        >
-            <PopoverTrigger asChild>
-            <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={isOpen}
-                className="w-full justify-between"
-            >
-                Add {category.charAt(0).toUpperCase() + category.slice(1)} Modification
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0">
-            <Command>
-                <CommandInput 
-                value={searchTerm} 
-                onValueChange={(value) => updateSearchTerm(category, value)} 
-                placeholder={`Search ${category} mods...`} 
-                />
-                <CommandList>
-                <CommandEmpty>No {category} mods found matching "{searchTerm}"</CommandEmpty>
-                {isLoadingMods ? (
-                    <div className="py-6 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                    <p className="text-sm text-gray-500 mt-2">Loading modifications...</p>
-                    </div>
-                ) : (
-                    <CommandGroup>
-                    {filteredMods.length === 0 ? (
-                        <div className="px-2 py-4 text-center text-sm text-gray-500">
-                        No {category} modifications available
-                        </div>
-                    ) : (
-                        filteredMods.map((mod) => (
-                        <CommandItem
-                            key={mod.id}
-                            value={mod.id.toString()}
-                            onSelect={() => addMod(mod)}
-                            className="py-2"
-                        >
-                            <div className="flex-1">
-                            <p className="font-medium">{mod.brand}</p>
-                            <p className="text-sm text-gray-400">{mod.description}</p>
-                            <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                            </div>
-                            <Check
-                            className={`h-4 w-4 ${
-                                Mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                            }`}
-                            />
-                        </CommandItem>
-                        ))
-                    )}
-                    </CommandGroup>
-                )}
-                </CommandList>
-            </Command>
-            </PopoverContent>
-        </Popover>
-        </div>
-    );
-};
   
   
   const triggerFileInput = () => {
@@ -794,83 +722,15 @@ const removePhoto = (index: number) => {
          </TabsContent>
 
          <TabsContent value="mods" className="space-y-6 py-4">
-           <DialogHeader>
-                    <DialogTitle className="text-xl text-white">Modifications</DialogTitle>
-                    <DialogDescription>Add modifications to your car</DialogDescription>
-                </DialogHeader>
-            <Tabs value={activeModTab} onValueChange={setActiveModTab} className="mt-4">
-            <TabsList className="grid grid-cols-6">
-                <TabsTrigger value="exterior">Exterior</TabsTrigger>
-                <TabsTrigger value="interior">Interior</TabsTrigger>
-                <TabsTrigger value="drivetrain">Drivetrain</TabsTrigger>
-                <TabsTrigger value="wheels">Wheels</TabsTrigger>
-                <TabsTrigger value="suspension">Suspension</TabsTrigger>
-                <TabsTrigger value="brakes">Brakes</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="exterior" className="space-y-4 py-4">
-                {renderModSelectionForCategory("exterior")}
-            </TabsContent>
-
-            <TabsContent value="interior" className="space-y-4 py-4">
-                {renderModSelectionForCategory("interior")}
-            </TabsContent>
-
-            <TabsContent value="drivetrain" className="space-y-4 py-4">
-                {renderModSelectionForCategory("drivetrain")}
-            </TabsContent>
-
-            <TabsContent value="wheels" className="space-y-4 py-4">
-                {renderModSelectionForCategory("wheels")}
-            </TabsContent>
-
-            <TabsContent value="suspension" className="space-y-4 py-4">
-                {renderModSelectionForCategory("suspension")}
-            </TabsContent>
-
-            <TabsContent value="brakes" className="space-y-4 py-4">
-                {renderModSelectionForCategory("brakes")}
-            </TabsContent>
-            </Tabs>
-            
-            <div>
-                
-                
-                <div className="mt-4 mb-6">
-                    <Label className="block mb-2 text-white">Selected Modifications</Label>
-                    <div className="flex flex-wrap gap-2 p-3 bg-gray-800/50 rounded-md min-h-[60px]">
-                    {Mods.length > 0 ? (
-                        Mods.map(mod => (
-                        <Badge 
-                            key={mod.id} 
-                            variant="secondary" 
-                            className="flex items-center gap-1 p-2 h-auto"
-                        >
-                            <span className="font-medium">{mod.brand}</span>
-                            <span className="text-xs text-gray-400 mx-1">|</span>
-                            <span className="text-xs text-gray-400">{mod.description.slice(0, 20)}{mod.description.length > 20 ? '...' : ''}</span>
-                            <span className="text-xs text-green-500 mx-1">${mod.cost.toLocaleString()}</span>
-                            <button onClick={() => removeMod(mod.id)} className="ml-1">
-                            <X className="h-3 w-3" />
-                            </button>
-                        </Badge>
-                        ))
-                    ) : (
-                        <p className="text-sm text-gray-500 p-2">No modifications selected yet</p>
-                    )}
-                    </div>
-                </div>
-            </div>
-            
-             <DialogFooter>
-              <Button variant="outline" onClick={() => setActiveTab("photos")}>
-                Back
-              </Button>
-              <Button onClick={() => setActiveTab("details")}>
-                Next: Add Details
-              </Button>
-            </DialogFooter>
-         </TabsContent>
+            <ModsTabContent 
+                availableMods={availableMods}
+                selectedMods={Mods}
+                onAddMod={addMod}
+                onRemoveMod={removeMod}
+                isLoadingMods={isLoadingMods}
+                setActiveTab={setActiveTab}
+            />
+        </TabsContent>
 
          <TabsContent value="details" className="space-y-6 py-4">
            <div>
