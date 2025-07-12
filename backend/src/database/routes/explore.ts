@@ -44,38 +44,41 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 50);
     
     let query = `
-      SELECT 
-        e.entryID,
-        e.userEmail as userID,
-        e.carName,
-        e.carMake,
-        e.carModel,
-        e.carYear,
-        e.carColor,
-        e.carTrim,
-        e.description,
-        e.totalMods,
-        e.totalCost,
-        e.category,
-        e.region,
-        e.upvotes,
-        e.engine,
-        e.transmission,
-        e.drivetrain,
-        e.horsepower,
-        e.torque,
-        e.viewCount,
-        e.createdAt,
-        ep.s3Key as s3ContentID,
-        u.name as userName,
-        GROUP_CONCAT(DISTINCT t.tagName ORDER BY t.tagName ASC) as tags
-      FROM Entries e
-      INNER JOIN Users u ON e.userEmail = u.userEmail
-      LEFT JOIN EntryPhotos ep ON e.entryID = ep.entryID AND ep.isMainPhoto = TRUE
-      LEFT JOIN EntryTags et ON e.entryID = et.entryID
-      LEFT JOIN Tags t ON et.tagID = t.tagID
-      WHERE u.isVerified = TRUE
-    `;
+  SELECT 
+    e.entryID,
+    e.userEmail as userID,
+    e.carName,
+    e.carMake,
+    e.carModel,
+    e.carYear,
+    e.carColor,
+    e.carTrim,
+    e.description,
+    e.totalMods,
+    e.totalCost,
+    e.category,
+    e.region,
+    e.upvotes,
+    e.commentCount,
+    e.engine,
+    e.transmission,
+    e.drivetrain,
+    e.horsepower,
+    e.torque,
+    e.viewCount,
+    e.createdAt,
+    GROUP_CONCAT(DISTINCT ep.s3key ORDER BY ep.s3key ASC) as allPhotoKeys,
+    MAX(CASE WHEN ep.isMainPhoto = TRUE THEN ep.s3key END) as mainPhotoKey,
+    u.name as userName,
+    u.profilephotokey as profilephotokey,
+    GROUP_CONCAT(DISTINCT t.tagName ORDER BY t.tagName ASC) as tags
+  FROM Entries e
+  INNER JOIN Users u ON e.userEmail = u.userEmail
+  LEFT JOIN EntryPhotos ep ON e.entryID = ep.entryID
+  LEFT JOIN EntryTags et ON e.entryID = et.entryID
+  LEFT JOIN Tags t ON et.tagID = t.tagID
+  WHERE u.isVerified = TRUE
+`;
     
     const queryParams: any[] = [];
     
@@ -116,8 +119,34 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     const [cars]: any = await pool.query(query, queryParams);
     
     const processedCars = cars.map((car: any) => ({
-      ...car,
-      tags: car.tags ? car.tags.split(',') : []
+    entryID: car.entryID,
+    userID: car.userID,
+    userName: car.userName,
+    carName: car.carName,
+    carMake: car.carMake,
+    carModel: car.carModel,
+    carYear: car.carYear,
+    carColor: car.carColor,
+    carTrim: car.carTrim,
+    description: car.description,
+    totalMods: car.totalMods,
+    totalCost: car.totalCost,
+    category: car.category,
+    region: car.region,
+    upvotes: car.upvotes,
+    commentCount: car.commentCount || 0,
+    engine: car.engine,
+    transmission: car.transmission,
+    drivetrain: car.drivetrain,
+    horsepower: car.horsepower,
+    torque: car.torque,
+    viewCount: car.viewCount,
+    createdAt: car.createdAt,
+    // Convert comma-separated strings to arrays
+    allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
+    mainPhotoKey: car.mainPhotoKey,
+    profilephotokey: car.profilephotokey,
+    tags: car.tags ? car.tags.split(',') : []
     }));
     
     console.log('[EXPLORE] Found cars:', processedCars.length);

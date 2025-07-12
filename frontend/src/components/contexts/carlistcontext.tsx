@@ -11,7 +11,10 @@ interface Car {
   carColor?: string;
   carTrim?: string;
   description?: string;
-  s3ContentID: string; 
+  mainPhotoKey?: string;
+  allPhotoKeys: string[];
+  photos?: { s3Key: string; isMainPhoto: boolean }[];
+  profilephotokey: string;        
   totalMods: number;
   totalCost: number;
   category: string;
@@ -26,6 +29,7 @@ interface Car {
   viewCount: number;
   createdAt: string;
   tags?: string[];
+  
 }
 
 interface CarState {

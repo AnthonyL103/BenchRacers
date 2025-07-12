@@ -586,7 +586,7 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
               totalEntries, region, isEditor, isVerified, profilephotokey 
        FROM Users WHERE userEmail = ?`,
       [email || userEmail] 
-    );
+    ); 
     
     if (updatedUsers.length === 0) {
       await connection.rollback();

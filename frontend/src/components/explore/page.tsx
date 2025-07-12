@@ -10,6 +10,7 @@ import { Card, CardContent } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Input } from "../ui/input"
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
 import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" 
 import { getS3ImageUrl } from "../utils/s3helper"
@@ -553,8 +554,8 @@ const fetchCars = async () => {
                     <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white">
                       <div className="relative h-[60vh]">
                          <img
-                            src={currentCar.s3ContentID 
-                                ? getS3ImageUrl(currentCar.s3ContentID)
+                            src={currentCar.mainPhotoKey 
+                                ? getS3ImageUrl(currentCar.mainPhotoKey)
                                 : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(currentCar.carName)}`
                             }
                             alt={currentCar.carName}
@@ -578,7 +579,13 @@ const fetchCars = async () => {
                             <div>
                               <h3 className="font-bold text-2xl mb-1">{currentCar.carName}</h3>
                               <p className="text-gray-300 text-lg">{currentCar.carMake} {currentCar.carModel}</p>
-                              <p className="text-gray-400">By @{currentCar.userID}</p>
+                                <Avatar className="h-24 w-24">
+                                <AvatarImage className="w-full h-full object-cover object-center" src={user?.profilephotokey 
+                                            ? getS3ImageUrl(currentCar?.profilephotokey)
+                                            : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                                    } alt="User" />
+                                </Avatar>
+                              <p className="text-gray-400">By @{currentCar.userName}</p>
                             </div>
 
                             <div className="flex flex-wrap gap-2">
@@ -676,8 +683,8 @@ const fetchCars = async () => {
                     <Card key={car.entryID} className="overflow-hidden bg-gray-900 border-gray-800 hover:border-gray-700 transition-all duration-200 hover:shadow-xl group">
                       <div className="relative h-48 overflow-hidden">
                         <img 
-                        src={car.s3ContentID 
-                            ? getS3ImageUrl(car.s3ContentID)
+                        src={car.mainPhotoKey 
+                            ? getS3ImageUrl(car.mainPhotoKey)
                             : `/placeholder.svg?height=200&width=300&text=${encodeURIComponent(car.carName)}`
                         } 
                         alt={car.carName} 
