@@ -959,10 +959,7 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
         success: false,
         message: 'Invalid VIN format. VIN cannot contain letters I, O, or Q.'
       });
-    }
-    
-    console.log(`🔍 Looking up VIN: ${vin} for user: ${req.user?.userID}`);
-    
+    }    
     // Call NHTSA vPIC API
     const nhtsaResponse = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
     
