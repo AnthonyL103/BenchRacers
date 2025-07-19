@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../dbconfig';
 import AWS from 'aws-sdk';
 import { FieldPacket, ResultSetHeader } from 'mysql2/promise';
+import axios from 'axios';
 
 config();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -961,13 +962,14 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       });
     }    
     // Call NHTSA vPIC API
-    const nhtsaResponse = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
+    const nhtsaResponse = await axios.get(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
+    const nhtsaData = nhtsaResponse.data;
     
-    if (!nhtsaResponse.ok) {
+    if (!nhtsaResponse || nhtsaResponse.status !== 200) {
       throw new Error(`NHTSA API returned ${nhtsaResponse.status}: ${nhtsaResponse.statusText}`);
     }
     
-    const nhtsaData = await nhtsaResponse.json();
+    // Check if results are empty
     
     if (!nhtsaData.Results || nhtsaData.Results.length === 0) {
       return res.status(404).json({
