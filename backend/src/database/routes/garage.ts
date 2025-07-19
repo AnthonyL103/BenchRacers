@@ -941,4 +941,220 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
   }
 });
 
+router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  const { vin } = req.params;
+  
+  try {
+    // Validate VIN format
+    if (!vin || vin.length !== 17) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid VIN format. VIN must be exactly 17 characters.'
+      });
+    }
+    
+    // Check for invalid VIN characters (I, O, Q are not allowed in VINs)
+    if (/[IOQ]/i.test(vin)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid VIN format. VIN cannot contain letters I, O, or Q.'
+      });
+    }
+    
+    console.log(`🔍 Looking up VIN: ${vin} for user: ${req.user?.userID}`);
+    
+    // Call NHTSA vPIC API
+    const nhtsaResponse = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
+    
+    if (!nhtsaResponse.ok) {
+      throw new Error(`NHTSA API returned ${nhtsaResponse.status}: ${nhtsaResponse.statusText}`);
+    }
+    
+    const nhtsaData = await nhtsaResponse.json();
+    
+    if (!nhtsaData.Results || nhtsaData.Results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No data found for this VIN'
+      });
+    }
+    
+    // Helper function to find value by variable name
+    const findValue = (variableName: string): string => {
+      const result = nhtsaData.Results.find((item: any) => 
+        item.Variable?.toLowerCase().includes(variableName.toLowerCase())
+      );
+      return result?.Value || "";
+    };
+    
+    // Check if VIN is valid by looking for error messages
+    const errorCode = findValue("Error Code");
+    const errorText = findValue("Error Text");
+    
+    if (errorCode && errorCode !== "0") {
+      return res.status(400).json({
+        success: false,
+        message: errorText || 'Invalid VIN number'
+      });
+    }
+    
+    // Extract comprehensive trim information
+    const extractTrim = (): string => {
+      const trim = findValue("Trim");
+      const series = findValue("Series");
+      const trim2 = findValue("Trim2");
+      
+      const trimParts = [trim, series, trim2].filter(Boolean);
+      return trimParts.join(" ") || "";
+    };
+    
+    // Format engine information
+    const formatEngine = (): string => {
+      const cylinders = findValue("Engine Number of Cylinders");
+      const configuration = findValue("Engine Configuration");
+      const fuelType = findValue("Fuel Type Primary");
+      const displacement = findValue("Displacement (L)");
+      const engineModel = findValue("Engine Model");
+      const turbocharger = findValue("Turbocharger");
+      
+      let engine = "";
+      
+      if (displacement) {
+        engine += `${displacement}L `;
+      }
+      
+      if (cylinders && configuration) {
+        engine += `${configuration}${cylinders} `;
+      } else if (cylinders) {
+        engine += `${cylinders}-Cylinder `;
+      }
+      
+      if (turbocharger && turbocharger.toLowerCase() === "yes") {
+        engine += "Turbo ";
+      }
+      
+      if (fuelType && fuelType.toLowerCase() !== "gasoline") {
+        engine += `${fuelType} `;
+      }
+      
+      if (engineModel) {
+        engine += `(${engineModel})`;
+      }
+      
+      return engine.trim() || engineModel || "";
+    };
+    
+    // Format transmission information
+    const formatTransmission = (): string => {
+      const transmissionStyle = findValue("Transmission Style");
+      const transmissionSpeeds = findValue("Transmission Speeds");
+      const transmissionDescriptor = findValue("Transmission Descriptor");
+      
+      let transmission = "";
+      
+      if (transmissionSpeeds) {
+        transmission += `${transmissionSpeeds}-Speed `;
+      }
+      
+      if (transmissionStyle) {
+        let style = transmissionStyle;
+        if (style.toLowerCase().includes("manual")) {
+          transmission += "Manual";
+        } else if (style.toLowerCase().includes("automatic")) {
+          transmission += "Automatic";
+        } else if (style.toLowerCase().includes("cvt")) {
+          transmission += "CVT";
+        } else if (style.toLowerCase().includes("dct") || style.toLowerCase().includes("dual")) {
+          transmission += "Dual-Clutch";
+        } else {
+          transmission += style;
+        }
+      }
+      
+      if (transmissionDescriptor && transmissionDescriptor !== transmissionStyle) {
+        transmission += ` (${transmissionDescriptor})`;
+      }
+      
+      return transmission.trim() || transmissionStyle || "";
+    };
+    
+    // Format drivetrain
+    const formatDrivetrain = (driveType: string): string => {
+      if (!driveType) return "";
+      
+      const driveTypeLower = driveType.toLowerCase();
+      
+      if (driveTypeLower.includes("front")) return "FWD";
+      if (driveTypeLower.includes("rear")) return "RWD";
+      if (driveTypeLower.includes("all") || driveTypeLower.includes("awd")) return "AWD";
+      if (driveTypeLower.includes("4wd") || driveTypeLower.includes("four")) return "4WD";
+      
+      return driveType;
+    };
+    
+    // Extract vehicle data
+    const make = findValue("Make");
+    const model = findValue("Model");
+    const year = findValue("Model Year");
+    
+    // Check if we got essential data
+    if (!make || !model || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Incomplete vehicle data found for this VIN'
+      });
+    }
+    
+    // Build the response data
+    const vinData = {
+      make,
+      model,
+      year,
+      trim: extractTrim(),
+      engine: formatEngine(),
+      transmission: formatTransmission(),
+      drivetrain: formatDrivetrain(findValue("Drive Type")),
+      // Color is not available from VIN
+      color: ""
+    };
+    
+    // Remove empty values
+    const cleanedData: any = {};
+    Object.entries(vinData).forEach(([key, value]) => {
+      if (value && value.trim() !== "") {
+        cleanedData[key] = value;
+      }
+    });
+    
+    console.log(`✅ VIN lookup successful for ${vin}:`, cleanedData);
+    
+    res.json({
+      success: true,
+      message: 'VIN lookup successful',
+      data: cleanedData,
+      vin: vin
+    });
+    
+  } catch (error) {
+    console.error(`❌ VIN lookup error for ${vin}:`, error);
+    
+    let errorMessage = 'Failed to lookup VIN';
+    if (error instanceof Error) {
+      if (error.message.includes('NHTSA API')) {
+        errorMessage = 'VIN database temporarily unavailable';
+      } else if (error.message.includes('fetch')) {
+        errorMessage = 'Network error while looking up VIN';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: errorMessage
+    });
+  }
+});
+
+
 export default router;
