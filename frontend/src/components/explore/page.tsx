@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Navbar } from "../utils/navbar"
@@ -8,7 +8,6 @@ import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Input } from "../ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
@@ -18,6 +17,9 @@ import { set } from "date-fns"
 import { useUser } from '../contexts/usercontext';
 import { Textarea } from "../ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
+import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 
 export default function ExplorePage() {
   const { user, isAuthenticated } = useUser();
@@ -34,7 +36,16 @@ export default function ExplorePage() {
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [errormessage, setErrorMessage] = useState<string | null>(null);
+  const [hideGalleryControls, setHideGalleryControls] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
+ 
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  const minSwipeDistance = 50;
   
   const { cars, isLoading, error } = useCarState()
   const dispatch = useCarDispatch()
@@ -243,6 +254,113 @@ const CommentItem = ({ comment }: { comment: any }) => (
     )}
   </div>
 );
+
+const getCurrentPhotoUrl = () => {
+    if (currentCar.allPhotoKeys.length === 0) {
+      return `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(currentCar.carName)}`;
+    }
+    return getS3ImageUrl(currentCar.allPhotoKeys[currentIndex]);
+  };
+
+  const goToNext = () => {
+    if (isTransitioning || currentCar.allPhotoKeys.length <= 1) return;
+    
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => (prev + 1) % currentCar.allPhotoKeys.length);
+    
+    setTimeout(() => setIsTransitioning(false), 300);
+  };
+
+  const goToPrevious = () => {
+    if (isTransitioning || currentCar.allPhotoKeys.length <= 1) return;
+    
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => (prev - 1 + currentCar.allPhotoKeys.length) % currentCar.allPhotoKeys.length);
+    
+    setTimeout(() => setIsTransitioning(false), 300);
+  };
+
+  const goToSlide = (index: number) => {
+    if (isTransitioning || index === currentIndex) return;
+    
+    setIsTransitioning(true);
+    setCurrentIndex(index);
+    
+    setTimeout(() => setIsTransitioning(false), 300);
+  };
+
+  // Touch handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      goToNext();
+    } else if (isRightSwipe) {
+      goToPrevious();
+    }
+  };
+
+  // Mouse drag handlers for desktop
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<number | null>(null);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart(e.clientX);
+    e.preventDefault();
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !dragStart) return;
+    
+    const distance = dragStart - e.clientX;
+    
+    // Optional: Add visual feedback during drag
+  };
+
+  const onMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging || !dragStart) return;
+    
+    const distance = dragStart - e.clientX;
+    const isLeftDrag = distance > minSwipeDistance;
+    const isRightDrag = distance < -minSwipeDistance;
+
+    if (isLeftDrag) {
+      goToNext();
+    } else if (isRightDrag) {
+      goToPrevious();
+    }
+
+    setIsDragging(false);
+    setDragStart(null);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        goToPrevious();
+      } else if (e.key === 'ArrowRight') {
+        goToNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
 const fetchCars = async () => {
     console.log("🚀 fetchCars called");
@@ -321,53 +439,6 @@ const fetchCars = async () => {
     }
   }
   
-  // Debug: manually set some test data
-  const handleTestData = () => {
-    console.log("🧪 Test data button clicked");
-    console.log("🧪 Dispatch function:", dispatch);
-    console.log("🧪 CarActionTypes:", CarActionTypes);
-    
-    const testCars = [
-      {
-        entryID: 1,
-        userID: "testuser1",
-        carName: "Test Car 1",
-        carMake: "Toyota",
-        carModel: "Supra",
-        s3ContentID: "/placeholder.svg",
-        totalMods: 5,
-        totalCost: 10000,
-        category: "Sports",
-        region: "JDM",
-        upvotes: 25,
-        viewCount: 100,
-        createdAt: "2024-01-01",
-        description: "Test car description"
-      },
-      {
-        entryID: 2,
-        userID: "testuser2",
-        carName: "Test Car 2",
-        carMake: "Honda",
-        carModel: "Civic",
-        s3ContentID: "/placeholder.svg",
-        totalMods: 3,
-        totalCost: 5000,
-        category: "Tuner",
-        region: "JDM",
-        upvotes: 15,
-        viewCount: 50,
-        createdAt: "2024-01-02",
-        description: "Another test car"
-      }
-    ];
-
-    dispatch({
-      type: CarActionTypes.FETCH_CARS_SUCCESS,
-      payload: testCars
-    });
-    
-  };
 
   if (isLoading && cars.length === 0) {
     return (
@@ -389,7 +460,6 @@ const fetchCars = async () => {
           <div>
             Error loading cars: {error}. 
             <Button onClick={fetchCars} className="ml-2">Retry</Button>
-            <Button onClick={handleTestData} variant="outline" className="ml-2">Load Test Data</Button>
           </div>
         </main>
         <Footer />
@@ -405,7 +475,6 @@ const fetchCars = async () => {
           <div>
             No cars found. 
             <Button onClick={fetchCars} className="ml-2">Refresh</Button>
-            <Button onClick={handleTestData} variant="outline" className="ml-2">Load Test Data</Button>
           </div>
         </main>
         <Footer />
@@ -417,433 +486,298 @@ const fetchCars = async () => {
   const remainingCars = cars.length - swipedCars.length
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Header */}
-      <Navbar />
-      <div className="border-b border-gray-800 bg-gray-900">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold text-white">Explore Builds</h1>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 min-h-[calc(100vh-200px)]">
-          
-          {/* Left Sidebar - Filters & Controls */}
-          <div className="space-y-6">
-            
-            {/* Category Filters */}
-            <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-              <h3 className="text-lg font-semibold text-white mb-4">Categories</h3>
-              <div className="space-y-2">
-                <Button 
-                  variant={activeFilter === "JDM" ? "default" : "outline"} 
-                  size="sm" 
-                  onClick={() => handlefilter("JDM")}
-                  className={`w-full justify-start ${
-                    activeFilter === "JDM" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "text-black border-gray-600 hover:bg-gray-300"
-                  }`}
-                >
-                  JDM
-                </Button>
-                <Button 
-                  variant={activeFilter === "European" ? "default" : "outline"} 
-                  size="sm" 
-                  onClick={() => handlefilter("European")}
-                  className={`w-full justify-start ${
-                    activeFilter === "European" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "text-black border-gray-600 hover:bg-gray-300"
-                  }`}
-                >
-                  European
-                </Button>
-                <Button 
-                  variant={activeFilter === "American" ? "default" : "outline"} 
-                  size="sm" 
-                  onClick={() => handlefilter("American")}
-                  className={`w-full justify-start ${
-                    activeFilter === "American" 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "text-black border-gray-600 hover:bg-gray-300"
-                  }`}
-                >
-                  American
-                </Button>
-              </div>
-            </div>
-
-            {/* View Toggle */}
-            <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-              <h3 className="text-lg font-semibold text-white mb-4">View Mode</h3>
-              
-              <div className="flex flex-row justify-around gap-2">
-            <Button
-                variant= {activeFilter === "swipe" ? "default" : "outline"} 
-                value="swipe"
-                className={`w-full ${
-                activeTab === "swipe"
-                    ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                    : "text-black border-gray-600 hover:bg-gray-300"
-                }`}
-                onClick={() => setActiveTab("swipe")}
-            >
-                Swipe
-            </Button>
-            <Button
-                variant= {activeFilter === "grid" ? "default" : "outline"} 
-                value="grid"
-                className={`w-full ${
-                activeTab === "grid"
-                    ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                    : "text-black border-gray-600 hover:bg-gray-300"
-                }`}
-                onClick={() => setActiveTab("grid")}
-            >
-                Grid
-            </Button>
-            </div>
-              
-              
-            </div>
-
-            {/* Stats Card */}
-            {( activeTab === "swipe") && (
-                <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-              <h3 className="text-lg font-semibold text-white mb-3">Remaining Cars</h3>
-              <div className="space-y-2 text-sm text-gray-300">
-                <div className="flex justify-between">
-                  <span className="text-blue-400 font-medium">{remainingCars}</span>
-                </div>
-              </div>
-            </div>
-            )}
-            
-
-            {( activeTab === "grid") && (  
-            <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-              <h3 className="text-lg font-semibold text-white mb-4">Filters</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm text-gray-300 mb-2 block">Sort By</label>
-                  <select className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm">
-                    <option>Most Liked</option>
-                    <option>Newest</option>
-                    <option>Most Expensive</option>
-                    <option>Most Mods</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            )}
-            
-          </div>
-
-          {/* Right Content Area */}
-          <div className="min-h-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-              
-              {/* Swipe View */}
-              <TabsContent value="swipe" className="mt-0 h-full">
-                <div className="flex flex-col items-center h-full">
-
-                  <div className="w-full max-w-4xl">
-                    <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white">
-                      <div className="relative h-[60vh]">
-                         <img
-                            src={currentCar.mainPhotoKey 
-                                ? getS3ImageUrl(currentCar.mainPhotoKey)
-                                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(currentCar.carName)}`
-                            }
-                            alt={currentCar.carName}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
-                        <button className="absolute top-4 right-4 bg-black/60 rounded-full p-2 hover:bg-black/80 z-10">
-                          <Info className="h-5 w-5" />
-                        </button>
-
-                        <div className="absolute top-4 left-4 flex gap-2 z-10">
-                          <div className="flex items-center gap-1 bg-black/70 rounded-full px-3 py-1">
-                            <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
-                            <span className="text-sm">{currentCar.upvotes}</span>
-                          </div>
-                        </div>
-
-                        <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                          <div className="space-y-3">
-                            <div>
-                              <h3 className="font-bold text-2xl mb-1">{currentCar.carName}</h3>
-                              <p className="text-gray-300 text-lg">{currentCar.carMake} {currentCar.carModel}</p>
-                                <Avatar className="h-24 w-24">
-                                <AvatarImage className="w-full h-full object-cover object-center" src={user?.profilephotokey 
-                                            ? getS3ImageUrl(currentCar?.profilephotokey)
-                                            : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
-                                    } alt="User" />
-                                </Avatar>
-                              <p className="text-gray-400">By @{currentCar.userName}</p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <Badge variant="outline" className="text-sm text-white border-white/30 bg-black/40">
-                                {currentCar.carMake}
-                              </Badge>
-                              <Badge variant="outline" className="text-sm text-white border-white/30 bg-black/40">
-                                {currentCar.region}
-                              </Badge>
-                              <Badge variant="outline" className="text-sm text-white border-white/30 bg-black/40">
-                                {currentCar.category}
-                              </Badge>
-                            </div>
-
-                            <div className="flex gap-4 text-sm">
-                              <div className="bg-black/40 rounded-lg px-3 py-2">
-                                <span className="text-gray-300">Mods: </span>
-                                <span className="text-white font-semibold">{currentCar.totalMods}</span>
-                              </div>
-                              <div className="bg-black/40 rounded-lg px-3 py-2">
-                                <span className="text-gray-300">Cost: </span>
-                                <span className="text-white font-semibold">${currentCar.totalCost.toLocaleString()}</span>
-                              </div>
-                            </div>
-
-                            <div className="bg-black/40 rounded-lg p-3">
-                              <p className="text-sm text-gray-200">{currentCar.description}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <CardContent className="p-4">
-                            <div className="flex justify-between gap-4">
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                className="flex-1 text-black hover:bg-gray-300 hover:text-black"
-                                onClick={() => handlePass(currentCar.entryID?.toString() || "")}
-                            >
-                                <X className="h-5 w-5 mr-2 text-gray-500" />
-                                Pass
-                            </Button>
-                           <Button
-                            variant="outline"
-                            size="lg"
-                            className={`flex-1 text-black hover:bg-gray-300 hover:text-black ${!isAuthenticated ? 'opacity-60' : ''}`}
-                            onClick={() => {
-                                if (!isAuthenticated) {
-                                window.location.href = '/auth';
-                                return;
-                                }
-                                handleLike(currentCar.entryID?.toString() || "");
-                            }}
-                            title={!isAuthenticated ? "Login to like cars" : "Like this car"}
-                            >
-                            <Heart className="h-5 w-5 mr-2 "  />
-                            {isAuthenticated ? 'Like' : 'Login to Like'}
-                            </Button>
-                            <Button 
-                            variant="ghost" 
-                            size="lg" 
-                            className={`text-white hover:bg-gray-800 hover:text-white px-6 ${!isAuthenticated ? 'opacity-60' : ''}`}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleComment(currentCar.entryID?.toString() || "");
-                            }}
-                            title={!isAuthenticated 
-                                ? "Login to comment" 
-                                : `Comment on this car - ${currentCar.commentCount || 0} comments`
-                                }
-                            >
-                            <MessageCircle className="h-5 w-5 mr-2" />
-                            {isAuthenticated ? 'Comment' : 'Login to Comment'}
-                            </Button>
-                            </div>
-                        </CardContent>
-                        { errormessage && errormessage.length > 0 && (
-                        <Card className="mt-4 bg-red-900 border-red-800">
-                        <div className="p-4 text-white">
-                            <p className="font-semibold">Error: {errormessage}</p>
-                        </div>
-                        </Card> 
-                        )}
-                        </Card>
-                    
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Grid View */}
-              <TabsContent value="grid" className="mt-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                  {cars.map((car) => (
-                    <Card key={car.entryID} className="overflow-hidden bg-gray-900 border-gray-800 hover:border-gray-700 transition-all duration-200 hover:shadow-xl group">
-                      <div className="relative h-48 overflow-hidden">
-                        <img 
-                        src={car.mainPhotoKey 
-                            ? getS3ImageUrl(car.mainPhotoKey)
-                            : `/placeholder.svg?height=200&width=300&text=${encodeURIComponent(car.carName)}`
-                        } 
-                        alt={car.carName} 
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-200" 
-                        />
-                        <div className="absolute top-2 right-2">
-                          <div className="flex items-center gap-1 bg-black/70 rounded-full px-2 py-1">
-                            <Heart className="h-3 w-3 text-red-500" fill="currentColor" />
-                            <span className="text-xs text-white">{car.upvotes}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-bold text-lg text-white truncate">{car.carName}</h3>
-                            <p className="text-gray-400 text-sm">By @{car.userID}</p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-1">
-                            <Badge variant="outline" className="text-xs text-white border-gray-600">
-                              {car.carMake}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs text-white border-gray-600">
-                              {car.region}
-                            </Badge>
-                          </div>
-
-                          <div className="flex justify-between text-xs text-gray-400">
-                            <span>{car.totalMods} mods</span>
-                            <span>${car.totalCost?.toLocaleString()}</span>
-                          </div>
-
-                          <p className="text-gray-300 text-sm line-clamp-2">{car.description}</p>
-
-                            <div className="flex justify-between items-center pt-2">
-                            <div className="flex gap-2">
-                            <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className={`h-8 px-3 text-white hover:bg-white  ${!isAuthenticated ? 'opacity-60' : ''}`}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleLike(car.entryID?.toString() || "");
-                            }}
-                            title={!isAuthenticated ? "Login to like cars" : "Like this car"}
-                            >
-                            <Heart className="h-4 w-4 mr-1" />
-                            {isAuthenticated ? 'Like' : 'Login to Like'}
-                            </Button>
-                            <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className={`h-8 px-3 text-white hover:bg-white ${!isAuthenticated ? 'opacity-60' : ''}`}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleComment(car.entryID?.toString() || "");
-                            }}
-                            title={!isAuthenticated 
-                                ? "Login to comment" 
-                                : `Comment on this car - ${currentCar.commentCount || 0} comments`
-                                }
-                            >
-                            <MessageCircle className="h-4 w-4 mr-1" />
-                            {isAuthenticated ? 'Comment' : 'Login to Comment'}
-                            </Button>
-                            </div>
-                            <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 px-2 text-white hover:bg-gray-800"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                // Add share functionality here
-                            }}
-                            >
-                            <Share2 className="h-4 w-4" />
-                            </Button>
-                            
-                            
-                        
-                        </div>
-                        { errormessage && errormessage.length > 0 && (
-                        <Card className="mt-4 bg-red-900 border-red-800">
-                        <div className="p-4 text-white">
-                            <p className="font-semibold">Error: {errormessage}</p>
-                        </div>
-                        </Card> 
-                        )}
-                        </div>
-                      </CardContent>
-                      
-                    </Card>
-                    
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
-                <DialogContent className="max-w-2xl max-h-[80vh] bg-gray-900 text-white border-gray-700">
-                <DialogHeader>
-                    <DialogTitle>Comments</DialogTitle>
-                </DialogHeader>
-                
-                <div className="space-y-4">
-                    {/* Comment form */}
-                    {isAuthenticated && (
-                    <div className="space-y-3">
-                        <Textarea
-                        placeholder="Write a comment..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-                        rows={3}
-                        />
-                        <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-400">
-                            {commentText.length}/1000 characters
-                        </span>
-                        <Button 
-                            onClick={handleSubmitComment}
-                            disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
-                            className="bg-blue-600 hover:bg-blue-700"
-                        >
-                            {isSubmittingComment ? 'Posting...' : 'Post Comment'}
-                        </Button>
-                        </div>
-                    </div>
-                    )}
-                    
-                    {/* Comments list */}
-                    <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                    {isLoadingComments ? (
-                        <div className="text-center py-8">
-                        <p className="text-gray-400">Loading comments...</p>
-                        </div>
-                    ) : comments.length > 0 ? (
-                        comments.map((comment) => (
-                        <CommentItem key={comment.commentID} comment={comment} />
-                        ))
-                    ) : (
-                        <div className="text-center py-8">
-                        <p className="text-gray-400">No comments yet. Be the first to comment!</p>
-                        </div>
-                    )}
-                    </div>
-                </div>
-                </DialogContent>
-                </Dialog>
-                
-            </Tabs>
-            
-             
-          </div>
-         
-        </div>
-         <Footer />
+  <div className="min-h-screen bg-gray-950">
+    {/* Header */}
+    <Navbar />
+    <div className="border-b border-gray-800 bg-gray-900">
+      <div className="container mx-auto px-4 py-4">
+        <h1 className="text-3xl font-bold text-white">Explore Builds</h1>
       </div>
     </div>
-  );
-}
+    
+    <div className="flex flex-col items-center h-full mt-5 mb-5">
+      <div className="w-full max-w-5xl">
+        <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white">
+          <div className="relative h-[75vh]">
+            <div
+              ref={containerRef}
+              className="relative w-full h-full cursor-grab active:cursor-grabbing select-none"
+              style={{ zIndex: 1 }}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+              onMouseLeave={() => {
+                setIsDragging(false);
+                setDragStart(null);
+              }}
+            >
+              <img
+                src={getCurrentPhotoUrl()}
+                alt={`${currentCar.carName} - Photo ${currentIndex + 1} of ${currentCar.allPhotoKeys.length}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300  ease-in-out${
+                  isTransitioning ? 'opacity-80' : 'opacity-100'
+                }`}
+                draggable={false}
+                style={{ zIndex: 1 }}
+              />
+            </div>
+        
+            {/* Navigation Arrows - Only show if more than 1 photo and not hidden */}
+            {currentCar.allPhotoKeys.length > 1 && !hideGalleryControls && (
+              <>
+                <button
+                  onClick={goToPrevious}
+                  disabled={isTransitioning}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 disabled:opacity-50"
+                  style={{ zIndex: 5 }}
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                
+                <button
+                  onClick={goToNext}
+                  disabled={isTransitioning}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 disabled:opacity-50"
+                  style={{ zIndex: 5 }}
+                  aria-label="Next photo"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
+
+            {/* User info overlay - top left */}
+            <div className="absolute top-4 left-4 flex flex-col gap-3 z-[100] animate-in fade-in-0 slide-in-from-left-2 duration-300" style={{ zIndex: 5 }}>
+              <div className="flex items-center gap-3 bg-black/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg hover:bg-black/70 transition-all duration-200">
+                {/* Avatar with ring and hover effect */}
+                <div className="relative group">
+                  <Avatar className="h-12 w-12 ring-2 ring-white/20 ring-offset-2 ring-offset-transparent transition-all duration-200 group-hover:ring-white/40 group-hover:scale-105">
+                    <AvatarImage 
+                      className="w-full h-full object-cover object-center" 
+                      src={currentCar.profilephotokey 
+                        ? getS3ImageUrl(currentCar.profilephotokey)
+                        : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                      } 
+                      alt={`${currentCar.userName}'s profile`}
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                      {currentCar.userName?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+
+                {/* User info text */}
+                <div className="flex flex-col justify-center min-w-0">
+                  <p className="text-white/90 text-sm font-medium leading-tight drop-shadow-sm truncate">
+                    By @{currentCar.userName}
+                  </p>
+                  <p className="text-white/60 text-xs leading-tight">
+                    {currentCar.region}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Likes overlay - top right */}
+            <div className="absolute top-4 right-4 flex flex-col gap-3 z-[100] animate-in fade-in-0 slide-in-from-right-2 duration-300" style={{ zIndex: 5 }}>
+              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 shadow-lg hover:bg-black/70 transition-all duration-200 hover:scale-105">
+                <div className="relative">
+                  <Heart 
+                    className="h-5 w-5 text-red-500 drop-shadow-sm transition-transform duration-200 hover:scale-110" 
+                    fill="currentColor" 
+                  />
+                  {/* Subtle glow effect */}
+                  <div className="absolute inset-0 h-5 w-5 text-red-500/30 blur-sm">
+                    <Heart className="h-5 w-5" fill="currentColor" />
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-white drop-shadow-sm">
+                  {currentCar.upvotes.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {showUserInfo ? (
+            <div 
+                className="absolute bottom-4 left-4 pointer-events-none" 
+                style={{ zIndex: 5 }}
+            >
+                {/* Compact content container with its own background - only as wide as needed */}
+                <div 
+                className="relative p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20"
+                onMouseEnter={() => setHideGalleryControls(true)}
+                onMouseLeave={() => setHideGalleryControls(false)}
+                >
+                <button
+                    onClick={() => setShowUserInfo(false)}
+                    className="absolute -top-1 -right-1 bg-black/80 hover:bg-black/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
+                    aria-label="Close info"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+                <div className="mb-2">
+                    <h3 className="font-bold text-xl text-white mb-0.5 drop-shadow-lg">
+                    {currentCar.carName}
+                    </h3>
+                    <p className="text-gray-200 text-sm font-medium drop-shadow-md">
+                    {currentCar.carMake} {currentCar.carModel}
+                    </p>
+                </div>
+
+                {/* Compact stats inline */}
+                <div className="flex gap-2 text-xs mb-2">
+                    <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
+                    <span className="text-gray-300">Mods: </span>
+                    <span className="text-white font-bold">{currentCar.totalMods}</span>
+                    </div>
+                    <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
+                    <span className="text-gray-300">Cost: </span>
+                    <span className="text-white font-bold">${currentCar.totalCost.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                {/* Small badges inline */}
+                <div className="flex gap-1.5">
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
+                    {currentCar.carMake}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
+                    {currentCar.region}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
+                    {currentCar.category}
+                    </Badge>
+                </div>
+                <div className="mt-2 text-gray-300 text-sm whitespace-pre-line max-w-xs">
+                    <p className="break-words leading-relaxed">{currentCar.description}</p>
+                </div>
+                </div>
+            </div>
+            ) : (
+            <button 
+                onClick={() => setShowUserInfo(true)} 
+                className="absolute bottom-4 left-4 p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20 text-white hover:bg-black/70 transition-all duration-200"
+                style={{ zIndex: 5 }}
+            > 
+                Show Info 
+            </button>
+            )}
+          </div>
+
+          <CardContent className="p-4">
+            <div className="flex justify-between gap-4">
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 text-black hover:bg-gray-300 hover:text-black"
+                onClick={() => handlePass(currentCar.entryID?.toString() || "")}
+              >
+                <X className="h-5 w-5 mr-2 text-gray-500" />
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className={`flex-1 text-black hover:bg-gray-300 hover:text-black ${!isAuthenticated ? 'opacity-60' : ''}`}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    window.location.href = '/auth';
+                    return;
+                  }
+                  handleLike(currentCar.entryID?.toString() || "");
+                }}
+                title={!isAuthenticated ? "Login to like cars" : "Like this car"}
+              >
+                <Heart className="h-5 w-5 mr-2" />
+                {isAuthenticated ? 'Like' : 'Login to Like'}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="lg" 
+                className={`text-white hover:bg-gray-800 hover:text-white px-6 ${!isAuthenticated ? 'opacity-60' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleComment(currentCar.entryID?.toString() || "");
+                }}
+                title={!isAuthenticated 
+                  ? "Login to comment" 
+                  : `Comment on this car - ${comments.length || 0} comments`
+                }
+              >
+                <MessageCircle className="h-5 w-5 mr-2" />
+                {isAuthenticated ? `Comments (${comments.length})` : 'Login to Comment'}
+              </Button>
+            </div>
+          </CardContent>
+          
+          {errormessage && errormessage.length > 0 && (
+            <Card className="mt-4 bg-red-900 border-red-800">
+              <div className="p-4 text-white">
+                <p className="font-semibold">Error: {errormessage}</p>
+              </div>
+            </Card> 
+          )}
+        </Card>
+      </div>
+    </div>
+
+    {/* Comment Modal */}
+    <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+      <DialogContent className="max-w-2xl max-h-[80vh] bg-gray-900 text-white border-gray-700">
+        <DialogHeader>
+          <DialogTitle>Comments ({comments.length})</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Comment form */}
+          {isAuthenticated && (
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Write a comment..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                rows={3}
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-400">
+                  {commentText.length}/1000 characters
+                </span>
+                <Button 
+                  onClick={handleSubmitComment}
+                  disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {/* Comments list */}
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+            {isLoadingComments ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Loading comments...</p>
+              </div>
+            ) : comments.length > 0 ? (
+              comments.map((comment) => (
+                <CommentItem key={comment.commentID} comment={comment} />
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No comments yet. Be the first to comment!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    
+    <Footer />
+  </div>
+);}
