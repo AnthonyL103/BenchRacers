@@ -151,18 +151,20 @@ export function GarageProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateCar = async (entryID: number,carData: CarCreate) => {
-    if (!isAuthenticated || !user) {
-      setError('You must be logged in to add a car');
-      return;
-    }
+  const updateCar = async (entryID: number, carData: CarCreate) => {
+  if (!isAuthenticated || !user) {
+    setError('You must be logged in to update a car');
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
+  
+  console.log('Updating car with entryID:', entryID, 'and data:', carData);
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(
       `https://api.benchracershq.com/api/garage/update/${entryID}`, 
       carData,
       {
@@ -172,22 +174,30 @@ export function GarageProvider({ children }: { children: React.ReactNode }) {
         }
       }
     );
-      if (response.data.success) {
-        alert("Updated Entry Successfully");
+    
+    if (response.data.success) {
+      // Update the local cars state with the updated car
+      setCars(prevCars => 
+        prevCars.map(car => 
+          car.entryID === entryID 
+            ? { ...car, ...response.data.car } // Merge with updated data from API
+            : car
+        )
+      );
+      
+      alert("Updated Entry Successfully");
       return;
-        
-      } else {
-        throw new Error(response.data.message || 'Failed to update car');
-      }
-    } catch (error) {
-      console.error('Error updating car:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while updating the car');
-      throw error; 
-    } finally {
-      setIsLoading(false);
+    } else {
+      throw new Error(response.data.message || 'Failed to update car');
     }
-  };
-
+  } catch (error) {
+    console.error('Error updating car:', error);
+    setError(error instanceof Error ? error.message : 'An error occurred while updating the car');
+    throw error; 
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 const deleteCar = async (entryID: number): Promise<void> => {
     if (!isAuthenticated || !user) {

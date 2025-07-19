@@ -16,7 +16,6 @@ export function Navbar() {
     { name: "Home", path: "/", icon: Home },
     { name: "Explore", path: "/explore", icon: Compass },
     { name: "Rankings", path: "/rankings", icon: Trophy },
-    { name: "Following", path: "/following", icon: Users },
     { name: "My Garage", path: "/garage", icon: User },
   ];
   

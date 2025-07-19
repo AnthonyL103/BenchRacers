@@ -21,18 +21,8 @@ import { Camera, Loader2, Plus, Search, X, Upload, ChevronsUpDown, Check } from 
 import { Alert, AlertDescription } from "../ui/alert"
 import { useGarage } from "../contexts/garagecontext"
 import { useUser } from "../contexts/usercontext"
+import { VinLookup } from "./vinLookup";
 import axios from "axios"
-import { 
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from "../ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
-import { set } from "date-fns"
-import { color } from "framer-motion"
 
 interface Mod {
   id: number;
@@ -77,9 +67,6 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
 
   
   const [availableMods, setAvailableMods] = useState<Mod[]>([])
-
-  
-
 
   
 
@@ -346,6 +333,8 @@ const removePhoto = (index: number) => {
     if (!carDetails.model) newErrors.model = "Car model is required";
     if (!carDetails.category) newErrors.category = "Category is required";
     if (photos.length === 0) newErrors.photos = "At least one photo is required";
+    if (!carDetails.color) newErrors.color = "Color is required";
+
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -470,194 +459,172 @@ const removePhoto = (index: number) => {
               Details
             </TabsTrigger>
           </TabsList>
-
+          
           <TabsContent value="basic" className="space-y-6 py-4">
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="vin" className="text-white">VIN (Vehicle Identification Number)</Label>
-                <div className="flex gap-2 mt-1.5">
-                  <Input
-                    id="vin"
-                    placeholder="e.g. JT2BK3BA3M0123456"
-                    value={vin}
-                    onChange={(e) => setVin(e.target.value)}
-                    maxLength={17}
-                  />
-                  <Button
-                    type="button"
-                    onClick={lookupVin}
-                    disabled={vin.length !== 17 || isLookingUpVin}
-                    className="flex-shrink-0"
-                  >
-                    {isLookingUpVin ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Looking up...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="h-4 w-4 mr-2" />
-                        Lookup
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter your 17-digit VIN to automatically populate car details
-                </p>
-              </div>
+                {/* VIN Lookup Component */}
+                <VinLookup
+                onDataFound={(vinData) => {
+                    setCarDetails(prev => ({
+                    ...prev,
+                    // Populate all fields except category
+                    make: vinData.make || prev.make,
+                    model: vinData.model || prev.model,
+                    year: vinData.year || prev.year,
+                    trim: vinData.trim || prev.trim,
+                    engine: vinData.engine || prev.engine,
+                    color: vinData.color || prev.color, // Will be empty, user inputs manually
+                    transmission: vinData.transmission || prev.transmission,
+                    drivetrain: vinData.drivetrain || prev.drivetrain
+                    // category remains unchanged - user must select manually
+                    }));
+                }}
+                onSuccess={() => {
+                    // Don't auto-advance since user still needs to select category and enter color
+                    // setActiveTab("photos"); // Remove this line
+                }}
+                disabled={isSubmitting}
+                />
 
-              {vinLookupSuccess && (
-                <Alert className="bg-green-900/20 border-green-900 text-green-400">
-                  <AlertDescription>VIN lookup successful! Car details have been populated.</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Car Details Form - Fields will be populated by VIN lookup */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="make" className="text-white">Make</Label>
-                  <Input
+                    <Label htmlFor="make" className="text-white">Make *</Label>
+                    <Input
                     id="make"
                     placeholder="e.g. Toyota"
                     value={carDetails.make}
                     onChange={(e) => setCarDetails({ ...carDetails, make: e.target.value })}
                     className={errors.make ? "border-red-500" : ""}
-                  />
-                  {errors.make && <p className="text-xs text-red-500">{errors.make}</p>}
+                    />
+                    {errors.make && <p className="text-xs text-red-500">{errors.make}</p>}
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-white">Model</Label>
-                  <Input
+                    <Label htmlFor="model" className="text-white">Model *</Label>
+                    <Input
                     id="model"
                     placeholder="e.g. Supra"
                     value={carDetails.model}
                     onChange={(e) => setCarDetails({ ...carDetails, model: e.target.value })}
                     className={errors.model ? "border-red-500" : ""}
-                  />
-                  {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
+                    />
+                    {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="Category" className="text-white">Category</Label>
-                  <Select
+                    <Label htmlFor="Category" className="text-white">Category *</Label>
+                    <Select
                     value={carDetails.category}
                     onValueChange={(value) => setCarDetails({ ...carDetails, category: value })}
-                  >
+                    >
                     <SelectTrigger id="category" className={errors.category ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                        
-                    <SelectItem value="Track">Track</SelectItem>
-                    <SelectItem value="Drag">Drag</SelectItem>
-                    <SelectItem value="Drift">Drift</SelectItem>
-                    <SelectItem value="Street">Street</SelectItem>
-                    <SelectItem value="Sleeper">Sleeper</SelectItem>
-
-                    <SelectItem value="Off-Road">Trail</SelectItem>
-                    <SelectItem value="Off-Road">Overland</SelectItem>
-                    <SelectItem value="Off-Road">Crawler</SelectItem>
-                    <SelectItem value="Off-Road">Desert</SelectItem>
-
-                    <SelectItem value="Vintage">Vintage</SelectItem>
-                    <SelectItem value="Restomod">Restomod</SelectItem>
-                    <SelectItem value="Hotrod">Hotrod</SelectItem>
-                    <SelectItem value="Lowrider">Lowrider</SelectItem>
-
+                        <SelectItem value="Track">Track</SelectItem>
+                        <SelectItem value="Drag">Drag</SelectItem>
+                        <SelectItem value="Drift">Drift</SelectItem>
+                        <SelectItem value="Street">Street</SelectItem>
+                        <SelectItem value="Sleeper">Sleeper</SelectItem>
+                        <SelectItem value="Off-Road">Trail</SelectItem>
+                        <SelectItem value="Off-Road">Overland</SelectItem>
+                        <SelectItem value="Off-Road">Crawler</SelectItem>
+                        <SelectItem value="Off-Road">Desert</SelectItem>
+                        <SelectItem value="Vintage">Vintage</SelectItem>
+                        <SelectItem value="Restomod">Restomod</SelectItem>
+                        <SelectItem value="Hotrod">Hotrod</SelectItem>
+                        <SelectItem value="Lowrider">Lowrider</SelectItem>
                     </SelectContent>
-                  </Select>
-                  {errors.category && <p className="text-xs text-red-500">{errors.category}</p>}
+                    </Select>
+                    {errors.category && <p className="text-xs text-red-500">{errors.category}</p>}
                 </div>
-              </div>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="year" className="text-white">Year</Label>
-                  <Input
+                    <Label htmlFor="year" className="text-white">Year</Label>
+                    <Input
                     id="year"
                     placeholder="e.g. 2020"
                     value={carDetails.year}
                     onChange={(e) => setCarDetails({ ...carDetails, year: e.target.value })}
-                  />
+                    />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="trim" className="text-white">Trim</Label>
-                  <Input
+                    <Label htmlFor="trim" className="text-white">Trim</Label>
+                    <Input
                     id="trim"
                     placeholder="e.g. GR"
                     value={carDetails.trim}
                     onChange={(e) => setCarDetails({ ...carDetails, trim: e.target.value })}
-                  />
+                    />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="engine" className="text-white">Engine</Label>
-                  <Input
+                    <Label htmlFor="color" className="text-white">Color *</Label>
+                    <Input
+                    id="color"
+                    placeholder="e.g. Midnight Black"
+                    value={carDetails.color}
+                    onChange={(e) => setCarDetails({ ...carDetails, color: e.target.value })}
+                    className={errors.color ? "border-red-500" : ""}
+                    />
+                    {errors.color && <p className="text-xs text-red-500">{errors.color}</p>}
+                    <p className="text-xs text-gray-500">VIN doesn't contain color - please enter manually</p>
+                </div>
+                </div>
+
+                <div className="space-y-2">
+                <Label htmlFor="engine" className="text-white">Engine</Label>
+                <Input
                     id="engine"
                     placeholder="e.g. 3.0L Inline-6 Turbo"
                     value={carDetails.engine}
                     onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
-                  />
+                />
                 </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="color" className="text-white">Color</Label>
-                  <Input
-                    id="color"
-                    placeholder="Red"
-                    value={carDetails.color}
-                    onChange={(e) => setCarDetails({ ...carDetails, color: e.target.value })}
-                    className={errors.color ? "border-red-500" : ""}
-                  />
-                  {errors.color && <p className="text-xs text-red-500">{errors.color}</p>}
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="transmission" className="text-white">Transmission</Label>
-                  <Select
-                    value={carDetails.transmission}
-                    onValueChange={(value) => setCarDetails({ ...carDetails, transmission: value })}
-                  >
-                    <SelectTrigger id="transmission">
-                      <SelectValue placeholder="Select transmission" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Manual">Manual</SelectItem>
-                      <SelectItem value="Automatic">Automatic</SelectItem>
-                      <SelectItem value="DCT">Dual-Clutch (DCT)</SelectItem>
-                      <SelectItem value="CVT">CVT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="drivetrain" className="text-white">Drivetrain</Label>
-                  <Select
-                    value={carDetails.drivetrain}
-                    onValueChange={(value) => setCarDetails({ ...carDetails, drivetrain: value })}
-                  >
-                    <SelectTrigger id="drivetrain">
-                      <SelectValue placeholder="Select drivetrain" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FWD">Front-Wheel Drive (FWD)</SelectItem>
-                      <SelectItem value="RWD">Rear-Wheel Drive (RWD)</SelectItem>
-                      <SelectItem value="AWD">All-Wheel Drive (AWD)</SelectItem>
-                      <SelectItem value="4WD">Four-Wheel Drive (4WD)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                            <Label htmlFor="transmission" className="text-white">Transmission</Label>
+                            <Select
+                                value={carDetails.transmission}
+                                onValueChange={(value) => setCarDetails({ ...carDetails, transmission: value })}
+                            >
+                                <SelectTrigger id="transmission">
+                                <SelectValue placeholder="Select transmission" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                <SelectItem value="Manual">Manual</SelectItem>
+                                <SelectItem value="Automatic">Automatic</SelectItem>
+                                <SelectItem value="DCT">Dual-Clutch (DCT)</SelectItem>
+                                <SelectItem value="CVT">CVT</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            </div>
+                            <div className="space-y-2">
+                            <Label htmlFor="drivetrain" className="text-white">Drivetrain</Label>
+                            <Select
+                                value={carDetails.drivetrain}
+                                onValueChange={(value) => setCarDetails({ ...carDetails, drivetrain: value })}
+                            >
+                                <SelectTrigger id="drivetrain">
+                                <SelectValue placeholder="Select drivetrain" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                <SelectItem value="FWD">Front-Wheel Drive (FWD)</SelectItem>
+                                <SelectItem value="RWD">Rear-Wheel Drive (RWD)</SelectItem>
+                                <SelectItem value="AWD">All-Wheel Drive (AWD)</SelectItem>
+                                <SelectItem value="4WD">Four-Wheel Drive (4WD)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            </div>
+                        </div>
             </div>
+            </TabsContent>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setActiveTab("photos")}>
-                Next: Add Photos
-              </Button>
-            </DialogFooter>
-          </TabsContent>
 
           <TabsContent value="photos" className="space-y-6 py-4">
             <div>

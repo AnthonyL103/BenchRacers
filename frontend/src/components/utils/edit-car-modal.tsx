@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { Button } from "../ui/button"
+import { ModsTabContent } from "./modsTabcontent";
+
 import {
   Dialog,
   DialogContent,
@@ -708,156 +710,81 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
 
           <TabsContent value="photos" className="space-y-6 py-4">
             <div>
-              <Label className="block mb-4 text-white">Car Photos</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+                <Label className="block mb-4 text-white">Car Photos</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 {photoPreview.map((photo, index) => (
-                  <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
-                     <img
-                                                src={car.mainPhotoKey 
-                                                ? getS3ImageUrl(car.mainPhotoKey) 
-                                                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(car.carName)}`
-                                                }
-                                                alt={car.carName}
-                                                className="absolute inset-0 w-full h-full object-cover"
-                                            />
+                    <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
+                    <img
+                        src={index < existingPhotos.length 
+                        ? getS3ImageUrl(existingPhotos[index].s3Key)
+                        : photo // This is already a blob URL for new files
+                        }
+                        alt={`${car.carName} - Photo ${index + 1}`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                    />
                     <button
-                      onClick={() => removePhoto(index)}
-                      className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
+                        onClick={() => removePhoto(index)}
+                        className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
                     >
-                      <X className="h-4 w-4 bg-red-500 hover:bg-red-400" />
+                        <X className="h-4 w-4 text-red-500 hover:text-red-400" />
                     </button>
                     
                     {index < existingPhotos.length && existingPhotos[index].isMainPhoto && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                         Main Photo
-                      </div>
+                        </div>
                     )}
                     
                     {index < existingPhotos.length && !existingPhotos[index].isMainPhoto && (
-                      <button
+                        <button
                         onClick={() => setMainPhoto(index)}
                         className="absolute bottom-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600"
-                      >
+                        >
                         Set as Main
-                      </button>
+                        </button>
                     )}
-                  </div>
+                    </div>
                 ))}
 
                 {photoPreview.length < 6 && (
-                  <button
+                    <button
                     onClick={triggerFileInput}
                     className={`aspect-square rounded-md border-2 border-dashed ${
-                      errors.photos ? "border-red-500" : "border-gray-700"
+                        errors.photos ? "border-red-500" : "border-gray-700"
                     } flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-gray-800/50 transition-colors`}
-                  >
+                    >
                     <Camera className="h-6 w-6 text-gray-400" />
                     <span className="text-sm text-gray-400">Add Photo</span>
-                  </button>
+                    </button>
                 )}
-              </div>
-              {errors.photos && <p className="text-xs text-red-500 mt-1">{errors.photos}</p>}
-              <p className="text-xs text-gray-500">
+                </div>
+                {errors.photos && <p className="text-xs text-red-500 mt-1">{errors.photos}</p>}
+                <p className="text-xs text-gray-500">
                 Upload up to 6 high-quality photos of your car. You can set which photo is the main image.
-              </p>
+                </p>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setActiveTab("basic")}>
+                <Button variant="outline" onClick={() => setActiveTab("basic")}>
                 Back
-              </Button>
-              <Button onClick={() => setActiveTab("mods")}>
+                </Button>
+                <Button onClick={() => setActiveTab("mods")}>
                 Next: Modifications
-              </Button>
+                </Button>
             </DialogFooter>
-          </TabsContent>
-
-          <TabsContent value="mods" className="space-y-6 py-4">
-            <DialogHeader>
-              <DialogTitle className="text-xl text-white">Modifications</DialogTitle>
-              <DialogDescription>Update modifications for your car</DialogDescription>
-            </DialogHeader>
+            </TabsContent>
             
-            <div className="mt-4 mb-6">
-              <Label className="block mb-2 text-white">Selected Modifications</Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-gray-800/50 rounded-md min-h-[60px]">
-                {mods.length > 0 ? (
-                  mods.map(mod => (
-                    <Badge 
-                      key={mod.id} 
-                      variant="secondary" 
-                      className="flex items-center gap-1 p-2 h-auto"
-                    >
-                      <span className="font-medium">{mod.brand}</span>
-                      <span className="text-xs text-gray-400 mx-1">|</span>
-                      <span className="text-xs text-gray-400">{mod.description.slice(0, 20)}{mod.description.length > 20 ? '...' : ''}</span>
-                      <span className="text-xs text-green-500 mx-1">${mod.cost.toLocaleString()}</span>
-                      <button onClick={() => removeMod(mod.id)} className="ml-1">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 p-2">No modifications selected yet</p>
-                )}
-              </div>
-            </div>
-            
-            <Tabs value={activeModTab} onValueChange={setActiveModTab} className="mt-4">
-              <TabsList className="grid grid-cols-6">
-                <TabsTrigger value="exterior">Exterior</TabsTrigger>
-                <TabsTrigger value="interior">Interior</TabsTrigger>
-                <TabsTrigger value="drivetrain">Drivetrain</TabsTrigger>
-                <TabsTrigger value="wheels">Wheels</TabsTrigger>
-                <TabsTrigger value="suspension">Suspension</TabsTrigger>
-                <TabsTrigger value="brakes">Brakes</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="exterior" className="space-y-4 py-4">
-                {renderModSelectionForCategory("exterior")}
-              </TabsContent>
-
-              <TabsContent value="interior" className="space-y-4 py-4">
-                {renderModSelectionForCategory("interior")}
-              </TabsContent>
-
-              <TabsContent value="drivetrain" className="space-y-4 py-4">
-                {renderModSelectionForCategory("drivetrain")}
-              </TabsContent>
-
-              <TabsContent value="wheels" className="space-y-4 py-4">
-                {renderModSelectionForCategory("wheels")}
-              </TabsContent>
-
-              <TabsContent value="suspension" className="space-y-4 py-4">
-                {renderModSelectionForCategory("suspension")}
-              </TabsContent>
-
-              <TabsContent value="brakes" className="space-y-4 py-4">
-                {renderModSelectionForCategory("brakes")}
-              </TabsContent>
-            </Tabs>
-
-            <div className="mt-4 p-4 bg-gray-800 rounded-md">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total Modifications:</span>
-                <span>{mods.length}</span>
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="font-medium">Total Cost:</span>
-                <span className="text-green-500">${totalCost.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setActiveTab("photos")}>
-                Back
-              </Button>
-              <Button onClick={() => setActiveTab("details")}>
-                Next: Details
-              </Button>
-            </DialogFooter>
-          </TabsContent>
+        <TabsContent value="mods" className="space-y-6 py-4">
+                    <ModsTabContent 
+                        availableMods={availableMods}
+                        selectedMods={mods}
+                        onAddMod={addMod}
+                        onRemoveMod={removeMod}
+                        isLoadingMods={isLoadingMods}
+                        setActiveTab={setActiveTab}
+                    />
+        </TabsContent>
+        
 
           <TabsContent value="details" className="space-y-6 py-4">
             <div>
