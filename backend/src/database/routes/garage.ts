@@ -965,7 +965,7 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
     const nhtsaResponse = await axios.get(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
     const nhtsaData = nhtsaResponse.data;
     
-    if (!nhtsaResponse || nhtsaResponse.status !== 200) {
+    if (!nhtsaResponse.data || nhtsaResponse.status !== 200) {
       throw new Error(`NHTSA API returned ${nhtsaResponse.status}: ${nhtsaResponse.statusText}`);
     }
     
@@ -986,17 +986,7 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       return result?.Value || "";
     };
     
-    // Check if VIN is valid by looking for error messages
-    const errorCode = findValue("Error Code");
-    const errorText = findValue("Error Text");
-    
-    if (errorCode && errorCode !== "0") {
-      return res.status(400).json({
-        success: false,
-        message: errorText || 'Invalid VIN number'
-      });
-    }
-    
+  
     // Extract comprehensive trim information
     const extractTrim = (): string => {
       const trim = findValue("Trim");
