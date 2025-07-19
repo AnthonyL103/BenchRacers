@@ -622,7 +622,13 @@ const removePhoto = (index: number) => {
                             </Select>
                             </div>
                         </div>
+                        
             </div>
+            <DialogFooter>
+             <Button onClick={() => setActiveTab("photos")}>
+               Next: Add Photos
+             </Button>
+           </DialogFooter>
             </TabsContent>
 
 
