@@ -110,6 +110,8 @@ const [openModsState, setOpenModsState] = useState({
     engine: "",
     transmission: "",
     category:"",
+    horsepower:"",
+    torque:"",
     drivetrain: "",
   })
 
@@ -277,6 +279,8 @@ const removePhoto = (index: number) => {
         trim: "GR",
         engine: "3.0L Inline-6 Turbo",
         category:"Sport",
+        horsepower:"400",
+        torque:"350",
         transmission: "8-Speed Automatic",
         drivetrain: "RWD",
       })
@@ -376,8 +380,8 @@ const removePhoto = (index: number) => {
             engine: carDetails.engine,
             transmission: carDetails.transmission,
             drivetrain: carDetails.drivetrain,
-            horsepower: undefined, 
-            torque: undefined,     
+            horsepower: carDetails.horsepower ? parseInt(carDetails.horsepower) : undefined,
+            torque: carDetails.torque ? parseInt(carDetails.torque) : undefined, 
             
             photos: uploadedPhotos,
             tags: selectedTags,
@@ -420,6 +424,8 @@ const removePhoto = (index: number) => {
       engine: "",
       transmission: "",
       category: "",
+      horsepower: "",
+      torque: "",
       drivetrain: "",
     });
     setActiveTab("basic");
@@ -584,6 +590,29 @@ const removePhoto = (index: number) => {
                     value={carDetails.engine}
                     onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
                 />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                            <Label htmlFor="horsepower" className="text-white">Horsepower</Label>
+                            <Input
+                                id="horsepower"
+                                type="number"
+                                placeholder="e.g. 400"
+                                value={carDetails.horsepower}
+                                onChange={(e) => setCarDetails({ ...carDetails, horsepower: e.target.value })}
+                            />
+                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="torque" className="text-white">Torque</Label>
+                        <Input
+                            id="Torque"
+                            type="number"
+                            placeholder="e.g. 350"
+                            value={carDetails.torque}
+                            onChange={(e) => setCarDetails({ ...carDetails, torque: e.target.value })}
+                        />
+                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

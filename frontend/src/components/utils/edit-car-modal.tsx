@@ -130,6 +130,8 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     engine: "",
     transmission: "",
     category: "",
+    horsepower: "",
+    torque: "",
     drivetrain: "",
   })
   
@@ -168,6 +170,8 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         engine: car.engine || "",
         transmission: car.transmission || "",
         category: car.category || "",
+        horsepower: car.horsepower || "",
+        torque: car.torque || "",
         drivetrain: car.drivetrain || "",
       });
       
@@ -507,8 +511,8 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         engine: carDetails.engine || undefined,
         transmission: carDetails.transmission || undefined,
         drivetrain: carDetails.drivetrain || undefined,
-        horsepower: car.horsepower,
-        torque: car.torque,
+        horsepower: carDetails.horsepower ? parseInt(carDetails.horsepower) : undefined,
+        torque: carDetails.torque ? parseInt(carDetails.torque) : undefined,
         
         photos: allPhotos,
         tags: selectedTags,
@@ -661,6 +665,28 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                     onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
                   />
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="horsepower" className="text-white">Horsepower</Label>
+                    <Input
+                        id="horsepower"
+                        type="number"
+                        placeholder="e.g. 400"
+                        value={carDetails.horsepower}
+                        onChange={(e) => setCarDetails({ ...carDetails, horsepower: e.target.value })}
+                    />
+                    </div>
+                <div className="space-y-2">
+                    <Label htmlFor="torque" className="text-white">Torque</Label>
+                        <Input
+                            id="Torque"
+                            type="number"
+                            placeholder="e.g. 350"
+                            value={carDetails.torque}
+                            onChange={(e) => setCarDetails({ ...carDetails, torque: e.target.value })}
+                        />
+                        </div>
+                    </div>
                 <div className="space-y-2">
                   <Label htmlFor="transmission" className="text-white">Transmission</Label>
                   <Select

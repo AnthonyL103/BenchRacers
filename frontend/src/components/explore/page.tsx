@@ -652,6 +652,18 @@ const fetchCars = async () => {
                     {currentCar.category}
                     </Badge>
                 </div>
+                 <div className="flex gap-2 mt-3">
+                    {currentCar.horsepower && (
+                        <Badge variant="outline" className="text-xs px-2 py-1 text-orange-300 border-orange-400/30 bg-orange-500/10 backdrop-blur-sm">
+                            ⚡ {currentCar.horsepower} HP
+                        </Badge>
+                    )}
+                    {currentCar.torque && (
+                        <Badge variant="outline" className="text-xs px-2 py-1 text-blue-300 border-blue-400/30 bg-blue-500/10 backdrop-blur-sm">
+                            🔧 {currentCar.torque} lb-ft
+                        </Badge>
+                    )}
+                </div>
                 <div className="mt-2 text-gray-300 text-sm whitespace-pre-line max-w-xs">
                     <p className="break-words leading-relaxed">{currentCar.description}</p>
                 </div>
