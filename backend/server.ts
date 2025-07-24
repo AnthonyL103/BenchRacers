@@ -6,6 +6,7 @@ import authRoutes from './src/database/routes/auth';
 import garageRoutes from './src/database/routes/garage'; 
 import adminRoutes from './src/database/routes/admin';
 import exploreRoutes from './src/database/routes/explore';
+import rankingsRoutes from './src/database/routes/rankings';
 
 config();
 
@@ -18,6 +19,7 @@ app.use('/api/users', authRoutes);
 app.use('/api/garage', garageRoutes);
 app.use('/api/admin', adminRoutes); 
 app.use('/api/explore', exploreRoutes);
+app.use('/api/rankings', rankingsRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.get('/health', (req, res) => {

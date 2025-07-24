@@ -25,6 +25,8 @@ const dbConfig = {
 
 const pool = mysql.createPool(dbConfig);
 
+/*
+
 async function initializeDatabase(): Promise<boolean> {
   try {
     console.log('Starting database initialization...');
@@ -54,7 +56,7 @@ async function initializeDatabase(): Promise<boolean> {
   }
 }
 
-
+*/
 
 async function testConnection(): Promise<boolean> {
   try {
@@ -68,4 +70,4 @@ async function testConnection(): Promise<boolean> {
   }
 }
 
-export { pool, initializeDatabase, testConnection };
+export { pool, testConnection };

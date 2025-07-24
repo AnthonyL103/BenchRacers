@@ -1,4 +1,4 @@
-import { initializeDatabase, testConnection } from './dbconfig';
+import {testConnection } from './dbconfig';
 
 async function initialize() {
   try {
@@ -9,18 +9,7 @@ async function initialize() {
       process.exit(1);
     }
     
-    console.log('Connection to RDS successful. Initializing database schema...');
-    
-    const initialized = await initializeDatabase();
-    
-    if (initialized) {
-      console.log('Database schema initialized successfully!');
-    } else {
-      console.error('Failed to initialize database schema.');
-      process.exit(1);
-    }
-    
-    process.exit(0);
+    console.log('Connection to RDS successful');
   } catch (error) {
     console.error('Unexpected error during initialization:', error);
     process.exit(1);
