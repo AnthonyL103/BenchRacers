@@ -82,6 +82,8 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       tags: string;
     }
     
+    //we filter out all entries, that aren't liked or swiped, then we apply the random offset whcihc means when we query we skip a random amount from the unfiltered for more "randomness in a sense"
+    
     const { swipedCars = [], likedCars = [], limit = 10, region = null, category = null } = req.body;
     
     let baseQuery = `

@@ -2,9 +2,6 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { pool } from '../dbconfig';
-import AWS from 'aws-sdk';
-import { FieldPacket, ResultSetHeader } from 'mysql2/promise';
-import axios from 'axios';
 
 config();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
