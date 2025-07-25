@@ -83,7 +83,6 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     }
     
     const { swipedCars = [], likedCars = [], limit = 10, region = null, category = null } = req.body;
-    const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 50);
     
     let baseQuery = `
       SELECT 
@@ -130,7 +129,17 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     countQuery = countQuery.replace(/INNER JOIN Users.*profilephotokey/, 'INNER JOIN Users u ON e.userEmail = u.userEmail');
     
     const [countResult]: any = await pool.query(countQuery, queryParams);
-    const totalCount = countResult[0].total;
+    const totalCount = Number(countResult[0]?.total) || 0;
+    const safeLimit = Number(Math.min(Math.max(parseInt(limit) || 10, 1), 50));
+
+    if (isNaN(totalCount) || isNaN(safeLimit)) {
+    console.error('[EXPLORE] Type conversion failed:', { totalCount, safeLimit });
+    return res.status(500).json({
+        success: false,
+        message: 'Server error during parameter validation',
+        errorCode: 'PARAMETER_ERROR'
+    });
+    }
     
     if (totalCount === 0) {
       return res.status(200).json({
