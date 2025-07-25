@@ -143,11 +143,15 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     
     const maxOffset = Math.max(0, totalCount - safeLimit);
     const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
-    
+
+    const mainQueryParams = [...queryParams, safeLimit, randomOffset];
+
     baseQuery += ` ORDER BY e.entryID LIMIT ? OFFSET ?`;
-    queryParams.push(safeLimit, randomOffset);
-    
-    const [cars]: any = await pool.query(baseQuery, queryParams);
+
+    console.log('[EXPLORE] Final query:', baseQuery);
+    console.log('[EXPLORE] Main query params:', mainQueryParams);
+
+    const [cars]: any = await pool.query(baseQuery, mainQueryParams);
     
     if (cars.length === 0) {
       return res.status(200).json({
@@ -172,7 +176,6 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       GROUP BY entryID
     `, entryIds);
     
-    // Step 3: Get tags for selected cars only
     const [tags]: any = await pool.query(`
       SELECT 
         et.entryID,
