@@ -41,13 +41,53 @@ router.get('/top10', authenticateUser, async (req: AuthenticatedRequest, res: Re
         
         await connection.beginTransaction();
         
-        const [result]: any = await connection.query(
-            `SELECT userEmail, carName, carMake, 
-            carModel,  FROM ENTRIES`
-        )
+        //use pool for only single queries, as it is more efficient
+        //for multiple queries establish connection so you are performing all without 
+        //closing connections in between
+        
+        const [top10result]: any = await pool.query(
+            `SELECT e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.upvotes,
+                u.name as userName, u.profilephotokey,
+                (SELECT GROUP_CONCAT(s3key ORDER BY s3key ASC) 
+                FROM EntryPhotos ep1 WHERE ep1.entryID = e.entryID) as allPhotoKeys,
+                (SELECT s3key FROM EntryPhotos ep2 
+                WHERE ep2.entryID = e.entryID AND ep2.isMainPhoto = TRUE LIMIT 1) as mainPhotoKey
+            FROM Entries e
+            INNER JOIN Users u ON e.userEmail = u.userEmail
+            WHERE u.isVerified = TRUE 
+            ORDER BY e.upvotes DESC
+            LIMIT 10
+            `);
+            
+        const processedtop10 = top10result.map((car: any ) => ({
+            carName: car.carName,
+            carMake: car.carMake,
+            carModel: car.Model,
+            upvotes: car.upvotes,
+            allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
+            mainPhotoKey: car.mainPhotoKey,
+            profilephotokey: car.profilephotokey,
+        }))
+        
+        console.log('SUCCESSFULLY QUERIES TOP 10 Entries');
+        
+        res.status(200).json({
+            success: true,
+            message: 'Top 10 Cars fetched successfully',
+            data: processedtop10,
+            count: processedtop10.length
+        });
         
         
+    } catch (error) {
+    console.error('rankings server error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during car rankings fetch',
+      errorCode: 'SERVER_ERROR'
+    });
     }
+    
 })
 
 

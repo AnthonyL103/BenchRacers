@@ -35,121 +35,172 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
   });
 };
 
+
+
 router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
   try {
-    console.log('[EXPLORE] Received explore request');
+    //Did rand calculation outside of query as that is very expensive especailly with
+    //querying multiple tables and doing group concatenations
+    
+    //also split queries up so they happen un nested within each other, so we get closer to linear time
+    
+    interface CarData {
+      entryID: number;
+      userID: string;
+      carName: string;
+      carMake: string;
+      carModel: string;
+      carYear: string;
+      carColor: string;
+      carTrim: string;
+      description: string;
+      totalMods: number;
+      totalCost: number;
+      category: string;
+      region: string;
+      upvotes: number;
+      commentCount: number;
+      engine: string;
+      transmission: string;
+      drivetrain: string;
+      horsepower: number;
+      torque: number;
+      viewCount: number;
+      createdAt: Date;
+      userName: string;
+      profilephotokey: string;
+    }
+
+    interface PhotoData {
+      entryID: number;
+      allPhotoKeys: string;
+      mainPhotoKey: string;
+    }
+
+    interface TagData {
+      entryID: number;
+      tags: string;
+    }
     
     const { swipedCars = [], likedCars = [], limit = 10, region = null, category = null } = req.body;
-    
     const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 50);
     
-    let query = `
-  SELECT 
-    e.entryID,
-    e.userEmail as userID,
-    e.carName,
-    e.carMake,
-    e.carModel,
-    e.carYear,
-    e.carColor,
-    e.carTrim,
-    e.description,
-    e.totalMods,
-    e.totalCost,
-    e.category,
-    e.region,
-    e.upvotes,
-    e.commentCount,
-    e.engine,
-    e.transmission,
-    e.drivetrain,
-    e.horsepower,
-    e.torque,
-    e.viewCount,
-    e.createdAt,
-    GROUP_CONCAT(DISTINCT ep.s3key ORDER BY ep.s3key ASC) as allPhotoKeys,
-    MAX(CASE WHEN ep.isMainPhoto = TRUE THEN ep.s3key END) as mainPhotoKey,
-    u.name as userName,
-    u.profilephotokey as profilephotokey,
-    GROUP_CONCAT(DISTINCT t.tagName ORDER BY t.tagName ASC) as tags
-  FROM Entries e
-  INNER JOIN Users u ON e.userEmail = u.userEmail
-  LEFT JOIN EntryPhotos ep ON e.entryID = ep.entryID
-  LEFT JOIN EntryTags et ON e.entryID = et.entryID
-  LEFT JOIN Tags t ON et.tagID = t.tagID
-  WHERE u.isVerified = TRUE
-`;
+    let baseQuery = `
+      SELECT 
+        e.entryID, e.userEmail as userID, e.carName, e.carMake, e.carModel,
+        e.carYear, e.carColor, e.carTrim, e.description, e.totalMods, e.totalCost,
+        e.category, e.region, e.upvotes, e.commentCount, e.engine, e.transmission,
+        e.drivetrain, e.horsepower, e.torque, e.viewCount, e.createdAt,
+        u.name as userName, u.profilephotokey
+      FROM Entries e
+      INNER JOIN Users u ON e.userEmail = u.userEmail
+      WHERE u.isVerified = TRUE
+    `;
     
     const queryParams: any[] = [];
     
     if (swipedCars.length > 0) {
       const placeholders = swipedCars.map(() => '?').join(',');
-      query += ` AND e.entryID NOT IN (${placeholders})`;
+      baseQuery += ` AND e.entryID NOT IN (${placeholders})`;
       queryParams.push(...swipedCars);
     }
     
+    if (likedCars.length > 0) {
+      const likedPlaceholders = likedCars.map(() => '?').join(',');
+      baseQuery += ` AND e.entryID NOT IN (${likedPlaceholders})`;
+      queryParams.push(...likedCars);
+    }
+    
     if (region && region !== 'all') {
-      query += ` AND e.region = ?`;
+      baseQuery += ` AND e.region = ?`;
       queryParams.push(region);
     }
     
     if (category && category !== 'all') {
-      query += ` AND e.category = ?`;
+      baseQuery += ` AND e.category = ?`;
       queryParams.push(category);
     }
     
     if (req.user && req.user.userEmail) {
-      query += ` AND e.userEmail != ?`;
+      baseQuery += ` AND e.userEmail != ?`;
       queryParams.push(req.user.userEmail);
     }
     
-    query += ` GROUP BY e.entryID`;
+    let countQuery = baseQuery.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM');
+    countQuery = countQuery.replace(/INNER JOIN Users.*profilephotokey/, 'INNER JOIN Users u ON e.userEmail = u.userEmail');
     
-    query += ` ORDER BY RAND() LIMIT ?`;
-    queryParams.push(safeLimit);
+    const [countResult]: any = await pool.query(countQuery, queryParams);
+    const totalCount = countResult[0].total;
     
-    console.log('[EXPLORE] Executing query with params:', { 
-      swipedCount: swipedCars.length, 
-      region, 
-      category,
-      limit: safeLimit,
-      userEmail: req.user?.userEmail || 'anonymous'
+    if (totalCount === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No cars found',
+        data: [],
+        count: 0
+      });
+    }
+    
+    const maxOffset = Math.max(0, totalCount - safeLimit);
+    const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
+    
+    baseQuery += ` ORDER BY e.entryID LIMIT ? OFFSET ?`;
+    queryParams.push(safeLimit, randomOffset);
+    
+    const [cars]: any = await pool.query(baseQuery, queryParams);
+    
+    if (cars.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No cars found',
+        data: [],
+        count: 0
+      });
+    }
+    
+    const entryIds = cars.map((car: any) => car.entryID);
+
+    const photoPlaceholders = entryIds.map(() => '?').join(',');
+    
+    const [photos]: any = await pool.query(`
+      SELECT 
+        entryID,
+        GROUP_CONCAT(s3key ORDER BY s3key ASC) as allPhotoKeys,
+        MAX(CASE WHEN isMainPhoto = TRUE THEN s3key END) as mainPhotoKey
+      FROM EntryPhotos 
+      WHERE entryID IN (${photoPlaceholders})
+      GROUP BY entryID
+    `, entryIds);
+    
+    // Step 3: Get tags for selected cars only
+    const [tags]: any = await pool.query(`
+      SELECT 
+        et.entryID,
+        GROUP_CONCAT(t.tagName ORDER BY t.tagName ASC) as tags
+      FROM EntryTags et
+      INNER JOIN Tags t ON et.tagID = t.tagID
+      WHERE et.entryID IN (${photoPlaceholders})
+      GROUP BY et.entryID
+    `, entryIds);
+    
+    const photoMap = new Map<number, PhotoData>(
+    photos.map((p: any) => [p.entryID, p])
+    );
+    const tagMap = new Map<number, TagData>(
+    tags.map((t: any) => [t.entryID, t])
+    );
+
+    const processedCars = cars.map((car: CarData) => {
+        const photoData = photoMap.get(car.entryID);
+        const tagData = tagMap.get(car.entryID);
+      
+      return {
+        ...car,
+        allPhotoKeys: photoData?.allPhotoKeys ? photoData.allPhotoKeys.split(',') : [],
+        mainPhotoKey: photoData?.mainPhotoKey || null,
+        tags: tagData?.tags ? tagData.tags.split(',') : []
+      };
     });
-    
-    const [cars]: any = await pool.query(query, queryParams);
-    
-    const processedCars = cars.map((car: any) => ({
-    entryID: car.entryID,
-    userID: car.userID,
-    userName: car.userName,
-    carName: car.carName,
-    carMake: car.carMake,
-    carModel: car.carModel,
-    carYear: car.carYear,
-    carColor: car.carColor,
-    carTrim: car.carTrim,
-    description: car.description,
-    totalMods: car.totalMods,
-    totalCost: car.totalCost,
-    category: car.category,
-    region: car.region,
-    upvotes: car.upvotes,
-    commentCount: car.commentCount || 0,
-    engine: car.engine,
-    transmission: car.transmission,
-    drivetrain: car.drivetrain,
-    horsepower: car.horsepower,
-    torque: car.torque,
-    viewCount: car.viewCount,
-    createdAt: car.createdAt,
-    // Convert comma-separated strings to arrays
-    allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
-    mainPhotoKey: car.mainPhotoKey,
-    profilephotokey: car.profilephotokey,
-    tags: car.tags ? car.tags.split(',') : []
-    }));
-    
-    console.log('[EXPLORE] Found cars:', processedCars.length);
     
     res.status(200).json({
       success: true,
@@ -201,6 +252,7 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       );
       
       if (cars.length === 0) {
+        //rollback undoes all changes, good for error handling
         await connection.rollback();
         connection.release();
         return res.status(404).json({
@@ -229,7 +281,8 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       );
       
      
-      
+      //must use commit for update and insert queries, and release for connection.query
+      //if using pool no need to do this as pool handles the operation automatically
       await connection.commit();
       connection.release();
       
