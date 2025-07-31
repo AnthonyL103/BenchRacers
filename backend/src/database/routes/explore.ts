@@ -35,7 +35,6 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
   });
 };
 
-
 router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
   console.log('[EXPLORE] Route hit - starting execution');
   console.log('[EXPLORE] Request body:', JSON.stringify(req.body, null, 2));
@@ -146,8 +145,36 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     console.log('[EXPLORE] Base query built:', baseQuery);
     console.log('[EXPLORE] Query params before count:', queryParams);
     
-    let countQuery = baseQuery.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM');
-    countQuery = countQuery.replace(/INNER JOIN Users.*profilephotokey/, 'INNER JOIN Users u ON e.userEmail = u.userEmail');
+    // Build count query properly by reconstructing it
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM Entries e
+      INNER JOIN Users u ON e.userEmail = u.userEmail
+      WHERE u.isVerified = TRUE
+    `;
+    
+    // Add the same filters as the main query
+    if (swipedCars.length > 0) {
+      const placeholders = swipedCars.map(() => '?').join(',');
+      countQuery += ` AND e.entryID NOT IN (${placeholders})`;
+    }
+    
+    if (likedCars.length > 0) {
+      const likedPlaceholders = likedCars.map(() => '?').join(',');
+      countQuery += ` AND e.entryID NOT IN (${likedPlaceholders})`;
+    }
+    
+    if (region && region !== 'all') {
+      countQuery += ` AND e.region = ?`;
+    }
+    
+    if (category && category !== 'all') {
+      countQuery += ` AND e.category = ?`;
+    }
+    
+    if (req.user && req.user.userEmail) {
+      countQuery += ` AND e.userEmail != ?`;
+    }
     
     console.log('[EXPLORE] Count query:', countQuery);
     console.log('[EXPLORE] About to execute count query...');
@@ -290,6 +317,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     });
   }
 });
+
 
 router.post('/like', authenticateToken, async (req: Request, res: Response) => {
   try {
