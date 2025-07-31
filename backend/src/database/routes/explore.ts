@@ -36,8 +36,11 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
 };
 
 
-
 router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
+  console.log('[EXPLORE] Route hit - starting execution');
+  console.log('[EXPLORE] Request body:', JSON.stringify(req.body, null, 2));
+  console.log('[EXPLORE] Request user:', req.user);
+  
   try {
     //Did rand calculation outside of query as that is very expensive especailly with
     //querying multiple tables and doing group concatenations
@@ -86,6 +89,14 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     
     const { swipedCars = [], likedCars = [], limit = 10, region = null, category = null } = req.body;
     
+    console.log('[EXPLORE] Extracted parameters:', {
+      swipedCars: swipedCars.length,
+      likedCars: likedCars.length,
+      limit,
+      region,
+      category
+    });
+    
     let baseQuery = `
       SELECT 
         e.entryID, e.userEmail as userID, e.carName, e.carMake, e.carModel,
@@ -104,46 +115,63 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       const placeholders = swipedCars.map(() => '?').join(',');
       baseQuery += ` AND e.entryID NOT IN (${placeholders})`;
       queryParams.push(...swipedCars);
+      console.log('[EXPLORE] Added swiped cars filter, excluded IDs:', swipedCars);
     }
     
     if (likedCars.length > 0) {
       const likedPlaceholders = likedCars.map(() => '?').join(',');
       baseQuery += ` AND e.entryID NOT IN (${likedPlaceholders})`;
       queryParams.push(...likedCars);
+      console.log('[EXPLORE] Added liked cars filter, excluded IDs:', likedCars);
     }
     
     if (region && region !== 'all') {
       baseQuery += ` AND e.region = ?`;
       queryParams.push(region);
+      console.log('[EXPLORE] Added region filter:', region);
     }
     
     if (category && category !== 'all') {
       baseQuery += ` AND e.category = ?`;
       queryParams.push(category);
+      console.log('[EXPLORE] Added category filter:', category);
     }
     
     if (req.user && req.user.userEmail) {
       baseQuery += ` AND e.userEmail != ?`;
       queryParams.push(req.user.userEmail);
+      console.log('[EXPLORE] Excluded current user:', req.user.userEmail);
     }
+    
+    console.log('[EXPLORE] Base query built:', baseQuery);
+    console.log('[EXPLORE] Query params before count:', queryParams);
     
     let countQuery = baseQuery.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM');
     countQuery = countQuery.replace(/INNER JOIN Users.*profilephotokey/, 'INNER JOIN Users u ON e.userEmail = u.userEmail');
     
+    console.log('[EXPLORE] Count query:', countQuery);
+    console.log('[EXPLORE] About to execute count query...');
+    
     const [countResult]: any = await pool.query(countQuery, queryParams);
+    console.log('[EXPLORE] Count query result:', countResult);
+    
     const totalCount = Number(countResult[0]?.total) || 0;
     const safeLimit = Number(Math.min(Math.max(parseInt(limit) || 10, 1), 50));
 
+    console.log('[EXPLORE] Total count:', totalCount);
+    console.log('[EXPLORE] Safe limit:', safeLimit);
+
     if (isNaN(totalCount) || isNaN(safeLimit)) {
-    console.error('[EXPLORE] Type conversion failed:', { totalCount, safeLimit });
-    return res.status(500).json({
-        success: false,
-        message: 'Server error during parameter validation',
-        errorCode: 'PARAMETER_ERROR'
-    });
+      console.error('[EXPLORE] Type conversion failed:', { totalCount, safeLimit });
+      return res.status(500).json({
+          success: false,
+          message: 'Server error during parameter validation',
+          errorCode: 'PARAMETER_ERROR'
+      });
     }
     
     if (totalCount === 0) {
+      console.log('[EXPLORE] No cars found in database with current filters');
       return res.status(200).json({
         success: true,
         message: 'No cars found',
@@ -155,16 +183,28 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     const maxOffset = Math.max(0, totalCount - safeLimit);
     const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
 
+    console.log('[EXPLORE] Pagination calculated:', {
+      maxOffset,
+      randomOffset,
+      totalCount,
+      safeLimit
+    });
+
     const mainQueryParams = [...queryParams, safeLimit, randomOffset];
 
     baseQuery += ` ORDER BY e.entryID LIMIT ? OFFSET ?`;
 
     console.log('[EXPLORE] Final query:', baseQuery);
     console.log('[EXPLORE] Main query params:', mainQueryParams);
+    console.log('[EXPLORE] About to execute main query...');
 
     const [cars]: any = await pool.query(baseQuery, mainQueryParams);
     
+    console.log('[EXPLORE] Main query executed, result count:', cars.length);
+    console.log('[EXPLORE] First car (if any):', cars[0] || 'No cars returned');
+    
     if (cars.length === 0) {
+      console.log('[EXPLORE] Main query returned no cars');
       return res.status(200).json({
         success: true,
         message: 'No cars found',
@@ -174,9 +214,11 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     }
     
     const entryIds = cars.map((car: any) => car.entryID);
+    console.log('[EXPLORE] Entry IDs for photo/tag queries:', entryIds);
 
     const photoPlaceholders = entryIds.map(() => '?').join(',');
     
+    console.log('[EXPLORE] About to fetch photos...');
     const [photos]: any = await pool.query(`
       SELECT 
         entryID,
@@ -187,6 +229,10 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       GROUP BY entryID
     `, entryIds);
     
+    console.log('[EXPLORE] Photos fetched, count:', photos.length);
+    console.log('[EXPLORE] Sample photo data:', photos[0] || 'No photos');
+    
+    console.log('[EXPLORE] About to fetch tags...');
     const [tags]: any = await pool.query(`
       SELECT 
         et.entryID,
@@ -197,12 +243,17 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       GROUP BY et.entryID
     `, entryIds);
     
+    console.log('[EXPLORE] Tags fetched, count:', tags.length);
+    console.log('[EXPLORE] Sample tag data:', tags[0] || 'No tags');
+    
     const photoMap = new Map<number, PhotoData>(
-    photos.map((p: any) => [p.entryID, p])
+      photos.map((p: any) => [p.entryID, p])
     );
     const tagMap = new Map<number, TagData>(
-    tags.map((t: any) => [t.entryID, t])
+      tags.map((t: any) => [t.entryID, t])
     );
+
+    console.log('[EXPLORE] Maps created - photoMap size:', photoMap.size, 'tagMap size:', tagMap.size);
 
     const processedCars = cars.map((car: CarData) => {
         const photoData = photoMap.get(car.entryID);
@@ -216,6 +267,10 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       };
     });
     
+    console.log('[EXPLORE] Cars processed, final count:', processedCars.length);
+    console.log('[EXPLORE] Sample processed car:', processedCars[0] || 'No processed cars');
+    console.log('[EXPLORE] About to send response...');
+    
     res.status(200).json({
       success: true,
       message: 'Cars fetched successfully',
@@ -223,8 +278,11 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       count: processedCars.length
     });
     
+    console.log('[EXPLORE] Response sent successfully');
+    
   } catch (error) {
-    console.error('[EXPLORE] Server error:', error);
+    console.error('[EXPLORE] Server error occurred:', error);
+    console.error('[EXPLORE] Error stack:', error instanceof Error ? error.stack : 'No stack trace available');
     res.status(500).json({
       success: false,
       message: 'Server error during car fetch',
