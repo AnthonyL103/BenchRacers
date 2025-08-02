@@ -22,6 +22,14 @@ const dbConfig = {
   ssl: undefined, 
 };
 
+console.log('[DB] Using config:', {
+  host: dbConfig.host,
+  user: dbConfig.user,
+  password: dbConfig.password ? '***' : undefined,
+  database: dbConfig.database,
+});
+
+
 
 const pool = mysql.createPool(dbConfig);
 
