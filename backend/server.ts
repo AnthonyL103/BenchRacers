@@ -1,14 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from 'dotenv';
+
+// MUST LOAD ENV VARS FIRST - before any imports that need them!
+config();
+
+// NOW import modules that depend on environment variables
 import { pool } from './src/database/dbconfig';
 import authRoutes from './src/database/routes/auth';
 import garageRoutes from './src/database/routes/garage';
 import adminRoutes from './src/database/routes/admin';
 import exploreRoutes from './src/database/routes/explore';
 import rankingsRoutes from './src/database/routes/rankings';
-
-config();
 
 const app = express();
 
@@ -49,11 +52,9 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-/**
- * Recursively list all routes and methods in the app.
- */
+
 function listRoutes(appOrRouter: any, parentPath = '') {
-  const stack = appOrRouter.stack || [];
+  const stack = appOrRouter._router?.stack || appOrRouter.stack || [];
   stack.forEach((layer: any) => {
     if (layer.route && layer.route.path) {
       // Route with methods
@@ -62,9 +63,9 @@ function listRoutes(appOrRouter: any, parentPath = '') {
         .map((m) => m.toUpperCase())
         .join(', ');
       console.log(`   ${methods.padEnd(10)} ${routePath}`);
-    } else if (layer.name === 'router' && layer.handle.stack) {
+    } else if (layer.name === 'router' && layer.handle?.stack) {
       // Nested router, recurse into it
-      const newParentPath = parentPath + (layer.regexp.source
+      const newParentPath = parentPath + (layer.regexp?.source
         .replace('^\\', '')
         .replace('\\/?(?=\\/|$)', '')
         .replace(/\\\//g, '/')
