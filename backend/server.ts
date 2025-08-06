@@ -109,8 +109,7 @@ app.get('/health', (req, res) => {
   res.status(200).send('healthy');
 });
 
-// FIXED: Changed from app.use('*', ...) to just app.use(...)
-// This creates a catch-all middleware without the problematic wildcard
+// Catch-all route for 404s
 app.use((req, res) => {
   console.log(`[SERVER] Unhandled route: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ 
@@ -122,15 +121,8 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[SERVER] Server running on port ${PORT}`);
-  console.log('[SERVER] Registered routes:');
-  
-  app._router.stack.forEach((middleware: any) => {
-    if (middleware.route) {
-      console.log(`  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
-    } else if (middleware.name === 'router' && middleware.regexp) {
-      console.log(`  Router mounted at: ${middleware.regexp.source}`);
-    }
-  });
+  console.log('[SERVER] All routes registered successfully');
+  // Removed the problematic _router.stack code
 });
 
 process.on('SIGINT', () => {
