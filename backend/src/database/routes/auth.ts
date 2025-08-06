@@ -35,115 +35,129 @@ const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFu
 };
 
 router.post('/login', async (req: Request, res: Response) => {
-    console.log('[LOGIN] Hit /login route');
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ 
-          success: false,
-          message: 'Email and password are required',
-          errorCode: 'MISSING_FIELDS'
-        });
-      }
-  
-      const [users]: any = await pool.query(
-        'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken, profilephotokey FROM Users WHERE userEmail = ?', 
-        [email]
-      );
-      
-      if (users.length === 0) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'Invalid email or password',
-          errorCode: 'INVALID_CREDENTIALS'
-        });
-      }
-  
-      const user = users[0];
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'Invalid email or password',
-          errorCode: 'INVALID_CREDENTIALS'
-        });
-      }
-  
-      if (!user.isVerified) {
-        const verificationToken = uuidv4();
-        
-        await pool.query(
-          'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
-          [verificationToken, email]
-        );
-  
-        const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
-        const msg = {
-          to: email,
-          from: process.env.EMAIL_USER || 'noreply@benchracers.com',
-          subject: 'Verify your Bench Racers account',
-          html: `
-            <h1>Welcome to Bench Racers!</h1>
-            <p>Please verify your email to complete your registration:</p>
-            <a href="${verificationUrl}">Verify Email</a>
-          `
-        };
-  
-        try {
-          await sgMail.send(msg);
-          console.log('[LOGIN] New verification email sent');
-        } catch (sendErr) {
-          console.error('[LOGIN] Failed to send new verification email', sendErr);
-        }
-        
-        return res.status(403).json({ 
-          success: false,
-          message: 'Please verify your email before logging in. A new verification email has been sent.',
-          errorCode: 'EMAIL_NOT_VERIFIED'
-        });
-      }
-  
-      const token = jwt.sign(
-        {
-          userEmail: user.userEmail,
-          name: user.name,
-          accountCreated: user.accountCreated,
-          userIndex: user.userIndex,
-          totalEntries: user.totalEntries,
-          region: user.region,
-          isEditor: user.isEditor,
-          isVerified: user.isVerified,
-          profilephotokey: user.profilephotokey
-        },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-  
-      res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        token,
-        user: {
-          userEmail: user.userEmail,
-          name: user.name,
-          accountCreated: user.accountCreated,
-          userIndex: user.userIndex,
-          totalEntries: user.totalEntries,
-          region: user.region,
-          isEditor: user.isEditor,
-          profilephotokey: user.profilephotokey
-        }
-      });
-    } catch (error) {
-      console.error('[LOGIN] Server error:', error);
-      res.status(500).json({ 
+  console.log('[LOGIN] Hit /login route');
+  try {
+    const { email, password } = req.body;
+    console.log('[LOGIN] Incoming data:', { email, passwordPresent: !!password });
+
+    if (!email || !password) {
+      console.warn('[LOGIN] Missing email or password');
+      return res.status(400).json({ 
         success: false,
-        message: 'Server error during login',
-        errorCode: 'SERVER_ERROR'
+        message: 'Email and password are required',
+        errorCode: 'MISSING_FIELDS'
       });
     }
+
+    console.log('[LOGIN] Querying DB for user...');
+    const [users]: any = await pool.query(
+      'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken, profilephotokey FROM Users WHERE userEmail = ?', 
+      [email]
+    );
+    console.log('[LOGIN] Query result:', users);
+
+    if (!users || users.length === 0) {
+      console.warn('[LOGIN] No user found for email:', email);
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password',
+        errorCode: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    const user = users[0];
+    console.log('[LOGIN] Found user in DB:', { email: user.userEmail, isVerified: user.isVerified });
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('[LOGIN] Password match result:', isPasswordValid);
+
+    if (!isPasswordValid) {
+      console.warn('[LOGIN] Password invalid for email:', email);
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid email or password',
+        errorCode: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    if (!user.isVerified) {
+      console.log('[LOGIN] User not verified, sending new verification email...');
+      const verificationToken = uuidv4();
+      
+      await pool.query(
+        'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
+        [verificationToken, email]
+      );
+
+      const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?token=${verificationToken}`;
+      const msg = {
+        to: email,
+        from: process.env.EMAIL_USER || 'noreply@benchracers.com',
+        subject: 'Verify your Bench Racers account',
+        html: `
+          <h1>Welcome to Bench Racers!</h1>
+          <p>Please verify your email to complete your registration:</p>
+          <a href="${verificationUrl}">Verify Email</a>
+        `
+      };
+
+      try {
+        await sgMail.send(msg);
+        console.log('[LOGIN] Verification email sent to:', email);
+      } catch (sendErr) {
+        console.error('[LOGIN] Failed to send verification email:', sendErr);
+      }
+      
+      return res.status(403).json({ 
+        success: false,
+        message: 'Please verify your email before logging in. A new verification email has been sent.',
+        errorCode: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        userEmail: user.userEmail,
+        name: user.name,
+        accountCreated: user.accountCreated,
+        userIndex: user.userIndex,
+        totalEntries: user.totalEntries,
+        region: user.region,
+        isEditor: user.isEditor,
+        isVerified: user.isVerified,
+        profilephotokey: user.profilephotokey
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    console.log('[LOGIN] JWT generated successfully for:', email);
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        userEmail: user.userEmail,
+        name: user.name,
+        accountCreated: user.accountCreated,
+        userIndex: user.userIndex,
+        totalEntries: user.totalEntries,
+        region: user.region,
+        isEditor: user.isEditor,
+        profilephotokey: user.profilephotokey
+      }
+    });
+    console.log('[LOGIN] Login successful response sent');
+  } catch (error) {
+    console.error('[LOGIN] Server error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during login',
+      errorCode: 'SERVER_ERROR'
+    });
+  }
 });
+
   
 router.post('/signup', async (req: Request, res: Response) => {
     console.log('[SIGNUP] Received signup request');

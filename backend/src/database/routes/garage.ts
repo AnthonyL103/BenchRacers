@@ -1,10 +1,8 @@
-// Optimized Garage Routes - Query Optimization Only
 import { Router, Request, Response, NextFunction } from 'express';
 import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { pool } from '../dbconfig';
 import AWS from 'aws-sdk';
-import { FieldPacket, ResultSetHeader } from 'mysql2/promise';
 import axios from 'axios';
 
 config();
@@ -946,7 +944,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
   const { vin } = req.params;
   
   try {
-    // Validate VIN format
     if (!vin || vin.length !== 17) {
       return res.status(400).json({
         success: false,
@@ -954,14 +951,12 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       });
     }
     
-    // Check for invalid VIN characters (I, O, Q are not allowed in VINs)
     if (/[IOQ]/i.test(vin)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid VIN format. VIN cannot contain letters I, O, or Q.'
       });
     }    
-    // Call NHTSA vPIC API
     const nhtsaResponse = await axios.get(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
     const nhtsaData = nhtsaResponse.data;
     
@@ -969,7 +964,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       throw new Error(`NHTSA API returned ${nhtsaResponse.status}: ${nhtsaResponse.statusText}`);
     }
     
-    // Check if results are empty
     
     if (!nhtsaData.Results || nhtsaData.Results.length === 0) {
       return res.status(404).json({
@@ -978,7 +972,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       });
     }
     
-    // Helper function to find value by variable name
     const findValue = (variableName: string): string => {
       const result = nhtsaData.Results.find((item: any) => 
         item.Variable?.toLowerCase().includes(variableName.toLowerCase())
@@ -987,7 +980,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
     };
     
   
-    // Extract comprehensive trim information
     const extractTrim = (): string => {
       const trim = findValue("Trim");
       const series = findValue("Series");
@@ -997,7 +989,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       return trimParts.join(" ") || "";
     };
     
-    // Format engine information
     const formatEngine = (): string => {
       const cylinders = findValue("Engine Number of Cylinders");
       const configuration = findValue("Engine Configuration");
@@ -1033,7 +1024,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       return engine.trim() || engineModel || "";
     };
     
-    // Format transmission information
     const formatTransmission = (): string => {
       const transmissionStyle = findValue("Transmission Style");
       const transmissionSpeeds = findValue("Transmission Speeds");
@@ -1067,7 +1057,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       return transmission.trim() || transmissionStyle || "";
     };
     
-    // Format drivetrain
     const formatDrivetrain = (driveType: string): string => {
       if (!driveType) return "";
       
@@ -1081,12 +1070,10 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       return driveType;
     };
     
-    // Extract vehicle data
     const make = findValue("Make");
     const model = findValue("Model");
     const year = findValue("Model Year");
     
-    // Check if we got essential data
     if (!make || !model || !year) {
       return res.status(400).json({
         success: false,
@@ -1094,7 +1081,6 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       });
     }
     
-    // Build the response data
     const vinData = {
       make,
       model,
@@ -1103,11 +1089,9 @@ router.get('/vinlookup/:vin', authenticateUser, async (req: AuthenticatedRequest
       engine: formatEngine(),
       transmission: formatTransmission(),
       drivetrain: formatDrivetrain(findValue("Drive Type")),
-      // Color is not available from VIN
       color: ""
     };
     
-    // Remove empty values
     const cleanedData: any = {};
     Object.entries(vinData).forEach(([key, value]) => {
       if (value && value.trim() !== "") {
