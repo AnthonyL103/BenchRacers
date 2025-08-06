@@ -9,7 +9,6 @@ console.log('[SERVER] Starting server initialization...');
 console.log('[SERVER] JWT_SECRET exists:', !!process.env.JWT_SECRET);
 console.log('[SERVER] Current working directory:', process.cwd());
 
-// Load routes with error handling
 console.log('[SERVER] Loading route files...');
 
 let authRoutes, garageRoutes, adminRoutes, exploreRoutes, rankingsRoutes;
@@ -110,8 +109,9 @@ app.get('/health', (req, res) => {
   res.status(200).send('healthy');
 });
 
-// Catch-all route for debugging
-app.use('*', (req, res) => {
+// FIXED: Changed from app.use('*', ...) to just app.use(...)
+// This creates a catch-all middleware without the problematic wildcard
+app.use((req, res) => {
   console.log(`[SERVER] Unhandled route: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ 
     message: 'Route not found', 
@@ -124,7 +124,6 @@ app.listen(PORT, () => {
   console.log(`[SERVER] Server running on port ${PORT}`);
   console.log('[SERVER] Registered routes:');
   
-  // List all registered routes
   app._router.stack.forEach((middleware: any) => {
     if (middleware.route) {
       console.log(`  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
