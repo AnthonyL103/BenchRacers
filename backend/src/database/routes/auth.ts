@@ -6,6 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import sgMail from '@sendgrid/mail';
 import { pool } from '../dbconfig'; 
 
+console.log('[AUTH ROUTES] File loaded. MAILERKEY exists:', !!process.env.MAILERKEY);
+
+
 config(); 
 sgMail.setApiKey(process.env.MAILERKEY || '');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
