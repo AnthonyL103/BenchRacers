@@ -135,7 +135,7 @@ export default function GaragePage() {
 
                 <TabsContent value="my-cars" className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold">My Cars</h2>
+                    <h2 className="text-xl font-bold text-white">My Cars</h2>
                     <Button size="sm" className="gap-2" onClick={() => setIsAddCarModalOpen(true)}>
                       <Plus className="h-4 w-4" />
                       Add New Car

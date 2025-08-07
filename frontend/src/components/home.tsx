@@ -55,7 +55,7 @@ export default function Home() {
 
         <section className="py-10 bg-gray-950">
           <div className="container">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">How It Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-white">How It Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
               <div className="flex flex-col items-center text-center space-y-4">
                 <div className="w-[10vw] h-[16vh] rounded-full flex items-center justify-center mb-4">
