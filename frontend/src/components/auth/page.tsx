@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { Link, useSearchParams, useNavigate } from "react-router-dom"
 import { Navbar } from "../utils/navbar"
 import { Footer } from "../utils/footer"
@@ -11,6 +11,16 @@ import { Car, Github, ChromeIcon as Google } from "lucide-react"
 import { useUser } from '../contexts/usercontext';
 import { getUserRegion } from '../utils/getLocation';
 import { useLocation } from "react-router-dom";
+import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog"
 
 export default function AuthPage() {
   const { isLoading, login, setLoading, setError } = useUser();
@@ -23,9 +33,22 @@ export default function AuthPage() {
   const showSignup = searchParams.get("signup") === "true";
   const [activeTab, setActiveTab] = useState(showSignup ? "signup" : "login");
   
+  const [showPassword, setshowPassword] = useState(false);
+  const [showloginPassword, setshowloginPassword] = useState(false);
+  
+  const [showTerms, setShowTerms] = useState(false);
+  const [hasAcceptedTerms, sethasAcceptedTerms] = useState(false);
+  
+  
   const location = useLocation();
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
+  const passwordValidations = {
+        hasLength: password.length >= 8,
+        hasCapital: /[A-Z]/.test(password),
+        hasNumber: /\d/.test(password),
+        hasSpecial: /[!@#$%^&*]/.test(password),
+    };
   
   useEffect(() => {
     if (location.state && 
@@ -116,17 +139,34 @@ export default function AuthPage() {
     }
   };
   
+  
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     setLoading(true);
     setErrorMessage("");
     
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+        setErrorMessage("Password must be at least 8 characters long and include at least one number and one special character.");
+        return;
+    }
+    
     if (password !== confirmPassword) {
       setErrorMessage("Passwords do not match");
       setLoading(false);
       return;
     }
+    
+    if (!hasAcceptedTerms) {
+    setShowTerms(true);
+    return; 
+    }
+    
+    
+    
+    
+    
     
     try {
       const formData = new FormData(e.currentTarget);
@@ -135,6 +175,8 @@ export default function AuthPage() {
       
       const region = await getUserRegion();
       console.log("User region:", region);
+      
+      
       
       const response = await fetch('https://api.benchracershq.com/api/users/signup', {
         method: 'POST',
@@ -242,7 +284,23 @@ export default function AuthPage() {
                         Forgot password?
                       </Link>
                     </div>
-                    <Input id="password" name="password" className="text-black" type="password" required />
+                    <div className="relative">
+                    <Input
+                        id="password"
+                        name="password"
+                        className="text-black pr-10" 
+                        type={showloginPassword ? "text" : "password"}
+                        required
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() => setshowloginPassword(!showloginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                        {showloginPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                    </div>
                   </div>
                   <div className="flex items-center"> 
                     {errorMessage && (
@@ -275,18 +333,26 @@ export default function AuthPage() {
                     </div>
 
                     <div className="space-y-4">
-                    <div className="space-y-1 text-white">
-                        <Label htmlFor="signup-password">Password</Label>
-                        <Input 
+                    <div className="relative space-y-1 text-white">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input 
                         id="signup-password" 
                         name="signup-password"
                         value={password} 
-                        className="text-black"
+                        className="text-black pr-10" // give space for the eye icon
                         onChange={(e) => setPassword(e.target.value)} 
-                        type="password" 
+                        type={showPassword ? "text" : "password"}
                         required
-                        />
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setshowPassword(!showPassword)}
+                        className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+                    >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
                     </div>
+
                     <div className="space-y-1 text-white">
                         <Label htmlFor="confirm-password">Confirm Password</Label>
                         <Input 
@@ -298,9 +364,45 @@ export default function AuthPage() {
                         type="password" 
                         required
                         />
+                        
                     </div>
                     </div>
                 </div>
+                
+                <div className="space-y-1 text-sm">
+                                <div className="flex items-center">
+                                    {passwordValidations.hasLength ? (
+                                        <CheckCircle className="text-green-500 mr-2" size={16} />
+                                    ) : (
+                                        <XCircle className="text-red-500 mr-2" size={16} />
+                                    )}
+                                    <span className="text-white">At least 8 characters</span>
+                                </div>
+                                <div className="flex items-center">
+                                    {passwordValidations.hasCapital ? (
+                                        <CheckCircle className="text-green-500 mr-2" size={16} />
+                                    ) : (
+                                        <XCircle className="text-red-500 mr-2" size={16} />
+                                    )}
+                                    <span className="text-white">One uppercase letter</span>
+                                </div>
+                                <div className="flex items-center">
+                                    {passwordValidations.hasNumber ? (
+                                        <CheckCircle className="text-green-500 mr-2" size={16} />
+                                    ) : (
+                                        <XCircle className="text-red-500 mr-2" size={16} />
+                                    )}
+                                    <span className="text-white">One number</span>
+                                </div>
+                                <div className="flex items-center">
+                                    {passwordValidations.hasSpecial ? (
+                                        <CheckCircle className="text-green-500 mr-2" size={16} />
+                                    ) : (
+                                        <XCircle className="text-red-500 mr-2" size={16} />
+                                    )}
+                                    <span className="text-white">One special character (!@#$...)</span>
+                                </div>
+                    </div>
                 
                 {/* Error message and button stay full width */}
                 <div className="flex items-center"> 
@@ -335,29 +437,131 @@ export default function AuthPage() {
                   GitHub
                 </Button>
               </div>
-
-              <div className="text-center text-sm text-gray-400 mt-2">
-                {activeTab === "login" ? (
-                  <p>
-                    Don't have an account?{" "}
-                    <Link to="/auth?signup=true" className="text-primary hover:underline">
-                      Sign up
-                    </Link>
-                  </p>
-                ) : (
-                  <p>
-                    Already have an account?{" "}
-                    <Link to="/auth" className="text-primary hover:underline">
-                      Login
-                    </Link>
-                  </p>
-                )}
-              </div>
             </CardFooter>
           </Card>
         </div>
       </main>
       <Footer />
+      
+      {showTerms && (
+  <Dialog open={showTerms} onOpenChange={setShowTerms}>
+    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border border-gray-700 text-white">
+      <DialogHeader>
+        <DialogTitle className="text-2xl text-white">Terms and Conditions</DialogTitle>
+        <DialogDescription asChild>
+          <div className="prose prose-invert max-w-none text-white space-y-4 text-sm mt-4">
+            <p><strong>Effective Date:</strong> August 6, 2025</p>
+
+            <p>Welcome to Bench Racers, a community-driven platform where car enthusiasts share builds, discover new ideas, and connect through a shared passion for cars. These Terms and Conditions (“Terms”) explain your rights and responsibilities when using our site. By accessing or using Bench Racers, you agree to these Terms.</p>
+
+            <h2>1. Who Can Use Bench Racers</h2>
+            <p>You must be at least 13 years old. If you're under 18, you need parental or guardian permission.</p>
+
+            <h2>2. Your Account</h2>
+            <p>You are responsible for safeguarding your login information and all activity under your account.</p>
+
+            <h2>3. Your Content and How It’s Used</h2>
+            <p>You own the content you share. By posting, you grant us a non-exclusive, royalty-free license to use your content for platform operations and community discovery. Deleted content may remain anonymized for internal analysis.</p>
+
+            <h2>4. How We Use Your Data</h2>
+            <p>We collect data to operate and improve the platform. Data may be stored in the U.S. or other regions. We use cookies for analytics.</p>
+
+            <h2>5. Community Guidelines</h2>
+            <p>Prohibited behavior includes hate speech, illegal content, impersonation, and spam. We reserve the right to remove content or suspend accounts at our discretion.</p>
+
+            <h2>6. Copyright Complaints (DMCA)</h2>
+            <p>Submit copyright concerns to <a href="mailto:support@benchracershq.com" className="text-blue-400">support@benchracershq.com</a>. We comply with the DMCA.</p>
+
+            <h2>7. Dispute Resolution</h2>
+            <p>Disputes must attempt informal resolution first. Remaining disputes will be resolved via arbitration or small claims court in California.</p>
+
+            <h2>8. Protecting Each Other</h2>
+            <p>You agree to hold us harmless from legal claims resulting from your activity on the site.</p>
+
+            <h2>9. Beta Notice</h2>
+            <p>Features may change or be unavailable during our beta phase.</p>
+
+            <h2>10. Limitation of Liability</h2>
+            <p>We provide the platform “as is” and are not liable for damages from its use.</p>
+
+            <h2>11. Updates to These Terms</h2>
+            <p>We may revise Terms. Continued use indicates acceptance. Material changes will be communicated via email or on-site notification.</p>
+
+            <h2>12. Accessibility and Inclusion</h2>
+            <p>We aim to make the platform accessible. Contact <a href="mailto:support@benchracershq.com" className="text-blue-400">support@benchracershq.com</a> with any concerns.</p>
+
+            <h2>13. Governing Law</h2>
+            <p>These Terms are governed by the laws of California.</p>
+
+            <h2>14. Contact Us</h2>
+            <p>Email: <a href="mailto:support@benchracershq.com" className="text-blue-400">support@benchracershq.com</a></p>
+          </div>
+        </DialogDescription>
+      </DialogHeader>
+      
+      <DialogHeader>
+        <DialogTitle className="text-2xl text-white">Privacy Policy</DialogTitle>
+        <DialogDescription asChild>
+          <div className="prose prose-invert max-w-none text-white space-y-4 text-sm mt-4">
+            <p><strong>Effective Date:</strong> August 6, 2025</p>
+
+            <p>Your privacy matters to us. This Privacy Policy explains how Bench Racers collects, uses, and protects your data.</p>
+
+            <h2>1. What We Collect</h2>
+            <ul>
+              <li>Account information, content submissions, car data, VIN decoding</li>
+              <li>Usage data (likes, visits), browser/device info, general location</li>
+              <li>Cookies and analytics data</li>
+            </ul>
+
+            <h2>2. How We Use It</h2>
+            <ul>
+              <li>To operate and improve the platform</li>
+              <li>To analyze trends and usage behavior (anonymized)</li>
+              <li>To moderate content and ensure safety</li>
+            </ul>
+
+            <h2>3. Cookies and Tracking</h2>
+            <p>We use cookies for preferences and analytics. You can control cookies through your browser settings.</p>
+
+            <h2>4. Data Sharing</h2>
+            <p>We do not sell personal information. Data may be shared with service providers or included in anonymized reports.</p>
+
+            <h2>5. Data Storage</h2>
+            <p>Your data is stored securely in the US or where our providers operate. We apply reasonable safeguards to protect your information.</p>
+
+            <h2>6. Your Rights</h2>
+            <p>You may access, edit, or delete your data. Contact us at <a href="mailto:support@benchracershq.com" className="text-blue-400">support@benchracershq.com</a> to request account deletion or changes.</p>
+
+            <h2>7. Children’s Privacy</h2>
+            <p>This platform is not intended for children under 13. We do not knowingly collect data from children.</p>
+
+            <h2>8. Third-Party Links</h2>
+            <p>We are not responsible for the privacy practices of other websites linked on our platform.</p>
+
+            <h2>9. Policy Updates</h2>
+            <p>We may revise this Privacy Policy. Material changes will be communicated through the site or email.</p>
+
+            <h2>10. Contact Us</h2>
+            <p>Email: <a href="mailto:support@benchracershq.com" className="text-blue-400">support@benchracershq.com</a></p>
+          </div>
+        </DialogDescription>
+      </DialogHeader>
+
+      <DialogFooter>
+        <DialogTitle>By clicking complete, you agree to our Terms and Conditions and Privacy Policy.</DialogTitle>
+        <Button
+        onClick={() => sethasAcceptedTerms(true)}
+        disabled={hasAcceptedTerms}
+        >
+        {hasAcceptedTerms ? "Accepted" : "Accept"}
+        </Button>
+
+        <Button variant="secondary" onClick={() => setShowTerms(false)}>Complete</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+)}
     </div>
   )
 }
