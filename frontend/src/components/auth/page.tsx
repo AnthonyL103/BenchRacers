@@ -227,50 +227,54 @@ export default function AuthPage() {
     <div className="flex flex-col min-h-screen bg-black">
       <Navbar />
       
-      <main className="flex-1">
-            <div className="absolute inset-0 z-0">
-            <img
-            src="/cars-6248512_1920.jpg"
-            alt="Featured car"
-            className="w-full h-full object-cover object-center"
-            />
-            <div className="absolute inset-0 bg-black/60" />
+      <main className="flex-1 relative">
+  <div className="absolute inset-0 z-0">
+    <img
+      src="/cars-6248512_1920.jpg"
+      alt="Featured car"
+      className="w-full h-[120vh] object-cover object-center"
+    />
+    <div className="absolute inset-0" />
+  </div>
+  
+  <div className="relative z-20 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="w-full max-w-md space-y-8">
+      
+      
+      {verificationMessage && (
+        <div className={`mb-4 p-3 rounded text-sm ${
+          verificationStatus === "success" 
+            ? "bg-green-800 text-green-100 border border-green-700" 
+            : "bg-red-900 text-red-100 border border-red-800"
+        }`}>
+          {verificationMessage}
         </div>
-        <div className="container max-w-md relative z-10">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <Car className="h-12 w-12 text-primary" />
-            </div>
-            <h1 className="text-3xl font-bold text-white">Welcome to Bench Racers</h1>
-            <p className="text-gray-400">The ultimate car enthusiast community</p>
-          </div>
-          
-          {verificationMessage && (
-            <div className={`mb-4 p-3 rounded text-sm ${
-              verificationStatus === "success" 
-                ? "bg-green-800 text-green-100 border border-green-700" 
-                : "bg-red-900 text-red-100 border border-red-800"
-            }`}>
-              {verificationMessage}
-            </div>
-          )}
+      )}
 
-          <Card className="bg-gray-900 border-gray-800 ">
-            <CardHeader>
-              <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-2 w-full">
-                  <TabsTrigger value="login">Login</TabsTrigger>
-                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                </TabsList>
-                <TabsContent value="login" className="mt-2">
-                  <CardDescription>Enter your credentials to access your account</CardDescription>
-                </TabsContent>
-                <TabsContent value="signup" className="mt-2">
-                  <CardDescription>Create a new account to join our community</CardDescription>
-                </TabsContent>
-              </Tabs>
-            </CardHeader>
+      <Card className="bg-gray-900/95 border-gray-800 backdrop-blur-sm relative z-10">
+        <CardHeader>
+            <div className="text-center mb-7">
+                <div className="flex justify-center mb-4">
+                <Car className="h-12 w-12 text-primary" />
+                </div>
+                <h1 className="text-3xl font-bold text-white">Welcome to Bench Racers</h1>
+                <p className="text-gray-400">The ultimate car enthusiast community</p>
+            </div>
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login" className="mt-2">
+              <CardDescription>Enter your credentials to access your account</CardDescription>
+            </TabsContent>
+            <TabsContent value="signup" className="mt-2">
+              <CardDescription>Create a new account to join our community</CardDescription>
+            </TabsContent>
+          </Tabs>
+        </CardHeader>
             <CardContent className="space-y-4">
+                
               {activeTab === "login" ? (
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2 text-white">
@@ -439,6 +443,7 @@ export default function AuthPage() {
               </div>
             </CardFooter>
           </Card>
+        </div>
         </div>
       </main>
       <Footer />
