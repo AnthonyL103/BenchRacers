@@ -53,24 +53,22 @@ export default function ForgotPasswordPage() {
             <img
             src="miata-6564096_1920.jpg"
             alt="Featured car"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-[130vh] object-cover object-center"
             />
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0" />
         </div>
-        <div className="container max-w-md relative z-10">
-          <div className="text-center mb-8">
+        <div className="relative z-20 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md space-y-8">
+
+          <Card className="bg-gray-900 border-gray-800 relative">
+            <CardHeader>
+                <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Car className="h-12 w-12 text-primary" />
             </div>
             <h1 className="text-3xl font-bold text-white">Reset Your Password</h1>
             <p className="text-gray-400 mt-2">Enter your email to receive a reset link</p>
           </div>
-
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-              <CardDescription>
-                We'll send you an email with a link to reset your password.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -115,8 +113,8 @@ export default function ForgotPasswordPage() {
             </CardFooter>
           </Card>
         </div>
+        </div>
       </main>
-      <Footer />
     </div>
   );
 }

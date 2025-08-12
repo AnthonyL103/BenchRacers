@@ -446,7 +446,7 @@ export default function AuthPage() {
         </div>
         </div>
       </main>
-      <Footer />
+     
       
       {showTerms && (
   <Dialog open={showTerms} onOpenChange={setShowTerms}>
