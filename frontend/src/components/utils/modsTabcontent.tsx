@@ -9,7 +9,8 @@ import { Textarea } from "../ui/textarea";
 import { DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 
 interface Mod {
-  id: number;
+  id?: number;
+  modID?: number; // Backend returns modID
   brand: string;
   cost: number;
   description: string;
@@ -60,6 +61,11 @@ export function ModsTabContent({
 
   const categories: string[] = ["exterior", "interior", "drivetrain", "wheels", "suspension", "brakes"];
   
+  // Helper function to get consistent mod ID
+  const getModId = (mod: Mod): number => {
+    return mod.id || mod.modID || 0;
+  };
+  
   const getFilteredMods = (): Mod[] => {
     let filtered = availableMods;
     
@@ -83,8 +89,8 @@ export function ModsTabContent({
   const addCustomMod = (): void => {
     if (!customMod.brand || !customMod.category || !customMod.cost) return;
     
+    // Create a custom mod without an ID - let the backend handle it
     const newMod: Mod = {
-      id: Date.now(), // Temporary ID for custom mods
       brand: customMod.brand,
       cost: parseFloat(customMod.cost) || 0,
       description: customMod.description,
@@ -191,11 +197,26 @@ export function ModsTabContent({
                 onChange={(e) => setCustomMod({...customMod, brand: e.target.value})}
               />
             </div>
+
+            <div>
+              <Label className="text-white">Type</Label>
+              <Input
+                placeholder="e.g. Widebody Kit, Turbocharger"
+                value={customMod.type}
+                onChange={(e) => setCustomMod({...customMod, type: e.target.value})}
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            
-           
+            <div>
+              <Label className="text-white">Part Number</Label>
+              <Input
+                placeholder="e.g. GTR-001, TK-V1"
+                value={customMod.partNumber}
+                onChange={(e) => setCustomMod({...customMod, partNumber: e.target.value})}
+              />
+            </div>
             
             <div>
               <Label className="text-white">Cost *</Label>
@@ -237,6 +258,7 @@ export function ModsTabContent({
               <tr>
                 <th className="text-left p-4 text-white font-medium">Category</th>
                 <th className="text-left p-4 text-white font-medium">Brand</th>
+                <th className="text-left p-4 text-white font-medium">Type</th>
                 <th className="text-left p-4 text-white font-medium">Description</th>
                 <th className="text-left p-4 text-white font-medium">Cost</th>
                 <th className="text-left p-4 text-white font-medium">Action</th>
@@ -245,14 +267,14 @@ export function ModsTabContent({
             <tbody>
               {isLoadingMods ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center">
+                  <td colSpan={6} className="p-8 text-center">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                     <p className="text-gray-400">Loading modifications...</p>
                   </td>
                 </tr>
               ) : filteredMods.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-gray-400">
+                  <td colSpan={6} className="p-8 text-center text-gray-400">
                     {searchTerm || selectedCategory !== "all" 
                       ? "No modifications found matching your search criteria"
                       : "No modifications available"
@@ -261,15 +283,20 @@ export function ModsTabContent({
                 </tr>
               ) : (
                 filteredMods.map((mod) => {
-                  const isSelected = selectedMods.some(m => m.id === mod.id);
+                  const modId = getModId(mod);
+                  const isSelected = selectedMods.some(m => getModId(m) === modId);
                   return (
-                    <tr key={mod.id} className="border-t border-gray-700 hover:bg-gray-800/20">
+                    <tr key={modId || `mod-${mod.brand}-${mod.category}`} className="border-t border-gray-700 hover:bg-gray-800/20">
                       <td className="p-4">
                         <Badge variant="outline" className="capitalize text-white">
                           {mod.category}
+                          {mod.isCustom && (
+                            <span className="ml-1 text-xs text-blue-400">(Custom)</span>
+                          )}
                         </Badge>
                       </td>
                       <td className="p-4 text-white font-medium">{mod.brand}</td>
+                      <td className="p-4 text-gray-300">{mod.type || '-'}</td>
                       <td className="p-4 text-gray-300 max-w-xs">
                         <div className="truncate" title={mod.description}>
                           {mod.description || '-'}
@@ -283,7 +310,7 @@ export function ModsTabContent({
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => onRemoveMod(mod.id)}
+                            onClick={() => onRemoveMod(modId)}
                             className="flex items-center gap-1"
                           >
                             <X className="h-3 w-3" />
@@ -316,25 +343,31 @@ export function ModsTabContent({
         <div className="bg-gray-800/50 rounded-lg p-4 min-h-[80px]">
           {selectedMods.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {selectedMods.map(mod => (
-                <Badge 
-                  key={mod.id} 
-                  variant="secondary" 
-                  className="flex items-center gap-2 p-2 h-auto"
-                >
-                  <span className="font-medium">{mod.brand}</span>
-                  {mod.type && (
-                    <>
-                      <span className="text-xs text-gray-400">|</span>
-                      <span className="text-xs text-gray-400">{mod.type}</span>
-                    </>
-                  )}
-                  <span className="text-xs text-green-400">${mod.cost.toLocaleString()}</span>
-                  <button onClick={() => onRemoveMod(mod.id)} className="ml-1 hover:text-red-400">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+              {selectedMods.map(mod => {
+                const modId = getModId(mod);
+                return (
+                  <Badge 
+                    key={modId || `selected-${mod.brand}-${mod.category}`} 
+                    variant="secondary" 
+                    className="flex items-center gap-2 p-2 h-auto"
+                  >
+                    <span className="font-medium">{mod.brand}</span>
+                    {mod.type && (
+                      <>
+                        <span className="text-xs text-gray-400">|</span>
+                        <span className="text-xs text-gray-400">{mod.type}</span>
+                      </>
+                    )}
+                    <span className="text-xs text-green-400">${mod.cost.toLocaleString()}</span>
+                    {mod.isCustom && (
+                      <span className="text-xs text-blue-400">(Custom)</span>
+                    )}
+                    <button onClick={() => onRemoveMod(modId)} className="ml-1 hover:text-red-400">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
             </div>
           ) : (
             <p className="text-gray-400 text-center py-4">No modifications selected yet</p>

@@ -110,7 +110,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 resource "aws_launch_template" "benchracers_template" {
   name_prefix   = "benchracers-template"
-  image_id      = "ami-07b0c09aab6e66ee9"  # Amazon Linux 2 AMI
+  image_id      = "ami-0808fbef1cda2033f "
   instance_type = "t2.small"
   key_name      = "BenchWarmersEc2Key"
 

@@ -3,12 +3,16 @@ import { useUser } from './usercontext';
 import axios from 'axios';
 
 export interface Mod {
-  modID: number;  
+  id?: number;
+  modID?: number;
   brand: string;
   cost: number;
   description: string;
   category: string;
   link: string;
+  type?: string;
+  partNumber?: string;
+  isCustom?: boolean;
 }
 
 export interface Car {
@@ -66,7 +70,7 @@ export interface CarCreate {
   
   photos: { s3Key: string; isMainPhoto: boolean }[];  
   tags: string[];                                     
-  mods: number[];                                     
+  mods: Mod[];                                     
 }
 
 interface GarageContextState {

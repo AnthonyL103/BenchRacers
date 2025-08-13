@@ -22,6 +22,34 @@ interface AuthenticatedRequest extends Request {
   user?: jwt.JwtPayload | string;
 }
 
+const processCustomMods = async (connection: any, mods: any[]): Promise<number[]> => {
+  const modIds: number[] = [];
+  
+  for (const mod of mods) {
+    if (mod.isCustom) {
+      const [result]: any = await connection.query(
+        `INSERT INTO Mods (brand, category, cost, description, link, type, partNumber, isCustom)
+         VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
+        [
+          mod.brand,
+          mod.category,
+          mod.cost,
+          mod.description || '',
+          '', 
+          mod.type || '',
+          mod.partNumber || ''
+        ]
+      );
+      modIds.push(result.insertId);
+    } else {
+      modIds.push(mod.id || mod.modID);
+    }
+  }
+  
+  return modIds;
+};
+
+
 const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   
@@ -128,6 +156,7 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       });
     }
     
+    // Update entry details
     await connection.query(
       `UPDATE Entries SET 
         carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, carTrim = ?,
@@ -143,7 +172,7 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       ]
     );
     
-  
+    // Update photos
     await connection.query(
       'DELETE FROM EntryPhotos WHERE entryID = ?',
       [entryID]
@@ -163,22 +192,26 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       );
     }
     
-    
+    // Process mods (including custom ones)
     await connection.query(
       'DELETE FROM EntryMods WHERE entryID = ?',
       [entryID]
     );
     
     if (mods && Array.isArray(mods) && mods.length > 0) {
-      const modValues = mods.map((modId: number) => [entryID, modId]);
+      const processedModIds = await processCustomMods(connection, mods);
       
-      await connection.query(
-        'INSERT INTO EntryMods (entryID, modID) VALUES ?',
-        [modValues]
-      );
+      if (processedModIds.length > 0) {
+        const modValues = processedModIds.map((modId: number) => [entryID, modId]);
+        
+        await connection.query(
+          'INSERT INTO EntryMods (entryID, modID) VALUES ?',
+          [modValues]
+        );
+      }
     }
     
-
+    // Handle tags (existing code)
     await connection.query(
       'DELETE FROM EntryTags WHERE entryID = ?',
       [entryID]
@@ -229,6 +262,7 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     
     await connection.commit();
     
+    // Return updated entry
     const [results]: any = await pool.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
@@ -252,7 +286,7 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     car.tags = car.tags ? car.tags.split(',') : [];
     
     const [modResults]: any = await pool.query(`
-      SELECT m.modID, m.brand, m.cost, m.description, m.category, m.link
+      SELECT m.modID, m.brand, m.cost, m.description, m.category, m.link, m.type, m.partNumber, m.isCustom
       FROM EntryMods em
       JOIN Mods m ON em.modID = m.modID
       WHERE em.entryID = ?
@@ -278,6 +312,7 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     connection.release();
   }
 });
+
 router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('Fetching all mods');

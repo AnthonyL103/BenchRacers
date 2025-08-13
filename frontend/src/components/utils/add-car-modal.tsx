@@ -25,12 +25,16 @@ import { VinLookup } from "./vinLookup";
 import axios from "axios"
 
 interface Mod {
-  id: number;
+  id?: number;        
+  modID?: number;    
   brand: string;
   cost: number;
   description: string;
   category: string;
   link: string;
+  type?: string;
+  partNumber?: string;
+  isCustom?: boolean;
 }
 
 interface PhotoItem {
@@ -385,7 +389,7 @@ const removePhoto = (index: number) => {
             
             photos: uploadedPhotos,
             tags: selectedTags,
-            mods: Mods.map(mod => mod.id),
+            mods: Mods,
         
         };
       
