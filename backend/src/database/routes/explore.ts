@@ -83,6 +83,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       entryID: number;
       tags: string;
     }
+    
     interface ModData {
         entryID: number;
         mods: string; 
@@ -277,26 +278,23 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     console.log('[EXPLORE] Tags fetched, count:', tags.length);
     console.log('[EXPLORE] Sample tag data:', tags[0] || 'No tags');
     
+    console.log('[EXPLORE] About to fetch mods...');
     const [mods]: any = await pool.query(`
     SELECT 
         em.entryID,
-        JSON_ARRAYAGG(
-        JSON_OBJECT(
-            'modID', m.modID,
-            'brand', m.brand,
-            'category', m.category,
-            'cost', m.cost,
-            'description', m.description,
-            'link', m.link,
-            'isCustom', m.isCustom,
-            'type', m.type,
-            'partNumber', m.partNumber
-        )
-        ) as mods
+        m.modID,
+        m.brand,
+        m.category,
+        m.cost,
+        m.description,
+        m.link,
+        m.isCustom,
+        m.type,
+        m.partNumber
     FROM EntryMods em
     INNER JOIN Mods m ON em.modID = m.modID
     WHERE em.entryID IN (${photoPlaceholders})
-    GROUP BY em.entryID
+    ORDER BY em.entryID, m.brand, m.category
     `, entryIds);
 
     console.log('[EXPLORE] Mods fetched, count:', mods.length);
@@ -310,9 +308,23 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       tags.map((t: any) => [t.entryID, t])
     );
     
-    const modMap = new Map<number, ModData>(
-        mods.map((m: any) => [m.entryID, m])
-    );
+    const modMap = new Map<number, any[]>();
+    mods.forEach((mod: any) => {
+    if (!modMap.has(mod.entryID)) {
+        modMap.set(mod.entryID, []);
+    }
+    modMap.get(mod.entryID)!.push({
+        modID: mod.modID,
+        brand: mod.brand,
+        category: mod.category,
+        cost: mod.cost,
+        description: mod.description,
+        link: mod.link,
+        isCustom: !!mod.isCustom,
+        type: mod.type,
+        partNumber: mod.partNumber
+    });
+    });
 
     console.log('[EXPLORE] Maps created - photoMap size:', photoMap.size, 'tagMap size:', tagMap.size);
 
@@ -326,7 +338,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
         allPhotoKeys: photoData?.allPhotoKeys ? photoData.allPhotoKeys.split(',') : [],
         mainPhotoKey: photoData?.mainPhotoKey || null,
         tags: tagData?.tags ? tagData.tags.split(',') : [],
-        mods: modData?.mods ? JSON.parse(modData.mods) : []
+        mods: modData || []
     };
     });
     
