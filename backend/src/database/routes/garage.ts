@@ -192,7 +192,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       );
     }
     
-    // Process mods (including custom ones)
     await connection.query(
       'DELETE FROM EntryMods WHERE entryID = ?',
       [entryID]
@@ -211,7 +210,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
       }
     }
     
-    // Handle tags (existing code)
     await connection.query(
       'DELETE FROM EntryTags WHERE entryID = ?',
       [entryID]
@@ -317,7 +315,7 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
   try {
     console.log('Fetching all mods');
     const [mods]: any = await pool.query(
-      `SELECT modID as id, brand, category, cost, description, link 
+      `SELECT modID as id, brand, category, cost, description, link, isCustom
        FROM Mods
        ORDER BY category, brand`
     );

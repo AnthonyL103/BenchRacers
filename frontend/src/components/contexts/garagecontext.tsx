@@ -15,6 +15,13 @@ export interface Mod {
   isCustom?: boolean;
 }
 
+
+export interface PhotoItem {
+  file: File;
+  preview: string;
+  isMainPhoto: boolean;
+}
+
 export interface Car {
     entryID: number;
     userEmail: string;

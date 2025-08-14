@@ -3,6 +3,8 @@
 import React, { useState, useRef, useEffect } from "react"
 import { Button } from "../ui/button"
 import { ModsTabContent } from "./modsTabcontent";
+import { CarCreate } from "../contexts/garagecontext";
+import { Mod } from "../contexts/garagecontext";
 
 import {
   Dialog,
@@ -25,48 +27,6 @@ import { useUser } from "../contexts/usercontext"
 import axios from "axios"
 import { getS3ImageUrl } from "../utils/s3helper"
 
-import { 
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from "../ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
-
-interface Mod {
-  id: number;
-  brand: string;
-  cost: number;
-  description: string;
-  category: string;
-  link: string;
-}
-
-interface CarCreate {
-  entryID?: number; 
-  userEmail: string;
-  carName: string;
-  carMake: string;
-  carModel: string;
-  carYear?: string;
-  carColor?: string;
-  carTrim?: string;
-  description?: string;
-  totalMods: number;
-  totalCost: number;
-  category: string;
-  region: string;
-  engine?: string;
-  transmission?: string;
-  drivetrain?: string;
-  horsepower?: number;
-  torque?: number;
-  photos: { s3Key: string; isMainPhoto: boolean }[];
-  tags: string[];
-  mods: number[];
-}
 
 interface EditCarModalProps {
   open: boolean;
@@ -79,8 +39,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   const { updateCar } = useGarage();
 
   const [activeTab, setActiveTab] = useState("basic")
-  const [activeModTab, setActiveModTab] = useState("exterior")
-
 
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
@@ -90,7 +48,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   
   const [existingPhotos, setExistingPhotos] = useState<any[]>([])
   
-  const [mods, setMods] = useState<Mod[]>([])
+  const [Mods, setMods] = useState<Mod[]>([])
   
   const [availableMods, setAvailableMods] = useState<Mod[]>([])
   
@@ -101,24 +59,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  const [modsSearchState, setModsSearchState] = useState({
-    exterior: "",
-    interior: "",
-    drivetrain: "",
-    wheels: "", 
-    suspension: "",
-    brakes: ""
-  })  
-
-  const [openModsState, setOpenModsState] = useState({
-    exterior: false,
-    interior: false,
-    drivetrain: false,
-    wheels: false,
-    suspension: false,
-    brakes: false
-  })
 
   const [carDetails, setCarDetails] = useState({
     entryID: car.entryID || "", 
@@ -195,9 +135,9 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   }, []);
   
   useEffect(() => {
-    const total = mods.reduce((sum, mod) => sum + mod.cost, 0);
+    const total = Mods.reduce((sum, Mod) => sum + Mod.cost, 0);
     setTotalCost(total);
-  }, [mods]);
+  }, [Mods]);
 
   const fetchAvailableMods = async () => {
     try {
@@ -228,21 +168,9 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     }
   };
 
-  const updateSearchTerm = (category: string, value: string) => {
-    setModsSearchState(prev => ({
-      ...prev,
-      [category]: value
-    }));
-  };
-  
-  const updateOpenState = (category: string, isOpen: boolean) => {
-    setOpenModsState(prev => ({
-      ...prev,
-      [category]: isOpen
-    }));
-  };
+ 
 
-  const addTag = (tag: string) => {
+const addTag = (tag: string) => {
   if (!selectedTags.includes(tag)) {
     setSelectedTags([...selectedTags, tag]);
   } else {
@@ -251,120 +179,58 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   }
 };
 
-  const removeTag = (tag: string) => {
+const removeTag = (tag: string) => {
     setSelectedTags(selectedTags.filter((t) => t !== tag));
   };
   
-  const getFilteredModsByCategory = (category: string) => {
-    const modsByCategory = availableMods.filter(mod => 
-      mod.category.toLowerCase() === category.toLowerCase()
-    );
-    
-    if (!modsSearchState[category as keyof typeof modsSearchState].trim()) {
-      return modsByCategory;
-    }
-    
-    const searchLower = modsSearchState[category as keyof typeof modsSearchState].toLowerCase();
-    return modsByCategory.filter(mod => 
-      mod.brand.toLowerCase().includes(searchLower) ||
-      mod.description.toLowerCase().includes(searchLower)
-    ); 
-  };
 
   
- const addMod = (mod: Mod) => {
-  if (!mods.some(m => m.id === mod.id)) {
-    setMods([...mods, mod]);
-  } else {
-    alert(`${mod.brand} is already added to your build`);
+const getModIdentifier = (mod: Mod): string => {
+
+  if (mod.id) {
+    return `id-${mod.id}`;
+  }
+  if (mod.modID) {
+    return `modID-${mod.modID}`;
   }
   
-  updateOpenState(mod.category.toLowerCase(), false);
+  const brand = mod.brand || 'unknown';
+  const category = mod.category || 'unknown';
+  const cost = mod.cost || 0;
+  const type = mod.type || 'no-type';
+  const partNumber = mod.partNumber || 'no-part';
+  const description = (mod.description || '').substring(0, 20);
+  
+  const identifier = `custom-${brand}-${category}-${type}-${partNumber}-${cost}-${description}`.toLowerCase().replace(/\s+/g, '-');
+  return identifier;
+};
+
+const addMod = (modToAdd: Mod) => {
+  
+  const newModIdentifier = getModIdentifier(modToAdd);
+  const isAlreadySelected = Mods.some(Mod => getModIdentifier(Mod) === newModIdentifier);
+  
+  if (!isAlreadySelected) {
+    setMods(prevMods => [...prevMods, modToAdd]);
+  }
+};
+
+const removeMod = (modToRemove: Mod) => {
+  
+  const modToRemoveIdentifier = getModIdentifier(modToRemove);
+  
+  setMods(prevMods => 
+    prevMods.filter(Mod => getModIdentifier(Mod) !== modToRemoveIdentifier)
+  );
 };
   
-  const removeMod = (id: number) => {
-    setMods(mods.filter(mod => mod.id !== id));
-  };
+
   
-  const renderModSelectionForCategory = (category: string) => {
-    const filteredMods = getFilteredModsByCategory(category);
-    const isOpen = openModsState[category as keyof typeof openModsState];
-    const searchTerm = modsSearchState[category as keyof typeof modsSearchState];
-    
-    return (
-      <div className="space-y-4">
-        <Popover 
-          open={isOpen} 
-          onOpenChange={(open) => updateOpenState(category, open)}
-        >
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={isOpen}
-              className="w-full justify-between"
-            >
-              Add {category.charAt(0).toUpperCase() + category.slice(1)} Modification
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0">
-            <Command>
-              <CommandInput 
-                value={searchTerm} 
-                onValueChange={(value) => updateSearchTerm(category, value)} 
-                placeholder={`Search ${category} mods...`} 
-              />
-              <CommandList>
-                <CommandEmpty>No {category} mods found matching "{searchTerm}"</CommandEmpty>
-                {isLoadingMods ? (
-                  <div className="py-6 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                    <p className="text-sm text-gray-500 mt-2">Loading modifications...</p>
-                  </div>
-                ) : (
-                  <CommandGroup>
-                    {filteredMods.length === 0 ? (
-                      <div className="px-2 py-4 text-center text-sm text-gray-500">
-                        No {category} modifications available
-                      </div>
-                    ) : (
-                      filteredMods.map((mod) => (
-                            <CommandItem
-                            key={mod.id}
-                            value={mod.id.toString()}
-                            onSelect={() => addMod(mod)}
-                            className={`py-2 ${mods.some(m => m.id === mod.id) ? 'opacity-50' : ''}`}
-                            disabled={mods.some(m => m.id === mod.id)}
-                            >
-                            <div className="flex-1">
-                                <p className="font-medium">{mod.brand}</p>
-                                <p className="text-sm text-gray-400">{mod.description}</p>
-                                <p className="text-sm text-green-500">${mod.cost.toLocaleString()}</p>
-                            </div>
-                            <Check
-                                className={`h-4 w-4 ${
-                                mods.some(m => m.id === mod.id) ? "opacity-100" : "opacity-0"
-                                }`}
-                            />
-                            </CommandItem>
-                      ))
-                    )}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-    );
-  };
-  
-  const triggerFileInput = () => {
+const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
   
@@ -504,7 +370,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         carColor: carDetails.color || undefined,
         carTrim: carDetails.trim || undefined,
         description: description || undefined,
-        totalMods: mods.length,
+        totalMods: Mods.length,
         totalCost,
         category: carDetails.category,
         region: user?.region || "",
@@ -516,7 +382,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         
         photos: allPhotos,
         tags: selectedTags,
-        mods: mods.map(mod => mod.id),
+        mods: Mods,
       };
       
       await updateCar(entryData.entryID ?? 0, entryData);
@@ -803,7 +669,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         <TabsContent value="mods" className="space-y-6 py-4">
                     <ModsTabContent 
                         availableMods={availableMods}
-                        selectedMods={mods}
+                        selectedMods={Mods}
                         onAddMod={addMod}
                         onRemoveMod={removeMod}
                         isLoadingMods={isLoadingMods}

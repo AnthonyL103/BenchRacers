@@ -3,6 +3,8 @@
 import React, { useState, useRef, useEffect } from "react"
 import { Button } from "../ui/button"
 import { ModsTabContent } from "./modsTabcontent";
+import { Mod } from "../contexts/garagecontext";
+import { PhotoItem } from "../contexts/garagecontext";
 import {
   Dialog,
   DialogContent,
@@ -24,26 +26,6 @@ import { useUser } from "../contexts/usercontext"
 import { VinLookup } from "./vinLookup";
 import axios from "axios"
 
-interface Mod {
-  id?: number;        
-  modID?: number;    
-  brand: string;
-  cost: number;
-  description: string;
-  category: string;
-  link: string;
-  type?: string;
-  partNumber?: string;
-  isCustom?: boolean;
-}
-
-interface PhotoItem {
-  file: File;
-  preview: string;
-  isMainPhoto: boolean;
-}
-
-
 
 interface AddCarModalProps {
   open: boolean
@@ -55,13 +37,8 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const { addCar } = useGarage();
 
   const [activeTab, setActiveTab] = useState("basic")
-  const [activeModTab, setActiveModTab] = useState("exterior")
 
-  const [vin, setVin] = useState("")
-  const [isLookingUpVin, setIsLookingUpVin] = useState(false)
-  const [vinLookupSuccess, setVinLookupSuccess] = useState(false)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [description, setDescription] = useState("")
   
@@ -71,9 +48,6 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
 
   
   const [availableMods, setAvailableMods] = useState<Mod[]>([])
-
-  
-
 
   
   const [isLoadingMods, setIsLoadingMods] = useState(false)
@@ -87,23 +61,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  const [modsSearchState, setModsSearchState] = useState({
-    exterior: "",
-    interior: "",
-    drivetrain: "",
-    wheels: "", 
-    suspension: "",
-    brakes: ""
-})  
 
-const [openModsState, setOpenModsState] = useState({
-  exterior: false,
-  interior: false,
-  drivetrain: false,
-  wheels: false,
-  suspension: false,
-  brakes: false
-})
 
   const [carDetails, setCarDetails] = useState({
     make: "",
@@ -130,6 +88,7 @@ const [openModsState, setOpenModsState] = useState({
     
     setTotalCost(total);
   }, [Mods]);
+  
 
     const fetchAvailableMods = async () => {
         
@@ -158,6 +117,7 @@ const [openModsState, setOpenModsState] = useState({
         setAvailableMods(flatMods);
         }
         
+        
         setIsLoadingMods(false);
     } catch (error) {
         console.error("Error fetching available mods:", error);
@@ -169,55 +129,54 @@ const [openModsState, setOpenModsState] = useState({
     setSelectedTags(selectedTags.filter((t) => t !== tag))
   }
   
-  const updateSearchTerm = (category: string, value: string) => {
-    setModsSearchState(prev => ({
-        ...prev,
-        [category]: value
-    }));
-  };
-  
   const addTag = (tag: string) => {
     if (!selectedTags.includes(tag)) {
       setSelectedTags([...selectedTags, tag])
     }
   }
 
-  const updateOpenState = (category: string, isOpen: boolean) => {
-    setOpenModsState(prev => ({
-        ...prev,
-        [category]: isOpen
-    }));
-  };
-  
-  const getFilteredModsByCategory = (category: string) => {
-    const modsByCategory = availableMods.filter(mod => 
-        mod.category.toLowerCase() === category.toLowerCase()
-    );
-    
-    if (!modsSearchState[category as keyof typeof modsSearchState].trim()) {
-        return modsByCategory;
-    }
-    
-    const searchLower = modsSearchState[category as keyof typeof modsSearchState].toLowerCase();
-    return modsByCategory.filter(mod => 
-        mod.brand.toLowerCase().includes(searchLower) ||
-        mod.description.toLowerCase().includes(searchLower)
-    ); 
-  };
 
-  const addMod = (mod: Mod) => {
-  if (!Mods.some(m => m.id === mod.id)) {
-    setMods([...Mods, mod]);
+const getModIdentifier = (mod: Mod): string => {
+
+  if (mod.id) {
+    return `id-${mod.id}`;
   }
-  updateOpenState(mod.category.toLowerCase(), false);
+  if (mod.modID) {
+    return `modID-${mod.modID}`;
+  }
+  
+  const brand = mod.brand || 'unknown';
+  const category = mod.category || 'unknown';
+  const cost = mod.cost || 0;
+  const type = mod.type || 'no-type';
+  const partNumber = mod.partNumber || 'no-part';
+  const description = (mod.description || '').substring(0, 20);
+  
+  const identifier = `custom-${brand}-${category}-${type}-${partNumber}-${cost}-${description}`.toLowerCase().replace(/\s+/g, '-');
+  return identifier;
+};
+
+const addMod = (modToAdd: Mod) => {
+  
+  const newModIdentifier = getModIdentifier(modToAdd);
+  const isAlreadySelected = Mods.some(mod => getModIdentifier(mod) === newModIdentifier);
+  
+  if (!isAlreadySelected) {
+    setMods(prevMods => [...prevMods, modToAdd]);
+  }
+};
+
+const removeMod = (modToRemove: Mod) => {
+  
+  const modToRemoveIdentifier = getModIdentifier(modToRemove);
+  
+  setMods(prevMods => 
+    prevMods.filter(mod => getModIdentifier(mod) !== modToRemoveIdentifier)
+  );
 };
   
-  const removeMod = (id: number) => {
-    setMods(Mods.filter(mod => mod.id !== id));
-  };
   
-  
-  const triggerFileInput = () => {
+const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
@@ -267,33 +226,6 @@ const removePhoto = (index: number) => {
   });
 };
 
-  const lookupVin = () => {
-    if (!vin || vin.length !== 17) {
-      return
-    }
-
-    setIsLookingUpVin(true)
-
-    setTimeout(() => {
-      setCarDetails({
-        make: "Toyota",
-        model: "Supra",
-        color: "Red",
-        year: "2020",
-        trim: "GR",
-        engine: "3.0L Inline-6 Turbo",
-        category:"Sport",
-        horsepower:"400",
-        torque:"350",
-        transmission: "8-Speed Automatic",
-        drivetrain: "RWD",
-      })
-      setVinLookupSuccess(true)
-      setIsLookingUpVin(false)
-      setActiveTab("photos")
-    }, 1500)
-  }
-  
   const setMainPhoto = (index: number) => {
   setPhotos(prevPhotos => 
     prevPhotos.map((photo, i) => ({
@@ -409,10 +341,7 @@ const removePhoto = (index: number) => {
   }
 
   const resetForm = () => {
-    setVin("");
-    setVinLookupSuccess(false);
     setSelectedTags([]);
-    setPhotoFiles([]);
     photoPreview.forEach(url => URL.revokeObjectURL(url));
     setPhotoPreview([]);
     setDescription("");
@@ -433,7 +362,6 @@ const removePhoto = (index: number) => {
       drivetrain: "",
     });
     setActiveTab("basic");
-    setActiveModTab("exterior");
   };
 
   return (
@@ -472,12 +400,10 @@ const removePhoto = (index: number) => {
           
           <TabsContent value="basic" className="space-y-6 py-4">
             <div className="space-y-4">
-                {/* VIN Lookup Component */}
                 <VinLookup
                 onDataFound={(vinData) => {
                     setCarDetails(prev => ({
                     ...prev,
-                    // Populate all fields except category
                     make: vinData.make || prev.make,
                     model: vinData.model || prev.model,
                     year: vinData.year || prev.year,

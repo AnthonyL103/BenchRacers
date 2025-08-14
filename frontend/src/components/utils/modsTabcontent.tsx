@@ -34,7 +34,7 @@ interface ModsTabContentProps {
   availableMods: Mod[];
   selectedMods: Mod[];
   onAddMod: (mod: Mod) => void;
-  onRemoveMod: (id: number) => void;
+  onRemoveMod: (mod: Mod) => void;
   isLoadingMods: boolean;
   setActiveTab: (tab: string) => void;
 }
@@ -47,6 +47,9 @@ export function ModsTabContent({
   isLoadingMods,
   setActiveTab 
 }: ModsTabContentProps) {
+  
+  
+
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showCustomForm, setShowCustomForm] = useState<boolean>(false);
@@ -61,17 +64,32 @@ export function ModsTabContent({
 
   const categories: string[] = ["exterior", "interior", "drivetrain", "wheels", "suspension", "brakes"];
   
-  // Helper function to get consistent mod ID
-  const getModId = (mod: Mod): number => {
-    return mod.id || mod.modID || 0;
+  const getModIdentifier = (mod: Mod): string => {
+    // For existing mods with database IDs
+    if (mod.id) return `id-${mod.id}`;
+    if (mod.modID) return `modID-${mod.modID}`;
+    
+    const brand = mod.brand || 'unknown';
+    const category = mod.category || 'unknown';
+    const cost = mod.cost || 0;
+    const type = mod.type || 'no-type';
+    const partNumber = mod.partNumber || 'no-part';
+    const description = (mod.description || '').substring(0, 20);
+    
+    return `custom-${brand}-${category}-${type}-${partNumber}-${cost}-${description}`.toLowerCase().replace(/\s+/g, '-');
   };
   
   const getFilteredMods = (): Mod[] => {
     let filtered = availableMods;
+    console.log(filtered);
+    
+    
     
     if (selectedCategory !== "all") {
       filtered = filtered.filter(mod => mod.category.toLowerCase() === selectedCategory);
     }
+    
+    filtered = filtered.filter(mod => mod.isCustom === true)
     
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
@@ -89,13 +107,13 @@ export function ModsTabContent({
   const addCustomMod = (): void => {
     if (!customMod.brand || !customMod.category || !customMod.cost) return;
     
-    // Create a custom mod without an ID - let the backend handle it
+    
     const newMod: Mod = {
       brand: customMod.brand,
       cost: parseFloat(customMod.cost) || 0,
       description: customMod.description,
       category: customMod.category,
-      link: "", // Default empty string for custom mods
+      link: "",
       type: customMod.type,
       partNumber: customMod.partNumber,
       isCustom: true
@@ -112,6 +130,7 @@ export function ModsTabContent({
     });
     setShowCustomForm(false);
   };
+
 
   const filteredMods: Mod[] = getFilteredMods();
 
@@ -283,10 +302,10 @@ export function ModsTabContent({
                 </tr>
               ) : (
                 filteredMods.map((mod) => {
-                  const modId = getModId(mod);
-                  const isSelected = selectedMods.some(m => getModId(m) === modId);
+                  const modIdentifier = getModIdentifier(mod);
+                  const isSelected = selectedMods.some(m => getModIdentifier(m) === modIdentifier);
                   return (
-                    <tr key={modId || `mod-${mod.brand}-${mod.category}`} className="border-t border-gray-700 hover:bg-gray-800/20">
+                    <tr key={modIdentifier} className="border-t border-gray-700 hover:bg-gray-800/20">
                       <td className="p-4">
                         <Badge variant="outline" className="capitalize text-white">
                           {mod.category}
@@ -310,8 +329,13 @@ export function ModsTabContent({
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => onRemoveMod(modId)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onRemoveMod(mod);
+                            }}
                             className="flex items-center gap-1"
+                            type="button"
                           >
                             <X className="h-3 w-3" />
                             Remove
@@ -320,8 +344,13 @@ export function ModsTabContent({
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => onAddMod(mod)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onAddMod(mod);
+                            }}
                             className="flex items-center gap-1"
+                            type="button"
                           >
                             <Plus className="h-3 w-3" />
                             Add
@@ -344,10 +373,10 @@ export function ModsTabContent({
           {selectedMods.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {selectedMods.map(mod => {
-                const modId = getModId(mod);
+                const modIdentifier = getModIdentifier(mod);
                 return (
                   <Badge 
-                    key={modId || `selected-${mod.brand}-${mod.category}`} 
+                    key={modIdentifier} 
                     variant="secondary" 
                     className="flex items-center gap-2 p-2 h-auto"
                   >
@@ -362,7 +391,15 @@ export function ModsTabContent({
                     {mod.isCustom && (
                       <span className="text-xs text-blue-400">(Custom)</span>
                     )}
-                    <button onClick={() => onRemoveMod(modId)} className="ml-1 hover:text-red-400">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRemoveMod(mod);
+                      }} 
+                      className="ml-1 hover:text-red-400"
+                      type="button"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
