@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
 interface Mod {
-  modID: number;
+  id?: number;
+  modID?: number;
   brand: string;
-  category: string;
   cost: number;
   description: string;
+  category: string;
   link: string;
   type?: string;
   partNumber?: string;
+  isCustom: boolean;
 }
 
 interface Car {
@@ -38,7 +40,7 @@ interface Car {
   horsepower?: number;
   torque?: number;
   tags?: string[];
-  Mods: Mod[];
+  mods: Mod[];
 }
 
 

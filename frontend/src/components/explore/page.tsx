@@ -42,6 +42,7 @@ export default function ExplorePage() {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showUserInfo, setShowUserInfo] = useState(false);
+  const [showMods, setShowMods] = useState(false);
  
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -66,32 +67,7 @@ export default function ExplorePage() {
     console.log("🟦 Cars state updated in component:", cars);
   }, [cars])
   
-  const handlefilter = (filter: string) => {
-    if (activeFilter === filter) {
-        setActiveFilter(null);
-        setFilteredCars(cars); 
-        return;
-    }
-    
-    setActiveFilter(filter);
-    
-    if (filter === "all") {
-        setFilteredCars(cars);
-    }
-    else if (filter === "JDM") {
-        console.log(cars);
-        setFilteredCars(cars.filter(car => car.tags?.includes("JDM")));
-    }
-    else if (filter === "European") {
-        setFilteredCars(cars.filter(car => car.tags?.includes("European")));
-    }
-    else if (filter === "American") {
-        setFilteredCars(cars.filter(car => car.tags?.includes("American")));
-    }
-    else {
-        console.error("Unknown filter type:", filter);
-    }
-};
+  
   const handleLike = async (carId: string) => {
   if (!isAuthenticated) {
     // Redirect to auth page or show modal
@@ -676,6 +652,141 @@ const fetchCars = async () => {
                 style={{ zIndex: 5 }}
             > 
                 Show Info 
+            </button>
+            )}
+            
+            {showMods ? (
+            <div 
+                className="absolute bottom-4 right-4 pointer-events-none" 
+                style={{ zIndex: 5 }}
+            >
+                <div 
+                className="relative p-3 pointer-events-auto inline-block bg-gradient-to-t from-purple-900/60 via-purple-800/40 to-purple-700/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-purple-300/20 max-w-sm"
+                onMouseEnter={() => setHideGalleryControls(true)}
+                onMouseLeave={() => setHideGalleryControls(false)}
+                >
+                <button
+                    onClick={() => setShowMods(false)}
+                    className="absolute -top-1 -left-1 bg-purple-900/80 hover:bg-purple-800/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
+                    aria-label="Close mods"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+
+                <div className="mb-3">
+                    <h3 className="font-bold text-lg text-white mb-1 drop-shadow-lg flex items-center gap-2">
+                    <span className="text-purple-300">🔧</span>
+                    Modifications
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm">
+                    <span className="text-purple-200">Total Parts:</span>
+                    <span className="text-white font-bold bg-purple-500/30 px-2 py-0.5 rounded">
+                        {currentCar.mods?.length || 0}
+                    </span>
+                    </div>
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-purple-400/30">
+                    {currentCar.mods && currentCar.mods.length > 0 ? (
+                    currentCar.mods.map((mod, index) => (
+                        <div 
+                        key={mod.modID || index}
+                        className="bg-black/40 backdrop-blur-sm border border-purple-300/20 rounded-lg p-2.5 hover:bg-black/60 transition-all duration-200 group"
+                        >
+                        <div className="flex justify-between items-start mb-1">
+                            <div className="flex-1 min-w-0">
+                            <h4 className="text-white font-semibold text-sm truncate group-hover:text-purple-200 transition-colors">
+                                {mod.brand}
+                            </h4>
+                            <p className="text-purple-200 text-xs">
+                                {mod.category}
+                            </p>
+                            </div>
+                            <div className="flex flex-col items-end ml-2">
+                            <span className="text-green-300 font-bold text-sm">
+                                ${mod.cost?.toLocaleString() || '0'}
+                            </span>
+                            {mod.isCustom && (
+                                <Badge variant="outline" className="text-xs px-1.5 py-0 text-yellow-300 border-yellow-400/30 bg-yellow-500/10">
+                                Custom
+                                </Badge>
+                            )}
+                            </div>
+                        </div>
+
+                        {(mod.type || mod.partNumber) && (
+                            <div className="space-y-1 mt-2">
+                            {mod.type && (
+                                <div className="flex items-center gap-1">
+                                <span className="text-gray-400 text-xs">Type:</span>
+                                <span className="text-gray-200 text-xs">{mod.type}</span>
+                                </div>
+                            )}
+                            {mod.partNumber && (
+                                <div className="flex items-center gap-1">
+                                <span className="text-gray-400 text-xs">Part #:</span>
+                                <span className="text-gray-200 text-xs font-mono">{mod.partNumber}</span>
+                                </div>
+                            )}
+                            </div>
+                        )}
+
+                        {mod.description && (
+                            <p className="text-gray-300 text-xs mt-2 leading-relaxed">
+                            {mod.description}
+                            </p>
+                        )}
+
+                        {mod.link && (
+                            <div className="mt-2">
+                            <a 
+                                href={mod.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-purple-300 hover:text-purple-200 text-xs underline transition-colors"
+                            >
+                                View Product →
+                            </a>
+                            </div>
+                        )}
+                        </div>
+                    ))
+                    ) : (
+                    <div className="text-center py-4">
+                        <span className="text-gray-400 text-sm">No modifications listed</span>
+                    </div>
+                    )}
+                </div>
+
+                {currentCar.mods && currentCar.mods.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-purple-300/20">
+                    <div className="flex justify-between items-center">
+                        <span className="text-purple-200 text-sm font-medium">
+                        Total Investment:
+                        </span>
+                        <span className="text-green-300 font-bold text-lg">
+                        ${currentCar.mods.reduce((sum, mod) => sum + (mod.cost || 0), 0).toLocaleString()}
+                        </span>
+                    </div>
+                    </div>
+                )}
+                </div>
+            </div>
+            ) : (
+            <button 
+                onClick={() => setShowMods(true)} 
+                className="absolute bottom-4 right-4 p-3 pointer-events-auto inline-block bg-gradient-to-t from-purple-900/60 via-purple-800/40 to-purple-700/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-purple-300/20 text-white hover:bg-purple-800/70 transition-all duration-200 group"
+                style={{ zIndex: 5 }}
+            > 
+                <div className="flex items-center gap-2">
+                <span className="group-hover:scale-110 transition-transform">🔧</span>
+                <span>Show Mods</span>
+                {currentCar.mods && currentCar.mods.length > 0 && (
+                    <Badge variant="outline" className="text-xs px-1.5 py-0 text-purple-200 border-purple-300/30 bg-purple-500/20">
+                    {currentCar.mods.length}
+                    </Badge>
+                )}
+                </div>
             </button>
             )}
           </div>
