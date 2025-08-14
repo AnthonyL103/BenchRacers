@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
+interface Mod {
+  modID: number;
+  brand: string;
+  category: string;
+  cost: number;
+  description: string;
+  link: string;
+  type?: string;
+  partNumber?: string;
+}
+
 interface Car {
   entryID: number | null;
   userID: string;
@@ -26,11 +37,11 @@ interface Car {
   drivetrain?: string;
   horsepower?: number;
   torque?: number;
-  viewCount: number;
-  createdAt: string;
   tags?: string[];
-  
+  Mods: Mod[];
 }
+
+
 
 interface CarState {
   cars: Car[];
@@ -190,18 +201,6 @@ function carReducer(state: CarState, action: CarAction): CarState {
         ),
         selectedCar: state.selectedCar && state.selectedCar.entryID === action.payload 
           ? { ...state.selectedCar, upvotes: state.selectedCar.upvotes + 1 } 
-          : state.selectedCar
-      };
-    case CarActionTypes.INCREMENT_VIEW_COUNT:
-      return {
-        ...state,
-        cars: state.cars.map(car => 
-          car.entryID === action.payload 
-            ? { ...car, viewCount: car.viewCount + 1 } 
-            : car
-        ),
-        selectedCar: state.selectedCar && state.selectedCar.entryID === action.payload 
-          ? { ...state.selectedCar, viewCount: state.selectedCar.viewCount + 1 } 
           : state.selectedCar
       };
     case CarActionTypes.CLEAR_ERROR:

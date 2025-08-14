@@ -319,9 +319,7 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
        FROM Mods
        ORDER BY category, brand`
     );
-    
-    console.log('Mods fetched:', mods);
-    
+        
     res.status(200).json({
       success: true,
       mods: mods

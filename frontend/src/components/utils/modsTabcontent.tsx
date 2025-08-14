@@ -69,16 +69,19 @@ export function ModsTabContent({
   };
   
   const getFilteredMods = (): Mod[] => {
-    let filtered = availableMods;
-    console.log(filtered);
-    
+    let filtered = availableMods;    
     
     
     if (selectedCategory !== "all") {
       filtered = filtered.filter(mod => mod.category.toLowerCase() === selectedCategory);
     }
     
-    filtered = filtered.filter(mod => mod.isCustom === true)
+    console.log("Filtered mods:", filtered);
+    
+    filtered = filtered.filter(mod => !mod.isCustom);
+    
+    console.log("Filtered non-custom mods:", filtered);
+
     
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();

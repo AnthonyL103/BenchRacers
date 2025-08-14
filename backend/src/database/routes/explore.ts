@@ -83,6 +83,10 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       entryID: number;
       tags: string;
     }
+    interface ModData {
+        entryID: number;
+        mods: string; 
+    }
     
     //we filter out all entries, that aren't liked or swiped, then we apply the random offset whcihc means when we query we skip a random amount from the unfiltered for more "randomness in a sense"
     
@@ -273,26 +277,60 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     console.log('[EXPLORE] Tags fetched, count:', tags.length);
     console.log('[EXPLORE] Sample tag data:', tags[0] || 'No tags');
     
+    const [mods]: any = await pool.query(`
+    SELECT 
+        em.entryID,
+        JSON_ARRAYAGG(
+        JSON_OBJECT(
+            'modID', m.modID,
+            'brand', m.brand,
+            'category', m.category,
+            'cost', m.cost,
+            'description', m.description,
+            'link', m.link,
+            'isCustom', m.isCustom,
+            'type', m.type,
+            'partNumber', m.partNumber
+        )
+        ) as mods
+    FROM EntryMods em
+    INNER JOIN Mods m ON em.modID = m.modID
+    WHERE em.entryID IN (${photoPlaceholders})
+    GROUP BY em.entryID
+    `, entryIds);
+
+    console.log('[EXPLORE] Mods fetched, count:', mods.length);
+    console.log('[EXPLORE] Sample mod data:', mods[0] || 'No mods');
+
+    
     const photoMap = new Map<number, PhotoData>(
       photos.map((p: any) => [p.entryID, p])
     );
     const tagMap = new Map<number, TagData>(
       tags.map((t: any) => [t.entryID, t])
     );
+    
+    const modMap = new Map<number, ModData>(
+        mods.map((m: any) => [m.entryID, m])
+    );
 
     console.log('[EXPLORE] Maps created - photoMap size:', photoMap.size, 'tagMap size:', tagMap.size);
 
     const processedCars = cars.map((car: CarData) => {
-        const photoData = photoMap.get(car.entryID);
-        const tagData = tagMap.get(car.entryID);
-      
-      return {
+    const photoData = photoMap.get(car.entryID);
+    const tagData = tagMap.get(car.entryID);
+    const modData = modMap.get(car.entryID);
+
+    return {
         ...car,
         allPhotoKeys: photoData?.allPhotoKeys ? photoData.allPhotoKeys.split(',') : [],
         mainPhotoKey: photoData?.mainPhotoKey || null,
-        tags: tagData?.tags ? tagData.tags.split(',') : []
-      };
+        tags: tagData?.tags ? tagData.tags.split(',') : [],
+        mods: modData?.mods ? JSON.parse(modData.mods) : []
+    };
     });
+    
+    
     
     console.log('[EXPLORE] Cars processed, final count:', processedCars.length);
     console.log('[EXPLORE] Sample processed car:', processedCars[0] || 'No processed cars');
