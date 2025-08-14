@@ -7,19 +7,8 @@ import { Badge } from "../ui/badge";
 import { Loader2, Plus, X, Search } from "lucide-react";
 import { Textarea } from "../ui/textarea";
 import { DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
+import { Mod } from "../contexts/garagecontext"; // Adjust the import path as necessary
 
-interface Mod {
-  id?: number;
-  modID?: number; // Backend returns modID
-  brand: string;
-  cost: number;
-  description: string;
-  category: string;
-  link: string;
-  type?: string;
-  partNumber?: string;
-  isCustom?: boolean;
-}
 
 interface CustomMod {
   category: string;

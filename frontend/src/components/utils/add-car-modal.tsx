@@ -106,6 +106,8 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
         
         });
         
+        console.log("Available mods fetched:", modsResponse.data);
+        
         
         if (Array.isArray(modsResponse.data.mods)) {
         setAvailableMods(modsResponse.data.mods);

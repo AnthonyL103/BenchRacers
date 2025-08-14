@@ -315,10 +315,12 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
   try {
     console.log('Fetching all mods');
     const [mods]: any = await pool.query(
-      `SELECT modID as id, brand, category, cost, description, link, isCustom
+      `SELECT modID as id, brand, category, cost, description, link, isCustom, type, partNumber
        FROM Mods
        ORDER BY category, brand`
     );
+    
+    console.log('Mods fetched:', mods);
     
     res.status(200).json({
       success: true,

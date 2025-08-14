@@ -12,7 +12,7 @@ export interface Mod {
   link: string;
   type?: string;
   partNumber?: string;
-  isCustom?: boolean;
+  isCustom: boolean;
 }
 
 
