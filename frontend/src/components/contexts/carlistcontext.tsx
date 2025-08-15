@@ -22,6 +22,7 @@ interface Car {
   carModel: string;
   carYear?: string;
   carColor?: string;
+  basecost?: number;
   carTrim?: string;
   description?: string;
   mainPhotoKey?: string;

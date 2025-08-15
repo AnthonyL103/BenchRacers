@@ -7,7 +7,7 @@ import { Badge } from "../ui/badge";
 import { Loader2, Plus, X, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "../ui/textarea";
 import { DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
-import { Mod } from "../contexts/garagecontext";
+import { Mod } from "../contexts/garagecontext"; 
 
 interface CustomMod {
   category: string;
@@ -25,6 +25,7 @@ interface ModsTabContentProps {
   onRemoveMod: (mod: Mod) => void;
   isLoadingMods: boolean;
   setActiveTab: (tab: string) => void;
+  baseCost?: number; 
 }
 
 export function ModsTabContent({ 
@@ -33,7 +34,8 @@ export function ModsTabContent({
   onAddMod, 
   onRemoveMod, 
   isLoadingMods,
-  setActiveTab 
+  setActiveTab,
+  baseCost = 0
 }: ModsTabContentProps) {
   
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -51,8 +53,10 @@ export function ModsTabContent({
 
   const categories: string[] = ["exterior", "interior", "drivetrain", "wheels", "suspension", "brakes"];
   
+  const modsCost = selectedMods.reduce((sum, mod) => sum + mod.cost, 0);
+  const totalCost = baseCost + modsCost;
+  
   const getModIdentifier = (mod: Mod): string => {
-    // For existing mods with database IDs
     if (mod.id) return `id-${mod.id}`;
     if (mod.modID) return `modID-${mod.modID}`;
     
@@ -152,7 +156,6 @@ export function ModsTabContent({
 
         {showFilters && (
           <div className="space-y-3 bg-gray-800/30 p-3 rounded-lg border border-gray-700">
-            {/* Category Filter */}
             <div>
               <Label htmlFor="category-filter" className="text-white text-sm">Category</Label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -304,14 +307,9 @@ export function ModsTabContent({
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="text-xs text-white capitalize">
+                        <Badge variant="outline" className="text-xs capitalize text-white">
                           {mod.category}
                         </Badge>
-                        {mod.isCustom && (
-                          <Badge variant="outline" className="text-xs text-blue-400">
-                            Custom
-                          </Badge>
-                        )}
                       </div>
                       
                       <h4 className="text-white font-medium text-sm mb-1">{mod.brand}</h4>
@@ -329,11 +327,7 @@ export function ModsTabContent({
                           ${mod.cost.toLocaleString()}
                         </span>
                         
-                        {mod.partNumber && (
-                          <span className="text-gray-500 text-xs">
-                            {mod.partNumber}
-                          </span>
-                        )}
+                       
                       </div>
                     </div>
                     
@@ -383,7 +377,7 @@ export function ModsTabContent({
               Selected ({selectedMods.length})
             </Label>
             <span className="text-green-400 font-medium text-sm">
-              ${selectedMods.reduce((sum, mod) => sum + mod.cost, 0).toLocaleString()}
+              ${modsCost.toLocaleString()}
             </span>
           </div>
           
@@ -421,6 +415,25 @@ export function ModsTabContent({
           </div>
         </div>
       )}
+
+      <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-white font-medium">Total Build Cost</h3>
+            <p className="text-sm text-gray-400">
+              Base: ${baseCost.toLocaleString()} + Mods: ${modsCost.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-green-400">
+              ${totalCost.toLocaleString()}
+            </p>
+            <p className="text-xs text-gray-500">
+              {selectedMods.length} modification{selectedMods.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <DialogFooter className="flex-col sm:flex-row gap-2">
         <Button variant="outline" onClick={() => setActiveTab("photos")} className="w-full sm:w-auto">

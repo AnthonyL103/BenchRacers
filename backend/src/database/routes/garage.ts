@@ -504,7 +504,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     
     const [result]: any = await connection.query(
       `INSERT INTO Entries 
-       (userEmail, carName, carMake, carModel, carYear, carColor, basecost carTrim, description,
+       (userEmail, carName, carMake, carModel, carYear, carColor, basecost, carTrim, description,
         totalMods, totalCost, category, region, engine, transmission, drivetrain,
         horsepower, torque)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -705,7 +705,7 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     const { entryID } = req.params;
     const user = req.user as any;
     const { 
-      carName, carMake, carModel, carYear, carColor, description,
+      carName, carMake, carModel, carYear, carColor, basecost, description,
       totalMods, totalCost, category, region, engine, transmission, 
       drivetrain, horsepower, torque, photos, tags, mods,
     } = req.body;
@@ -726,12 +726,12 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     
     await connection.query(
       `UPDATE Entries 
-       SET carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, 
+       SET carName = ?, carMake = ?, carModel = ?, carYear = ?, carColor = ?, basecost = ?,
            description = ?, totalMods = ?, totalCost = ?, category = ?, region = ?,
            engine = ?, transmission = ?, drivetrain = ?, horsepower = ?, torque = ?
        WHERE entryID = ? AND userEmail = ?`,
       [
-        carName, carMake, carModel, carYear || null, carColor || null, 
+        carName, carMake, carModel, carYear || null, carColor || null, basecost || null,
         description || null, totalMods || 0, totalCost || 0, category, region,
         engine || null, transmission || null, drivetrain || null,
         horsepower || null, torque || null,
@@ -817,28 +817,9 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     
     await connection.commit();
     
-    const [results]: any = await pool.query(`
-      SELECT 
-        e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
-        e.carColor, e.description, e.totalMods, e.totalCost, e.category,
-        e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
-        e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
-        p.s3Key as mainPhotoKey,
-        GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys
-      FROM Entries e
-      LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
-      LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
-      WHERE e.entryID = ?
-      GROUP BY e.entryID
-    `, [entryID]);
-    
-    const car = results[0];
-    car.allPhotoKeys = car.allPhotoKeys ? car.allPhotoKeys.split(',') : [];
-    
     res.status(200).json({
       success: true,
       message: 'Car updated successfully',
-      car
     });
   } catch (error) {
     await connection.rollback();

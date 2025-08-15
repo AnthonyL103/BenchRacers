@@ -83,12 +83,12 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   }, []);
   
   useEffect(() => {
-    const total = [
-      ...Mods
-    ].reduce((sum, mod) => sum + mod.cost, 0);
-    
-    setTotalCost(total);
-  }, [Mods]);
+  const baseCost = parseFloat(carDetails.basecost) || 0;
+  const modsCost = Mods.reduce((sum, mod) => sum + mod.cost, 0);
+  const total = baseCost + modsCost;
+  
+  setTotalCost(total);
+}, [Mods, carDetails.basecost]); 
   
 
     const fetchAvailableMods = async () => {
@@ -531,7 +531,7 @@ const removePhoto = (index: number) => {
                     <Label htmlFor="basecost" className="text-white">Base Cost</Label>
                         <Input
                             id="basecost"
-                            placeholder="$50,000"
+                            placeholder="50,000"
                             value={carDetails.basecost}
                             type="number"
                             onChange={(e) => setCarDetails({ ...carDetails, basecost: e.target.value })}
@@ -675,6 +675,7 @@ const removePhoto = (index: number) => {
                 onRemoveMod={removeMod}
                 isLoadingMods={isLoadingMods}
                 setActiveTab={setActiveTab}
+                baseCost={parseFloat(carDetails.basecost) || 0}
             />
         </TabsContent>
 
