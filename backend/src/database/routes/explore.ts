@@ -54,6 +54,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       carModel: string;
       carYear: string;
       carColor: string;
+      basecost: number;
       carTrim: string;
       description: string;
       totalMods: number;
@@ -104,7 +105,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     let baseQuery = `
       SELECT 
         e.entryID, e.userEmail as userID, e.carName, e.carMake, e.carModel,
-        e.carYear, e.carColor, e.carTrim, e.description, e.totalMods, e.totalCost,
+        e.carYear, e.carColor, e.basecost, e.carTrim, e.description, e.totalMods, e.totalCost,
         e.category, e.region, e.upvotes, e.commentCount, e.engine, e.transmission,
         e.drivetrain, e.horsepower, e.torque, e.viewCount, e.createdAt,
         u.name as userName, u.profilephotokey

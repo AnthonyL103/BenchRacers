@@ -68,6 +68,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     color: "",
     trim: "",
     engine: "",
+    basecost: "",
     transmission: "",
     category: "",
     horsepower: "",
@@ -106,6 +107,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         model: car.carModel || "",
         year: car.carYear || "",
         color: car.carColor || "",
+        basecost: car.basecost || "",
         trim: car.carTrim || "",
         engine: car.engine || "",
         transmission: car.transmission || "",
@@ -524,13 +526,23 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="engine" className="text-white">Engine</Label>
-                  <Input
+                   <Input
                     id="engine"
                     placeholder="e.g. 3.0L Inline-6 Turbo"
                     value={carDetails.engine}
                     onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
-                  />
+                   />
                 </div>
+                <div className="space-y-2">
+                    <Label htmlFor="basecost" className="text-white">Base Cost</Label>
+                     <Input
+                        id="basecost"
+                        placeholder="$50,000"
+                        value={carDetails.basecost}
+                        type="number"
+                        onChange={(e) => setCarDetails({ ...carDetails, basecost: e.target.value })}
+                     />
+                    </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="horsepower" className="text-white">Horsepower</Label>

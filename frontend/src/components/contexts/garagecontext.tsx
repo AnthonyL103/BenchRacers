@@ -30,6 +30,7 @@ export interface Car {
     carModel: string;
     carYear?: string;
     carColor?: string;
+    basecost?: number; 
     carTrim?: string; 
     description?: string;
     totalMods: number;
@@ -63,6 +64,7 @@ export interface CarCreate {
   carModel: string;
   carYear?: string;
   carColor?: string;
+  basecost?: number;
   carTrim?: string;              
   description?: string;
   totalMods: number;

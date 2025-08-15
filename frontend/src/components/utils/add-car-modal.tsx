@@ -70,6 +70,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
     year: "",
     trim: "",
     engine: "",
+    basecost: "",
     transmission: "",
     category:"",
     horsepower:"",
@@ -316,6 +317,7 @@ const removePhoto = (index: number) => {
             category: carDetails.category,
             region: user?.region || "",
             engine: carDetails.engine,
+            basecost: carDetails.basecost ? parseInt(carDetails.basecost) : undefined,
             transmission: carDetails.transmission,
             drivetrain: carDetails.drivetrain,
             horsepower: carDetails.horsepower ? parseInt(carDetails.horsepower) : undefined,
@@ -354,6 +356,7 @@ const removePhoto = (index: number) => {
       make: "",
       model: "",
       color:"",
+      basecost: "",
       year: "",
       trim: "",
       engine: "",
@@ -513,27 +516,36 @@ const removePhoto = (index: number) => {
                     <p className="text-xs text-gray-500">VIN doesn't contain color - please enter manually</p>
                 </div>
                 </div>
-
-                <div className="space-y-2">
-                <Label htmlFor="engine" className="text-white">Engine</Label>
-                <Input
-                    id="engine"
-                    placeholder="e.g. 3.0L Inline-6 Turbo"
-                    value={carDetails.engine}
-                    onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
-                />
-                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                            <Label htmlFor="horsepower" className="text-white">Horsepower</Label>
+                    <div className="space-y-2">
+                    <Label htmlFor="engine" className="text-white">Engine</Label>
+                        <Input
+                            id="engine"
+                            placeholder="e.g. 3.0L Inline-6 Turbo"
+                            value={carDetails.engine}
+                            onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="basecost" className="text-white">Base Cost</Label>
+                        <Input
+                            id="basecost"
+                            placeholder="$50,000"
+                            value={carDetails.basecost}
+                            type="number"
+                            onChange={(e) => setCarDetails({ ...carDetails, basecost: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="horsepower" className="text-white">Horsepower</Label>
                             <Input
                                 id="horsepower"
                                 type="number"
                                 placeholder="e.g. 400"
                                 value={carDetails.horsepower}
                                 onChange={(e) => setCarDetails({ ...carDetails, horsepower: e.target.value })}
-                            />
+                        />
                         </div>
                     <div className="space-y-2">
                         <Label htmlFor="torque" className="text-white">Torque</Label>
