@@ -564,12 +564,16 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     }
     
     if (mods && Array.isArray(mods) && mods.length > 0) {
-      const modValues = mods.map((modId: number) => [entryID, modId]);
-      
-      await connection.query(
-        'INSERT INTO EntryMods (entryID, modID) VALUES ?',
-        [modValues]
-      );
+        const processedModIds = await processCustomMods(connection, mods);
+        
+        if (processedModIds.length > 0) {
+            const modValues = processedModIds.map((modId: number) => [entryID, modId]);
+            
+            await connection.query(
+            'INSERT INTO EntryMods (entryID, modID) VALUES ?',
+            [modValues]
+            );
+        }
     }
     
     if (tags && Array.isArray(tags) && tags.length > 0) {
