@@ -363,6 +363,7 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
       mods: modsMap.get(car.entryID) || []
     }));
     
+    console.log("Fetched user cars:", cars);
     res.status(200).json({
       success: true,
       cars

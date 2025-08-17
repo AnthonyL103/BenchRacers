@@ -189,11 +189,10 @@ export function GarageProvider({ children }: { children: React.ReactNode }) {
     );
     
     if (response.data.success) {
-      // Update the local cars state with the updated car
       setCars(prevCars => 
         prevCars.map(car => 
           car.entryID === entryID 
-            ? { ...car, ...response.data.car } // Merge with updated data from API
+            ? { ...car, ...carData }
             : car
         )
       );

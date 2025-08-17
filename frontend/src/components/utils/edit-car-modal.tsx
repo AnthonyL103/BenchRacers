@@ -379,10 +379,11 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         category: carDetails.category,
         region: user?.region || "",
         engine: carDetails.engine || undefined,
+        basecost: carDetails.basecost ? parseFloat(carDetails.basecost) : undefined,
         transmission: carDetails.transmission || undefined,
         drivetrain: carDetails.drivetrain || undefined,
-        horsepower: carDetails.horsepower ? parseInt(carDetails.horsepower) : undefined,
-        torque: carDetails.torque ? parseInt(carDetails.torque) : undefined,
+        horsepower: carDetails.horsepower ? parseFloat(carDetails.horsepower) : undefined,
+        torque: carDetails.torque ? parseFloat(carDetails.torque) : undefined,
         
         photos: allPhotos,
         tags: selectedTags,
