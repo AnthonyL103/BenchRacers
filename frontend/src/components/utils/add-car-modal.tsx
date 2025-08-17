@@ -83,9 +83,8 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   }, []);
   
   useEffect(() => {
-  const baseCost = parseFloat(carDetails.basecost) || 0;
   const modsCost = Mods.reduce((sum, mod) => sum + mod.cost, 0);
-  const total = baseCost + modsCost;
+  const total = parseFloat(carDetails.basecost) + modsCost;
   
   setTotalCost(total);
 }, [Mods, carDetails.basecost]); 
@@ -317,11 +316,11 @@ const removePhoto = (index: number) => {
             category: carDetails.category,
             region: user?.region || "",
             engine: carDetails.engine,
-            basecost: parseFloat(carDetails.basecost) || 0, 
+            basecost: carDetails.basecost || undefined, 
             transmission: carDetails.transmission,
             drivetrain: carDetails.drivetrain,
-            horsepower: parseFloat(carDetails.horsepower) || undefined,
-            torque: parseFloat(carDetails.torque) || undefined,
+            horsepower: parseInt(carDetails.horsepower) || undefined,
+            torque: parseInt(carDetails.torque) || undefined,
             
             photos: uploadedPhotos,
             tags: selectedTags,
