@@ -1,29 +1,24 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import Link from "next/link"
-import Image from "next/image"
 import { Navbar } from "../utils/navbar"
 import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { Badge } from "../ui/badge"
-import { Input } from "../ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
 import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" 
 import { getS3ImageUrl } from "../utils/s3helper"
-import { set } from "date-fns"
 import { useUser } from '../contexts/usercontext';
+import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
 import { Textarea } from "../ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
-import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 export default function ExplorePage() {
   const { user, isAuthenticated } = useUser();
-  const [activeTab, setActiveTab] = useState("swipe");
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
   const [swipedCars, setSwipedCars] = useState<string[]>([]);
   const [likedCars, setLikedCars] = useState<string[]>([]);
@@ -75,7 +70,7 @@ export default function ExplorePage() {
     return;
   }
 
-  console.log("🚀 likeCars called with carID:", carId)
+  console.log(" likeCars called with carID:", carId)
   try {
     const response = await fetch('https://api.benchracershq.com/api/explore/like', {
       method: 'POST',
@@ -86,17 +81,17 @@ export default function ExplorePage() {
       body: JSON.stringify({ carId })
     });
     const data = await response.json();
-    console.log("🚀 likeCars API response data:", data);
+    console.log(" likeCars API response data:", data);
     
     if (data.success) {
       setSwipedCars(prev => [...prev, carId])
       goToNextCar()
     } else {
-        console.log("🚀 likeCars failed:", data.message);
+        console.log(" likeCars failed:", data.message);
         setErrorMessage(data.message || "Failed to like car");
     }
   } catch (error) {
-    console.error("🚀 likeCars error:", error);
+    console.error(" likeCars error:", error);
   }
 };
 
@@ -256,16 +251,6 @@ const getCurrentPhotoUrl = () => {
     setTimeout(() => setIsTransitioning(false), 300);
   };
 
-  const goToSlide = (index: number) => {
-    if (isTransitioning || index === currentIndex) return;
-    
-    setIsTransitioning(true);
-    setCurrentIndex(index);
-    
-    setTimeout(() => setIsTransitioning(false), 300);
-  };
-
-  // Touch handlers
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -289,7 +274,6 @@ const getCurrentPhotoUrl = () => {
     }
   };
 
-  // Mouse drag handlers for desktop
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<number | null>(null);
 
@@ -304,7 +288,6 @@ const getCurrentPhotoUrl = () => {
     
     const distance = dragStart - e.clientX;
     
-    // Optional: Add visual feedback during drag
   };
 
   const onMouseUp = (e: React.MouseEvent) => {
@@ -324,7 +307,6 @@ const getCurrentPhotoUrl = () => {
     setDragStart(null);
   };
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
@@ -339,16 +321,15 @@ const getCurrentPhotoUrl = () => {
   }, []);
   
 const fetchCars = async () => {
-    console.log("🚀 fetchCars called");
+    console.log(" fetchCars called");
     try {
-      console.log("🚀 About to dispatch FETCH_CARS_REQUEST");
+      console.log(" About to dispatch FETCH_CARS_REQUEST");
       
-      // Start loading
       dispatch({
         type: CarActionTypes.FETCH_CARS_REQUEST
       })
       
-      console.log("🚀 FETCH_CARS_REQUEST dispatched");
+      console.log(" FETCH_CARS_REQUEST dispatched");
       
       const response = await fetch('https://api.benchracershq.com/api/explore/cars', { 
         method: 'POST', 
@@ -362,21 +343,21 @@ const fetchCars = async () => {
         })
       });
       
-      console.log("🚀 API response received:", response.status);
+      console.log(" API response received:", response.status);
       
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       
       const apiResponse = await response.json();
-      console.log("🚀 API Response:", apiResponse);
+      console.log(" API Response:", apiResponse);
       
       const newCars = apiResponse.data || apiResponse;
-      console.log("🚀 Extracted cars:", newCars);
-      console.log("🚀 Is newCars an array?", Array.isArray(newCars));
-      console.log("🚀 newCars length:", newCars.length);
+      console.log(" Extracted cars:", newCars);
+      console.log(" Is newCars an array?", Array.isArray(newCars));
+      console.log(" newCars length:", newCars.length);
       
-      console.log("🚀 About to dispatch FETCH_CARS_SUCCESS with payload:", newCars);
+      console.log(" About to dispatch FETCH_CARS_SUCCESS with payload:", newCars);
       
       dispatch({
         type: CarActionTypes.FETCH_CARS_SUCCESS,
@@ -385,18 +366,18 @@ const fetchCars = async () => {
       
       setFilteredCars(cars);
       
-      console.log("🚀 FETCH_CARS_SUCCESS dispatched");
+      console.log(" FETCH_CARS_SUCCESS dispatched");
       
     } catch (error) {
-      console.error("🚀 Fetch cars error:", error);
-      console.log("🚀 About to dispatch FETCH_CARS_FAILURE");
+      console.error(" Fetch cars error:", error);
+      console.log(" About to dispatch FETCH_CARS_FAILURE");
       
       dispatch({
         type: CarActionTypes.FETCH_CARS_FAILURE,
         payload: error instanceof Error ? error.message : 'An unknown error occurred'
       });
       
-      console.log("🚀 FETCH_CARS_FAILURE dispatched");
+      console.log(" FETCH_CARS_FAILURE dispatched");
     }
   };
 
@@ -471,60 +452,22 @@ const fetchCars = async () => {
       </div>
     </div>
     
-    <div className="flex flex-col items-center h-full mt-5 mb-5">
-      <div className="w-full max-w-5xl">
-        <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white">
-          <div className="relative h-[75vh]">
-            <div
-              ref={containerRef}
-              className="relative w-full h-full cursor-grab active:cursor-grabbing select-none"
-              style={{ zIndex: 1 }}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              onMouseDown={onMouseDown}
-              onMouseMove={onMouseMove}
-              onMouseUp={onMouseUp}
-              onMouseLeave={() => {
-                setIsDragging(false);
-                setDragStart(null);
-              }}
-            >
-              <img
-                src={getCurrentPhotoUrl()}
-                alt={`${currentCar.carName} - Photo ${currentIndex + 1} of ${currentCar.allPhotoKeys.length}`}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300  ease-in-out${
-                  isTransitioning ? 'opacity-80' : 'opacity-100'
-                }`}
-                draggable={false}
-                style={{ zIndex: 1 }}
-              />
-            </div>
+    <div className="flex flex-col items-center mt-5 mb-5 w-full">
+        <div className="w-full max-w-2xl sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] h-[500px] sm:h-[600px] md:h-[650px] lg:h-[700px] xl:h-[750px] 2xl:h-[800px] overflow-hidden relative">
+
+        <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white w-full h-full">
+          <div className="relative">
+            
+             <SwipeablePhotoGallery
+            photos={currentCar.allPhotoKeys}
+            carName= {currentCar.carName || "Car"}
+            getS3ImageUrl={getS3ImageUrl}
+            className="w-full h-full"
+            hideControls={false}
+            />
+            
         
-            {/* Navigation Arrows - Only show if more than 1 photo and not hidden */}
-            {currentCar.allPhotoKeys.length > 1 && !hideGalleryControls && (
-              <>
-                <button
-                  onClick={goToPrevious}
-                  disabled={isTransitioning}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 disabled:opacity-50"
-                  style={{ zIndex: 5 }}
-                  aria-label="Previous photo"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                
-                <button
-                  onClick={goToNext}
-                  disabled={isTransitioning}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200 disabled:opacity-50"
-                  style={{ zIndex: 5 }}
-                  aria-label="Next photo"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </>
-            )}
+            
 
             {/* User info overlay - top left */}
             <div className="absolute top-4 left-4 flex flex-col gap-3 z-[100] animate-in fade-in-0 slide-in-from-left-2 duration-300" style={{ zIndex: 5 }}>
@@ -578,220 +521,233 @@ const fetchCars = async () => {
             </div>
 
             {showUserInfo ? (
-            <div 
-                className="absolute bottom-4 left-4 pointer-events-none" 
-                style={{ zIndex: 5 }}
-            >
-                {/* Compact content container with its own background - only as wide as needed */}
                 <div 
-                className="relative p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20"
-                onMouseEnter={() => setHideGalleryControls(true)}
-                onMouseLeave={() => setHideGalleryControls(false)}
+                    className="absolute bottom-4 left-4 pointer-events-none" 
+                    style={{ zIndex: 5 }}
                 >
-                <button
-                    onClick={() => setShowUserInfo(false)}
-                    className="absolute -top-1 -right-1 bg-black/80 hover:bg-black/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
-                    aria-label="Close info"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-                <div className="mb-2">
-                    <h3 className="font-bold text-xl text-white mb-0.5 drop-shadow-lg">
-                    {currentCar.carName}
-                    </h3>
-                    <p className="text-gray-200 text-sm font-medium drop-shadow-md">
-                    {currentCar.carMake} {currentCar.carModel}
-                    </p>
-                </div>
-
-                {/* Compact stats inline */}
-                <div className="flex gap-2 text-xs mb-2">
-                    <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
-                    <span className="text-gray-300">Mods: </span>
-                    <span className="text-white font-bold">{currentCar.totalMods}</span>
+                    {/* Responsive container with consistent sizing */}
+                    <div 
+                    className="relative p-3 sm:p-4 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20 
+                                w-72 sm:w-80 md:w-96 lg:w-[400px] xl:w-[420px] 2xl:w-[450px]
+                                max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-96 xl:max-h-[400px] 2xl:max-h-[450px]"
+                    onMouseEnter={() => setHideGalleryControls(true)}
+                    onMouseLeave={() => setHideGalleryControls(false)}
+                    >
+                    <button
+                        onClick={() => setShowUserInfo(false)}
+                        className="absolute -top-1 -right-1 bg-black/80 hover:bg-black/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
+                        aria-label="Close info"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="mb-2">
+                        <h3 className="font-bold text-lg sm:text-xl text-white mb-0.5 drop-shadow-lg flex items-center gap-2">
+                        {currentCar.carName}
+                        </h3>
+                        <p className="text-gray-200 text-sm font-medium drop-shadow-md">
+                        {currentCar.carMake} {currentCar.carModel}
+                        </p>
                     </div>
-                    <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
-                    <span className="text-gray-300">Cost: </span>
-                    <span className="text-white font-bold">${currentCar.totalCost.toLocaleString()}</span>
-                    </div>
-                </div>
 
-                {/* Small badges inline */}
-                <div className="flex gap-1.5">
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
-                    {currentCar.carMake}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
-                    {currentCar.region}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
-                    {currentCar.category}
-                    </Badge>
-                </div>
-                 <div className="flex gap-2 mt-3">
-                    {currentCar.horsepower && (
+                    {/* Compact stats inline */}
+                    <div className="flex gap-2 text-xs mb-2">
+                        <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
+                        <span className="text-gray-300">Mods: </span>
+                        <span className="text-white font-bold">{currentCar.totalMods}</span>
+                        </div>
+                        <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
+                        <span className="text-gray-300">Cost: </span>
+                        <span className="text-white font-bold">${currentCar.totalCost.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    {/* Small badges inline */}
+                    <div className="flex gap-1.5 flex-wrap">
+                        <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
+                        {currentCar.carMake}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
+                        {currentCar.region}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
+                        {currentCar.category}
+                        </Badge>
+                    </div>
+                    
+                    <div className="flex gap-2 mt-3 flex-wrap">
+                        {currentCar.horsepower && (
                         <Badge variant="outline" className="text-xs px-2 py-1 text-orange-300 border-orange-400/30 bg-orange-500/10 backdrop-blur-sm">
                             ⚡ {currentCar.horsepower} HP
                         </Badge>
-                    )}
-                    {currentCar.torque && (
+                        )}
+                        {currentCar.torque && (
                         <Badge variant="outline" className="text-xs px-2 py-1 text-blue-300 border-blue-400/30 bg-blue-500/10 backdrop-blur-sm">
                             🔧 {currentCar.torque} lb-ft
                         </Badge>
-                    )}
+                        )}
+                    </div>
+                    
+                    {/* Scrollable description area */}
+                    <div className="mt-2 text-gray-300 text-sm overflow-y-auto max-h-32 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20">
+                        <p className="break-words leading-relaxed">{currentCar.description}</p>
+                    </div>
+                    </div>
                 </div>
-                <div className="mt-2 text-gray-300 text-sm whitespace-pre-line max-w-xs">
-                    <p className="break-words leading-relaxed">{currentCar.description}</p>
-                </div>
-                </div>
-            </div>
-            ) : (
-            <button 
-                onClick={() => setShowUserInfo(true)} 
-                className="absolute bottom-4 left-4 p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20 text-white hover:bg-black/70 transition-all duration-200"
-                style={{ zIndex: 5 }}
-            > 
-                Show Info 
-            </button>
-            )}
-            
-            {showMods ? (
-            <div 
-                className="absolute bottom-4 right-4 pointer-events-none" 
-                style={{ zIndex: 5 }}
-            >
-                <div 
-                className="relative p-3 pointer-events-auto inline-block bg-gradient-to-t from-purple-900/60 via-purple-800/40 to-purple-700/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-purple-300/20 max-w-sm"
-                onMouseEnter={() => setHideGalleryControls(true)}
-                onMouseLeave={() => setHideGalleryControls(false)}
-                >
-                <button
-                    onClick={() => setShowMods(false)}
-                    className="absolute -top-1 -left-1 bg-purple-900/80 hover:bg-purple-800/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
-                    aria-label="Close mods"
-                >
-                    <X className="w-4 h-4" />
+                ) : (
+                <button 
+                    onClick={() => setShowUserInfo(true)} 
+                    className="absolute bottom-4 left-4 p-2 sm:p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20 text-white hover:bg-black/70 transition-all duration-200
+                            text-sm sm:text-base"
+                    style={{ zIndex: 5 }}
+                > 
+                    Show Info 
                 </button>
+                )}
 
-                <div className="mb-3">
-                    <h3 className="font-bold text-lg text-white mb-1 drop-shadow-lg flex items-center gap-2">
-                    <span className="text-purple-300">🔧</span>
-                    Modifications
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm">
-                    <span className="text-purple-200">Total Parts:</span>
-                    <span className="text-white font-bold bg-purple-500/30 px-2 py-0.5 rounded">
-                        {currentCar.mods?.length || 0}
-                    </span>
-                    </div>
-                </div>
+                {showMods ? (
+                <div 
+                    className="absolute bottom-4 right-4 pointer-events-none" 
+                    style={{ zIndex: 5 }}
+                >
+                    {/* Matching container with same gradient as user info */}
+                    <div 
+                    className="relative p-3 sm:p-4 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-white/20
+                                w-72 sm:w-80 md:w-96 lg:w-[400px] xl:w-[420px] 2xl:w-[450px]
+                                max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-96 xl:max-h-[400px] 2xl:max-h-[450px]"
+                    onMouseEnter={() => setHideGalleryControls(true)}
+                    onMouseLeave={() => setHideGalleryControls(false)}
+                    >
+                    <button
+                        onClick={() => setShowMods(false)}
+                        className="absolute -top-1 -left-1 bg-black/80 hover:bg-black/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
+                        aria-label="Close mods"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-purple-400/30">
-                    {currentCar.mods && currentCar.mods.length > 0 ? (
-                    currentCar.mods.map((mod, index) => (
-                        <div 
-                        key={mod.modID || index}
-                        className="bg-black/40 backdrop-blur-sm border border-purple-300/20 rounded-lg p-2.5 hover:bg-black/60 transition-all duration-200 group"
-                        >
-                        <div className="flex justify-between items-start mb-1">
-                            <div className="flex-1 min-w-0">
-                            <h4 className="text-white font-semibold text-sm truncate group-hover:text-purple-200 transition-colors">
-                                {mod.brand}
-                            </h4>
-                            <p className="text-purple-200 text-xs">
-                                {mod.category}
-                            </p>
-                            </div>
-                            <div className="flex flex-col items-end ml-2">
-                            <span className="text-green-300 font-bold text-sm">
-                                ${mod.cost?.toLocaleString() || '0'}
-                            </span>
-                            {mod.isCustom && (
-                                <Badge variant="outline" className="text-xs px-1.5 py-0 text-yellow-300 border-yellow-400/30 bg-yellow-500/10">
-                                Custom
-                                </Badge>
-                            )}
-                            </div>
+                    <div className="mb-3">
+                        <h3 className="font-bold text-lg text-white mb-1 drop-shadow-lg flex items-center gap-2">
+                        <span className="text-gray-300">🔧</span>
+                        Modifications
+                        </h3>
+                        <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-200">Total Parts:</span>
+                        <span className="text-white font-bold bg-white/20 px-2 py-0.5 rounded">
+                            {currentCar.mods?.length || 0}
+                        </span>
                         </div>
+                    </div>
 
-                        {(mod.type || mod.partNumber) && (
-                            <div className="space-y-1 mt-2">
-                            {mod.type && (
-                                <div className="flex items-center gap-1">
-                                <span className="text-gray-400 text-xs">Type:</span>
-                                <span className="text-gray-200 text-xs">{mod.type}</span>
-                                </div>
-                            )}
-                            {mod.partNumber && (
-                                <div className="flex items-center gap-1">
-                                <span className="text-gray-400 text-xs">Part #:</span>
-                                <span className="text-gray-200 text-xs font-mono">{mod.partNumber}</span>
-                                </div>
-                            )}
-                            </div>
-                        )}
-
-                        {mod.description && (
-                            <p className="text-gray-300 text-xs mt-2 leading-relaxed">
-                            {mod.description}
-                            </p>
-                        )}
-
-                        {mod.link && (
-                            <div className="mt-2">
-                            <a 
-                                href={mod.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-purple-300 hover:text-purple-200 text-xs underline transition-colors"
+                    {/* Scrollable mods list with consistent height */}
+                    <div className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20
+                                    h-32 sm:h-40 md:h-48 lg:h-56 xl:h-64 2xl:h-72">
+                        {currentCar.mods && currentCar.mods.length > 0 ? (
+                        currentCar.mods.map((mod, index) => (
+                            <div 
+                            key={mod.modID || index}
+                            className="bg-black/40 backdrop-blur-sm border border-white/20 rounded-lg p-2.5 hover:bg-black/60 transition-all duration-200 group"
                             >
-                                View Product →
-                            </a>
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-semibold text-sm truncate group-hover:text-gray-200 transition-colors">
+                                    {mod.brand}
+                                </h4>
+                                <p className="text-gray-200 text-xs">
+                                    {mod.category}
+                                </p>
+                                </div>
+                                <div className="flex flex-col items-end ml-2">
+                                <span className="text-green-300 font-bold text-sm">
+                                    ${mod.cost?.toLocaleString() || '0'}
+                                </span>
+                                {mod.isCustom && (
+                                    <Badge variant="outline" className="text-xs px-1.5 py-0 text-yellow-300 border-yellow-400/30 bg-yellow-500/10">
+                                    Custom
+                                    </Badge>
+                                )}
+                                </div>
                             </div>
-                        )}
+
+                            {(mod.type || mod.partNumber) && (
+                                <div className="space-y-1 mt-2">
+                                {mod.type && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-400 text-xs">Type:</span>
+                                    <span className="text-gray-200 text-xs">{mod.type}</span>
+                                    </div>
+                                )}
+                                {mod.partNumber && (
+                                    <div className="flex items-center gap-1">
+                                    <span className="text-gray-400 text-xs">Part #:</span>
+                                    <span className="text-gray-200 text-xs font-mono">{mod.partNumber}</span>
+                                    </div>
+                                )}
+                                </div>
+                            )}
+
+                            {mod.description && (
+                                <p className="text-gray-300 text-xs mt-2 leading-relaxed">
+                                {mod.description}
+                                </p>
+                            )}
+
+                            {mod.link && (
+                                <div className="mt-2">
+                                <a 
+                                    href={mod.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-300 hover:text-gray-200 text-xs underline transition-colors"
+                                >
+                                    View Product →
+                                </a>
+                                </div>
+                            )}
+                            </div>
+                        ))
+                        ) : (
+                        <div className="text-center py-4">
+                            <span className="text-gray-400 text-sm">No modifications listed</span>
                         </div>
-                    ))
-                    ) : (
-                    <div className="text-center py-4">
-                        <span className="text-gray-400 text-sm">No modifications listed</span>
+                        )}
                     </div>
+
+                    {/* Total investment footer */}
+                    {currentCar.mods && currentCar.mods.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-white/20">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-200 text-sm font-medium">
+                            Total Investment:
+                            </span>
+                            <span className="text-green-300 font-bold text-lg">
+                            ${currentCar.mods.reduce((sum, mod) => sum + (mod.cost || 0), 0).toLocaleString()}
+                            </span>
+                        </div>
+                        </div>
                     )}
+                    </div>
                 </div>
-
-                {currentCar.mods && currentCar.mods.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-purple-300/20">
-                    <div className="flex justify-between items-center">
-                        <span className="text-purple-200 text-sm font-medium">
-                        Total Investment:
-                        </span>
-                        <span className="text-green-300 font-bold text-lg">
-                        ${currentCar.mods.reduce((sum, mod) => sum + (mod.cost || 0), 0).toLocaleString()}
-                        </span>
+                ) : (
+                <button 
+                    onClick={() => setShowMods(true)} 
+                    className="absolute bottom-4 right-4 p-2 sm:p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-white/20 text-white hover:bg-black/70 transition-all duration-200 group
+                            text-sm sm:text-base"
+                    style={{ zIndex: 5 }}
+                > 
+                    <div className="flex items-center gap-2">
+                    <span className="group-hover:scale-110 transition-transform">🔧</span>
+                    <span>Show Mods</span>
+                    {currentCar.mods && currentCar.mods.length > 0 && (
+                        <Badge variant="outline" className="text-xs px-1.5 py-0 text-gray-200 border-white/30 bg-white/10">
+                        {currentCar.mods.length}
+                        </Badge>
+                    )}
                     </div>
-                    </div>
+                </button>
                 )}
                 </div>
-            </div>
-            ) : (
-            <button 
-                onClick={() => setShowMods(true)} 
-                className="absolute bottom-4 right-4 p-3 pointer-events-auto inline-block bg-gradient-to-t from-purple-900/60 via-purple-800/40 to-purple-700/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-purple-300/20 text-white hover:bg-purple-800/70 transition-all duration-200 group"
-                style={{ zIndex: 5 }}
-            > 
-                <div className="flex items-center gap-2">
-                <span className="group-hover:scale-110 transition-transform">🔧</span>
-                <span>Show Mods</span>
-                {currentCar.mods && currentCar.mods.length > 0 && (
-                    <Badge variant="outline" className="text-xs px-1.5 py-0 text-purple-200 border-purple-300/30 bg-purple-500/20">
-                    {currentCar.mods.length}
-                    </Badge>
-                )}
-                </div>
-            </button>
-            )}
-          </div>
-
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex justify-between gap-4">
               <Button
                 variant="outline"
