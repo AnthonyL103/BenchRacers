@@ -1,20 +1,19 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback} from "react"
 import { Navbar } from "../utils/navbar"
 import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
 import { Card, CardContent } from "../ui/card"
 import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
-import { Heart, MessageCircle, Share2, Filter, Search, X, Info } from "lucide-react"
+import { Heart, MessageCircle, Share2, Filter, Search, X, Info, ExternalLink } from "lucide-react"
 import { useCarState, useCarDispatch, CarActionTypes } from "../contexts/carlistcontext" 
 import { getS3ImageUrl } from "../utils/s3helper"
 import { useUser } from '../contexts/usercontext';
 import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
 import { Textarea } from "../ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 export default function ExplorePage() {
@@ -31,17 +30,11 @@ export default function ExplorePage() {
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [errormessage, setErrorMessage] = useState<string | null>(null);
-  const [hideGalleryControls, setHideGalleryControls] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [showUserInfo, setShowUserInfo] = useState(false);
-  const [showMods, setShowMods] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
  
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const minSwipeDistance = 50;
   
   const { cars, isLoading, error } = useCarState()
   const dispatch = useCarDispatch()
@@ -225,100 +218,6 @@ const CommentItem = ({ comment }: { comment: any }) => (
     )}
   </div>
 );
-
-const getCurrentPhotoUrl = () => {
-    if (currentCar.allPhotoKeys.length === 0) {
-      return `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(currentCar.carName)}`;
-    }
-    return getS3ImageUrl(currentCar.allPhotoKeys[currentIndex]);
-  };
-
-  const goToNext = () => {
-    if (isTransitioning || currentCar.allPhotoKeys.length <= 1) return;
-    
-    setIsTransitioning(true);
-    setCurrentIndex((prev) => (prev + 1) % currentCar.allPhotoKeys.length);
-    
-    setTimeout(() => setIsTransitioning(false), 300);
-  };
-
-  const goToPrevious = () => {
-    if (isTransitioning || currentCar.allPhotoKeys.length <= 1) return;
-    
-    setIsTransitioning(true);
-    setCurrentIndex((prev) => (prev - 1 + currentCar.allPhotoKeys.length) % currentCar.allPhotoKeys.length);
-    
-    setTimeout(() => setIsTransitioning(false), 300);
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe) {
-      goToNext();
-    } else if (isRightSwipe) {
-      goToPrevious();
-    }
-  };
-
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<number | null>(null);
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragStart(e.clientX);
-    e.preventDefault();
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !dragStart) return;
-    
-    const distance = dragStart - e.clientX;
-    
-  };
-
-  const onMouseUp = (e: React.MouseEvent) => {
-    if (!isDragging || !dragStart) return;
-    
-    const distance = dragStart - e.clientX;
-    const isLeftDrag = distance > minSwipeDistance;
-    const isRightDrag = distance < -minSwipeDistance;
-
-    if (isLeftDrag) {
-      goToNext();
-    } else if (isRightDrag) {
-      goToPrevious();
-    }
-
-    setIsDragging(false);
-    setDragStart(null);
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        goToPrevious();
-      } else if (e.key === 'ArrowRight') {
-        goToNext();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
   
 const fetchCars = async () => {
     console.log(" fetchCars called");
@@ -364,7 +263,7 @@ const fetchCars = async () => {
         payload: newCars
       });
       
-      setFilteredCars(cars);
+      setFilteredCars(newCars);
       
       console.log(" FETCH_CARS_SUCCESS dispatched");
       
@@ -440,423 +339,503 @@ const fetchCars = async () => {
   }
 
   const currentCar = cars[currentCarIndex]
-  const remainingCars = cars.length - swipedCars.length
+  
+  const SLIDES = [
+  { id: 'photo', name: 'Photos' },
+  { id: 'details', name: 'Details' },
+  { id: 'mods', name: 'Modifications' }
+];
+
+
+  const goToSlide = useCallback((slideIndex: number) => {
+    if (isAnimating || slideIndex === currentSlide || slideIndex < 0 || slideIndex >= SLIDES.length) return
+
+    setIsAnimating(true)
+    setCurrentSlide(slideIndex)
+    
+    if (containerRef.current) {
+        containerRef.current.style.transform = `translateY(-${slideIndex * 100}vh)`
+    }
+
+    setTimeout(() => {
+        setIsAnimating(false)
+    }, 800)
+  }, [currentSlide, isAnimating, SLIDES.length])
+
+  const nextSlide = useCallback(() => {
+    if (currentSlide < SLIDES.length - 1) {
+      goToSlide(currentSlide + 1)
+    }
+  }, [currentSlide, goToSlide, SLIDES.length])
+
+  const prevSlide = useCallback(() => {
+    if (currentSlide > 0) {
+      goToSlide(currentSlide - 1)
+    }
+  }, [currentSlide, goToSlide])
+
+  useEffect(() => {
+    let startY = 0
+    let lastWheelTime = 0
+    let accumulatedDelta = 0
+    const WHEEL_DELAY = 1000
+    const DELTA_THRESHOLD = 100
+    
+    const handleWheel = (e: WheelEvent) => {
+        e.preventDefault()
+        
+        const now = Date.now()
+        
+        if (now - lastWheelTime < WHEEL_DELAY || isAnimating) {
+            return
+        }
+        
+        accumulatedDelta += Math.abs(e.deltaY)
+        
+        if (Math.abs(e.deltaY) > 10 || accumulatedDelta > DELTA_THRESHOLD) {
+            lastWheelTime = now
+            accumulatedDelta = 0
+            
+            if (e.deltaY > 0 && currentSlide < SLIDES.length - 1) {
+                nextSlide()
+            } else if (e.deltaY < 0 && currentSlide > 0) {
+                prevSlide()
+            }
+        }
+    }
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY
+    }
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      if (isAnimating) return
+      
+      const currentY = e.touches[0].clientY
+      const diff = startY - currentY
+      
+      if (Math.abs(diff) > 50) {
+        if (diff > 0 && currentSlide < SLIDES.length - 1) {
+          nextSlide()
+        } else if (diff < 0 && currentSlide > 0) {
+          prevSlide()
+        }
+      }
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isAnimating) return
+      
+      switch(e.key) {
+        case 'ArrowDown':
+        case ' ':
+          e.preventDefault()
+          nextSlide()
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          prevSlide()
+          break
+      }
+    }
+
+    document.addEventListener('wheel', handleWheel, { passive: false })
+    document.addEventListener('touchstart', handleTouchStart, { passive: true })
+    document.addEventListener('touchmove', handleTouchMove, { passive: true })
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('wheel', handleWheel)
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [[currentSlide, isAnimating, nextSlide, prevSlide]])
 
   return (
-  <div className="min-h-screen bg-gray-950">
-    {/* Header */}
-    <Navbar />
-    <div className="border-b border-gray-800 bg-gray-900">
-      <div className="container mx-auto px-4 py-4">
-        <h1 className="text-3xl font-bold text-white">Explore Builds</h1>
-      </div>
-    </div>
-    
-    <div className="flex flex-col items-center mt-5 mb-5 w-full">
-        <div className="w-full max-w-2xl sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1600px] h-[500px] sm:h-[600px] md:h-[650px] lg:h-[700px] xl:h-[750px] 2xl:h-[800px] overflow-hidden relative">
-
-        <Card className="overflow-hidden bg-gray-900 border-gray-800 text-white w-full h-full">
-          <div className="relative">
-            
-             <SwipeablePhotoGallery
-            photos={currentCar.allPhotoKeys}
-            carName= {currentCar.carName || "Car"}
-            getS3ImageUrl={getS3ImageUrl}
-            className="w-full h-full"
-            hideControls={false}
-            />
-            
+    <div className="h-screen overflow-hidden relative bg-gray-950">
+      <style>{`
+        html, body {
+          overflow: hidden;
+          height: 100%;
+        }
         
-            
+        .slide-container {
+          transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          will-change: transform;
+        }
+      `}</style>
 
-            {/* User info overlay - top left */}
-            <div className="absolute top-4 left-4 flex flex-col gap-3 z-[100] animate-in fade-in-0 slide-in-from-left-2 duration-300" style={{ zIndex: 5 }}>
-              <div className="flex items-center gap-3 bg-black/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg hover:bg-black/70 transition-all duration-200">
-                {/* Avatar with ring and hover effect */}
-                <div className="relative group">
-                  <Avatar className="h-12 w-12 ring-2 ring-white/20 ring-offset-2 ring-offset-transparent transition-all duration-200 group-hover:ring-white/40 group-hover:scale-105">
-                    <AvatarImage 
-                      className="w-full h-full object-cover object-center" 
-                      src={currentCar.profilephotokey 
-                        ? getS3ImageUrl(currentCar.profilephotokey)
-                        : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
-                      } 
-                      alt={`${currentCar.userName}'s profile`}
-                    />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                      {currentCar.userName?.charAt(0)?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
+      
 
-                {/* User info text */}
-                <div className="flex flex-col justify-center min-w-0">
-                  <p className="text-white/90 text-sm font-medium leading-tight drop-shadow-sm truncate">
-                    By @{currentCar.userName}
-                  </p>
-                  <p className="text-white/60 text-xs leading-tight">
-                    {currentCar.region}
-                  </p>
-                </div>
+      {/* Progress bar */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-black/20 z-50">
+        <div 
+          className="h-full bg-red-500 transition-all duration-800 ease-out"
+          style={{ width: `${((currentSlide + 1) / SLIDES.length) * 100}%` }}
+        />
+      </div>
+
+      
+
+      <div 
+        ref={containerRef}
+        className="slide-container"
+        style={{ height: `${SLIDES.length * 100}vh` }}
+      >
+        {/* Section 1: Photo Gallery */}
+        <section className="h-screen relative bg-gray-950">
+            <Navbar />
+          <div className="absolute inset-0">
+            <SwipeablePhotoGallery
+              photos={currentCar.allPhotoKeys}
+              carName={currentCar.carName || "Car"}
+              getS3ImageUrl={getS3ImageUrl}
+              hideControls={false}
+              className="w-full h-full"
+            />
+          </div>
+          
+          {/* User info overlay - top left */}
+          <div className="absolute top-4 left-4 flex flex-col gap-3 z-20">
+            <div className="flex items-center gap-3 bg-black/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg hover:bg-black/70 transition-all duration-200">
+              <div className="relative group">
+                <Avatar className="h-12 w-12 ring-2 ring-white/20 ring-offset-2 ring-offset-transparent transition-all duration-200 group-hover:ring-white/40 group-hover:scale-105">
+                  <AvatarImage 
+                    className="w-full h-full object-cover object-center" 
+                    src={currentCar.profilephotokey 
+                      ? getS3ImageUrl(currentCar.profilephotokey)
+                      : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                    } 
+                    alt={`${currentCar.userName}'s profile`}
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                    {currentCar.userName?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="flex flex-col justify-center min-w-0">
+                <p className="text-white/90 text-sm font-medium leading-tight drop-shadow-sm truncate">
+                  By @{currentCar.userName}
+                </p>
+                <p className="text-white/60 text-xs leading-tight">
+                  {currentCar.region}
+                </p>
               </div>
             </div>
-            
-            {/* Likes overlay - top right */}
-            <div className="absolute top-4 right-4 flex flex-col gap-3 z-[100] animate-in fade-in-0 slide-in-from-right-2 duration-300" style={{ zIndex: 5 }}>
-              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 shadow-lg hover:bg-black/70 transition-all duration-200 hover:scale-105">
-                <div className="relative">
-                  <Heart 
-                    className="h-5 w-5 text-red-500 drop-shadow-sm transition-transform duration-200 hover:scale-110" 
-                    fill="currentColor" 
-                  />
-                  {/* Subtle glow effect */}
-                  <div className="absolute inset-0 h-5 w-5 text-red-500/30 blur-sm">
-                    <Heart className="h-5 w-5" fill="currentColor" />
+          </div>
+          
+          {/* Likes overlay - top right */}
+          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
+            <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 shadow-lg hover:bg-black/70 transition-all duration-200 hover:scale-105">
+              <div className="relative">
+                <Heart 
+                  className="h-5 w-5 text-red-500 drop-shadow-sm transition-transform duration-200 hover:scale-110" 
+                  fill="currentColor" 
+                />
+                <div className="absolute inset-0 h-5 w-5 text-red-500/30 blur-sm">
+                  <Heart className="h-5 w-5" fill="currentColor" />
+                </div>
+              </div>
+              <span className="text-sm font-medium text-white drop-shadow-sm">
+                {currentCar.upvotes.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Car title overlay - bottom */}
+          <div className="absolute mt-5 left-1/2 transform -translate-x-1/2 z-20">
+            <div className="text-center bg-black/30 backdrop-blur-sm border border-white/10 rounded-2xl px-6 py-4 shadow-lg">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
+                {currentCar.carName}
+              </h1>
+              <p className="text-lg text-gray-300">
+                {currentCar.carMake} {currentCar.carModel}
+              </p>
+            </div>
+          </div>
+          
+          {/* Bottom Action Buttons */}
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20">
+        <div className="flex flex-col sm:flex-row gap-6">
+            <Button
+            size="lg"
+            className="flex-1 text-lg px-10 py-6 rounded-2xl bg-gradient-to-r from-gray-800 to-gray-700 text-white shadow-lg hover:scale-105 hover:from-gray-700 hover:to-gray-600 transition-transform"
+            onClick={() => handlePass(currentCar.entryID?.toString() || "")}
+            >
+            <X className="h-6 w-6 mr-3 text-red-400" />
+            Next Car
+            </Button>
+
+            <Button
+            size="lg"
+            className={`flex-1 text-lg px-10 py-6 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg hover:scale-105 hover:from-pink-600 hover:to-red-600 transition-transform ${
+                !isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
+            onClick={() => {
+                if (!isAuthenticated) {
+                window.location.href = '/auth';
+                return;
+                }
+                handleLike(currentCar.entryID?.toString() || "");
+            }}
+            >
+            <Heart className="h-6 w-6 mr-3" />
+            {isAuthenticated ? 'Like This Build' : 'Login to Like'}
+            </Button>
+
+            <Button 
+            size="lg"
+            variant="ghost"
+            className={`flex-1 text-lg px-10 py-6 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:scale-105 hover:from-blue-600 hover:to-indigo-600 transition-transform ${
+                !isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
+            onClick={(e) => {
+                e.preventDefault();
+                handleComment(currentCar.entryID?.toString() || "");
+            }}
+            >
+            <MessageCircle className="h-6 w-6 mr-3" />
+            {isAuthenticated ? `Comments (${comments.length})` : 'Login to Comment'}
+            </Button>
+        </div>
+        </div>
+
+        </section>
+
+        {/* Section 2: Car Details */}
+        <section className="h-screen bg-gray-950 flex items-center overflow-y-auto">
+          <div className="container px-4 sm:px-6 lg:px-8 py-8 max-w-6xl mx-auto">
+            <div className="bg-gradient-to-b from-gray-900/50 to-gray-950/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6 sm:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+                    Build Details
+                  </h2>
+                  <p className="text-xl text-gray-300">
+                    {currentCar.carMake} {currentCar.carModel}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-400 mb-1">Total Investment</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-green-400">
+                    ${currentCar.totalCost.toLocaleString()}
                   </div>
                 </div>
-                <span className="text-sm font-medium text-white drop-shadow-sm">
-                  {currentCar.upvotes.toLocaleString()}
-                </span>
               </div>
-            </div>
 
-            {showUserInfo ? (
-                <div 
-                    className="absolute bottom-4 left-4 pointer-events-none" 
-                    style={{ zIndex: 5 }}
-                >
-                    {/* Responsive container with consistent sizing */}
+              {/* Stats Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="text-xl font-bold text-white">{currentCar.totalMods}</div>
+                  <div className="text-sm text-gray-400">Modifications</div>
+                </div>
+                {currentCar.horsepower && (
+                  <div className="text-center p-4 bg-orange-900/30 rounded-lg border border-orange-800/50">
+                    <div className="text-xl font-bold text-orange-300">{currentCar.horsepower}</div>
+                    <div className="text-sm text-orange-400">Horsepower</div>
+                  </div>
+                )}
+                {currentCar.torque && (
+                  <div className="text-center p-4 bg-blue-900/30 rounded-lg border border-blue-800/50">
+                    <div className="text-xl font-bold text-blue-300">{currentCar.torque}</div>
+                    <div className="text-sm text-blue-400">Torque (lb-ft)</div>
+                  </div>
+                )}
+                <div className="text-center p-4 bg-purple-900/30 rounded-lg border border-purple-800/50">
+                  <div className="text-xl font-bold text-purple-300">{currentCar.upvotes}</div>
+                  <div className="text-sm text-purple-400">Likes</div>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="flex gap-3 flex-wrap mb-6">
+                <Badge variant="outline" className="text-white border-white/30 bg-white/10 px-4 py-2">
+                  {currentCar.carMake}
+                </Badge>
+                <Badge variant="outline" className="text-white border-white/30 bg-white/10 px-4 py-2">
+                  {currentCar.region}
+                </Badge>
+                <Badge variant="outline" className="text-white border-white/30 bg-white/10 px-4 py-2">
+                  {currentCar.category}
+                </Badge>
+              </div>
+
+              {/* Description */}
+              {currentCar.description && (
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-4">About This Build</h3>
+                  <p className="text-gray-300 leading-relaxed text-lg">{currentCar.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: Modifications & Actions */}
+        <section className="h-screen bg-gray-900 flex items-center overflow-y-auto">
+          <div className="container px-4 sm:px-6 lg:px-8 py-8 max-w-6xl mx-auto">
+            {currentCar.mods && currentCar.mods.length > 0 ? (
+              <div className="bg-gradient-to-b from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 sm:p-8">
+                <h3 className="text-2xl sm:text-3xl font-bold text-white mb-8 flex items-center gap-3">
+                  <span className="text-orange-400">🔧</span>
+                  Modifications ({currentCar.mods.length})
+                </h3>
+                
+                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-4 mb-8">
+                  {currentCar.mods.map((mod, index) => (
                     <div 
-                    className="relative p-3 sm:p-4 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20 
-                                w-72 sm:w-80 md:w-96 lg:w-[400px] xl:w-[420px] 2xl:w-[450px]
-                                max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-96 xl:max-h-[400px] 2xl:max-h-[450px]"
-                    onMouseEnter={() => setHideGalleryControls(true)}
-                    onMouseLeave={() => setHideGalleryControls(false)}
+                      key={mod.modID || index}
+                      className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-5 hover:bg-gray-800/80 transition-all duration-200 group"
                     >
-                    <button
-                        onClick={() => setShowUserInfo(false)}
-                        className="absolute -top-1 -right-1 bg-black/80 hover:bg-black/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
-                        aria-label="Close info"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                    
-                    <div className="mb-2">
-                        <h3 className="font-bold text-lg sm:text-xl text-white mb-0.5 drop-shadow-lg flex items-center gap-2">
-                        {currentCar.carName}
-                        </h3>
-                        <p className="text-gray-200 text-sm font-medium drop-shadow-md">
-                        {currentCar.carMake} {currentCar.carModel}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-semibold text-lg group-hover:text-gray-200 transition-colors">
+                            {mod.brand}
+                          </h4>
+                          <p className="text-gray-400 text-sm">
+                            {mod.category}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end ml-4">
+                          <span className="text-green-400 font-bold text-xl">
+                            ${mod.cost?.toLocaleString() || '0'}
+                          </span>
+                          {mod.isCustom && (
+                            <Badge variant="outline" className="text-xs px-2 py-0 text-yellow-300 border-yellow-400/50 bg-yellow-500/20 mt-1">
+                              Custom
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {(mod.type || mod.partNumber) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                          {mod.type && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500">Type:</span>
+                              <span className="text-gray-300">{mod.type}</span>
+                            </div>
+                          )}
+                          {mod.partNumber && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500">Part #:</span>
+                              <span className="text-gray-300 font-mono">{mod.partNumber}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {mod.description && (
+                        <p className="text-gray-400 mb-3 leading-relaxed">
+                          {mod.description}
                         </p>
-                    </div>
+                      )}
 
-                    {/* Compact stats inline */}
-                    <div className="flex gap-2 text-xs mb-2">
-                        <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
-                        <span className="text-gray-300">Mods: </span>
-                        <span className="text-white font-bold">{currentCar.totalMods}</span>
-                        </div>
-                        <div className="bg-black/60 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 hover:bg-black/80 transition-all duration-200">
-                        <span className="text-gray-300">Cost: </span>
-                        <span className="text-white font-bold">${currentCar.totalCost.toLocaleString()}</span>
-                        </div>
+                      {mod.link && (
+                        <a 
+                          href={mod.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline transition-colors"
+                        >
+                          View Product
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
-
-                    {/* Small badges inline */}
-                    <div className="flex gap-1.5 flex-wrap">
-                        <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
-                        {currentCar.carMake}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
-                        {currentCar.region}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs px-2 py-0.5 text-white border-white/30 bg-white/10 backdrop-blur-sm">
-                        {currentCar.category}
-                        </Badge>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                        {currentCar.horsepower && (
-                        <Badge variant="outline" className="text-xs px-2 py-1 text-orange-300 border-orange-400/30 bg-orange-500/10 backdrop-blur-sm">
-                            ⚡ {currentCar.horsepower} HP
-                        </Badge>
-                        )}
-                        {currentCar.torque && (
-                        <Badge variant="outline" className="text-xs px-2 py-1 text-blue-300 border-blue-400/30 bg-blue-500/10 backdrop-blur-sm">
-                            🔧 {currentCar.torque} lb-ft
-                        </Badge>
-                        )}
-                    </div>
-                    
-                    {/* Scrollable description area */}
-                    <div className="mt-2 text-gray-300 text-sm overflow-y-auto max-h-32 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20">
-                        <p className="break-words leading-relaxed">{currentCar.description}</p>
-                    </div>
-                    </div>
+                  ))}
                 </div>
-                ) : (
-                <button 
-                    onClick={() => setShowUserInfo(true)} 
-                    className="absolute bottom-4 left-4 p-2 sm:p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tr-xl border-t border-r border-white/20 text-white hover:bg-black/70 transition-all duration-200
-                            text-sm sm:text-base"
-                    style={{ zIndex: 5 }}
-                > 
-                    Show Info 
-                </button>
-                )}
 
-                {showMods ? (
-                <div 
-                    className="absolute bottom-4 right-4 pointer-events-none" 
-                    style={{ zIndex: 5 }}
-                >
-                    {/* Matching container with same gradient as user info */}
-                    <div 
-                    className="relative p-3 sm:p-4 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-white/20
-                                w-72 sm:w-80 md:w-96 lg:w-[400px] xl:w-[420px] 2xl:w-[450px]
-                                max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-96 xl:max-h-[400px] 2xl:max-h-[450px]"
-                    onMouseEnter={() => setHideGalleryControls(true)}
-                    onMouseLeave={() => setHideGalleryControls(false)}
-                    >
-                    <button
-                        onClick={() => setShowMods(false)}
-                        className="absolute -top-1 -left-1 bg-black/80 hover:bg-black/90 text-white rounded-full p-1 transition-all duration-200 hover:scale-105"
-                        aria-label="Close mods"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-
-                    <div className="mb-3">
-                        <h3 className="font-bold text-lg text-white mb-1 drop-shadow-lg flex items-center gap-2">
-                        <span className="text-gray-300">🔧</span>
-                        Modifications
-                        </h3>
-                        <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-200">Total Parts:</span>
-                        <span className="text-white font-bold bg-white/20 px-2 py-0.5 rounded">
-                            {currentCar.mods?.length || 0}
-                        </span>
-                        </div>
-                    </div>
-
-                    {/* Scrollable mods list with consistent height */}
-                    <div className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20
-                                    h-32 sm:h-40 md:h-48 lg:h-56 xl:h-64 2xl:h-72">
-                        {currentCar.mods && currentCar.mods.length > 0 ? (
-                        currentCar.mods.map((mod, index) => (
-                            <div 
-                            key={mod.modID || index}
-                            className="bg-black/40 backdrop-blur-sm border border-white/20 rounded-lg p-2.5 hover:bg-black/60 transition-all duration-200 group"
-                            >
-                            <div className="flex justify-between items-start mb-1">
-                                <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-semibold text-sm truncate group-hover:text-gray-200 transition-colors">
-                                    {mod.brand}
-                                </h4>
-                                <p className="text-gray-200 text-xs">
-                                    {mod.category}
-                                </p>
-                                </div>
-                                <div className="flex flex-col items-end ml-2">
-                                <span className="text-green-300 font-bold text-sm">
-                                    ${mod.cost?.toLocaleString() || '0'}
-                                </span>
-                                {mod.isCustom && (
-                                    <Badge variant="outline" className="text-xs px-1.5 py-0 text-yellow-300 border-yellow-400/30 bg-yellow-500/10">
-                                    Custom
-                                    </Badge>
-                                )}
-                                </div>
-                            </div>
-
-                            {(mod.type || mod.partNumber) && (
-                                <div className="space-y-1 mt-2">
-                                {mod.type && (
-                                    <div className="flex items-center gap-1">
-                                    <span className="text-gray-400 text-xs">Type:</span>
-                                    <span className="text-gray-200 text-xs">{mod.type}</span>
-                                    </div>
-                                )}
-                                {mod.partNumber && (
-                                    <div className="flex items-center gap-1">
-                                    <span className="text-gray-400 text-xs">Part #:</span>
-                                    <span className="text-gray-200 text-xs font-mono">{mod.partNumber}</span>
-                                    </div>
-                                )}
-                                </div>
-                            )}
-
-                            {mod.description && (
-                                <p className="text-gray-300 text-xs mt-2 leading-relaxed">
-                                {mod.description}
-                                </p>
-                            )}
-
-                            {mod.link && (
-                                <div className="mt-2">
-                                <a 
-                                    href={mod.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-gray-300 hover:text-gray-200 text-xs underline transition-colors"
-                                >
-                                    View Product →
-                                </a>
-                                </div>
-                            )}
-                            </div>
-                        ))
-                        ) : (
-                        <div className="text-center py-4">
-                            <span className="text-gray-400 text-sm">No modifications listed</span>
-                        </div>
-                        )}
-                    </div>
-
-                    {/* Total investment footer */}
-                    {currentCar.mods && currentCar.mods.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-white/20">
-                        <div className="flex justify-between items-center">
-                            <span className="text-gray-200 text-sm font-medium">
-                            Total Investment:
-                            </span>
-                            <span className="text-green-300 font-bold text-lg">
-                            ${currentCar.mods.reduce((sum, mod) => sum + (mod.cost || 0), 0).toLocaleString()}
-                            </span>
-                        </div>
-                        </div>
-                    )}
-                    </div>
+                {/* Total Footer */}
+                <div className="pt-6 border-t border-gray-700 mb-8">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300 font-medium text-xl">
+                      Total Parts Investment:
+                    </span>
+                    <span className="text-green-400 font-bold text-2xl">
+                      ${currentCar.mods.reduce((sum, mod) => sum + (mod.cost || 0), 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                ) : (
-                <button 
-                    onClick={() => setShowMods(true)} 
-                    className="absolute bottom-4 right-4 p-2 sm:p-3 pointer-events-auto inline-block bg-gradient-to-t from-black/60 via-black/40 to-black/50 backdrop-blur-sm rounded-tl-xl border-t border-l border-white/20 text-white hover:bg-black/70 transition-all duration-200 group
-                            text-sm sm:text-base"
-                    style={{ zIndex: 5 }}
-                > 
-                    <div className="flex items-center gap-2">
-                    <span className="group-hover:scale-110 transition-transform">🔧</span>
-                    <span>Show Mods</span>
-                    {currentCar.mods && currentCar.mods.length > 0 && (
-                        <Badge variant="outline" className="text-xs px-1.5 py-0 text-gray-200 border-white/30 bg-white/10">
-                        {currentCar.mods.length}
-                        </Badge>
-                    )}
-                    </div>
-                </button>
-                )}
-                </div>
-          <CardContent className="p-6">
-            <div className="flex justify-between gap-4">
-              <Button
-                variant="outline"
-                size="lg"
-                className="flex-1 text-black hover:bg-gray-300 hover:text-black"
-                onClick={() => handlePass(currentCar.entryID?.toString() || "")}
-              >
-                <X className="h-5 w-5 mr-2 text-gray-500" />
-                Next
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className={`flex-1 text-black hover:bg-gray-300 hover:text-black ${!isAuthenticated ? 'opacity-60' : ''}`}
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    window.location.href = '/auth';
-                    return;
-                  }
-                  handleLike(currentCar.entryID?.toString() || "");
-                }}
-                title={!isAuthenticated ? "Login to like cars" : "Like this car"}
-              >
-                <Heart className="h-5 w-5 mr-2" />
-                {isAuthenticated ? 'Like' : 'Login to Like'}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="lg" 
-                className={`text-white hover:bg-gray-800 hover:text-white px-6 ${!isAuthenticated ? 'opacity-60' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleComment(currentCar.entryID?.toString() || "");
-                }}
-                title={!isAuthenticated 
-                  ? "Login to comment" 
-                  : `Comment on this car - ${comments.length || 0} comments`
-                }
-              >
-                <MessageCircle className="h-5 w-5 mr-2" />
-                {isAuthenticated ? `Comments (${comments.length})` : 'Login to Comment'}
-              </Button>
-            </div>
-          </CardContent>
-          
-          {errormessage && errormessage.length > 0 && (
-            <Card className="mt-4 bg-red-900 border-red-800">
-              <div className="p-4 text-white">
-                <p className="font-semibold">Error: {errormessage}</p>
               </div>
-            </Card> 
-          )}
-        </Card>
-      </div>
-    </div>
-
-    {/* Comment Modal */}
-    <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
-      <DialogContent className="max-w-2xl max-h-[80vh] bg-gray-900 text-white border-gray-700">
-        <DialogHeader>
-          <DialogTitle>Comments ({comments.length})</DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          {/* Comment form */}
-          {isAuthenticated && (
-            <div className="space-y-3">
-              <Textarea
-                placeholder="Write a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
-                rows={3}
-              />
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">
-                  {commentText.length}/1000 characters
-                </span>
-                <Button 
-                  onClick={handleSubmitComment}
-                  disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isSubmittingComment ? 'Posting...' : 'Post Comment'}
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          {/* Comments list */}
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
-            {isLoadingComments ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">Loading comments...</p>
-              </div>
-            ) : comments.length > 0 ? (
-              comments.map((comment) => (
-                <CommentItem key={comment.commentID} comment={comment} />
-              ))
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-400">No comments yet. Be the first to comment!</p>
+              <div className="text-center bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 mb-8">
+                <h3 className="text-2xl font-bold text-white mb-4">No Modifications Listed</h3>
+                <p className="text-gray-400">This build doesn't have any modifications listed yet.</p>
               </div>
             )}
+
+            {/* Action Buttons */}
+            
           </div>
+        </section>
+      </div>
+
+      {errormessage && errormessage.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Card className="bg-red-900 border-red-800">
+            <div className="p-4 text-white">
+              <p className="font-semibold">Error: {errormessage}</p>
+            </div>
+          </Card>
         </div>
-      </DialogContent>
-    </Dialog>
-    
-    <Footer />
-  </div>
-);}
+      )}
+
+      {/* Comment Modal */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] bg-gray-900 text-white border-gray-700">
+          <DialogHeader>
+            <DialogTitle>Comments ({comments.length})</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Comment form */}
+            {isAuthenticated && (
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="Write a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400"
+                  rows={3}
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-400">
+                    {commentText.length}/1000 characters
+                  </span>
+                  <Button 
+                    onClick={handleSubmitComment}
+                    disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Comments list */}
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {isLoadingComments ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">Loading comments...</p>
+                </div>
+              ) : comments.length > 0 ? (
+                comments.map((comment) => (
+                  <CommentItem key={comment.commentID} comment={comment} />
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No comments yet. Be the first to comment!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Footer />
+    </div>
+  );}
