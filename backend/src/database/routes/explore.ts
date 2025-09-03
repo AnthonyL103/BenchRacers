@@ -346,6 +346,8 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
             [carId, req.user.userEmail]
         );
         
+        console.log('[EXPLORE] Inserting upvote record for user:', req.user.userEmail, 'and car:', carId);
+        
         await connection.query(
             'UPDATE Entries SET upvotes = upvotes + 1 WHERE entryID = ?',
             [carId]

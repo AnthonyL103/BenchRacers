@@ -43,6 +43,7 @@ interface Car {
   torque?: number;
   tags?: string[];
   mods: Mod[];
+  hasUpvoted: boolean;
 }
 
 export interface Comment {
@@ -220,7 +221,7 @@ function carReducer(state: CarState, action: CarAction): CarState {
             : car
         ),
         selectedCar: state.selectedCar && state.selectedCar.entryID === action.payload 
-          ? { ...state.selectedCar, upvotes: state.selectedCar.upvotes + 1 } 
+          ? { ...state.selectedCar, upvotes: state.selectedCar.upvotes + 1, hasUpvoted: true } 
           : state.selectedCar
       };
     case CarActionTypes.CLEAR_ERROR:

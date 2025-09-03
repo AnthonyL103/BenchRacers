@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback} from "react"
+import { useState, useEffect, useRef} from "react"
 import { Navbar } from "../utils/navbar"
 import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
@@ -8,7 +8,7 @@ import { Card} from "../ui/card"
 import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { Heart, MessageCircle, X, ExternalLink } from "lucide-react"
-import { useCarState, useCarDispatch, CarActionTypes, Comment} from "../contexts/carlistcontext" 
+import { useCarState, useCarDispatch, CarActionTypes} from "../contexts/carlistcontext" 
 import { getS3ImageUrl } from "../utils/s3helper"
 import { useUser } from '../contexts/usercontext';
 import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
@@ -230,9 +230,11 @@ export default function ExplorePage() {
     const data = await response.json();
     
     if (data.success) {
-      setSwipedCars(prev => [...prev, carId])
       setLikedCars(prev => [...prev, carId])
-      goToNextCar()
+      dispatch({
+        type: CarActionTypes.UPVOTE_CAR,
+        payload: carId
+      });
     } else {
         alert(data.message || "Failed to like car");
     }
@@ -471,7 +473,8 @@ const fetchCars = async () => {
             size="lg"
             className={`flex-1 text-lg px-10 py-6 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg hover:scale-105 hover:from-pink-600 hover:to-red-600 transition-transform ${
                 !isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''
-            }`}
+            } `}
+            disabled={!isAuthenticated || currentCar.hasUpvoted}
             onClick={() => {
                 if (!isAuthenticated) {
                 window.location.href = '/auth';
@@ -480,8 +483,11 @@ const fetchCars = async () => {
                 handleLike(currentCar.entryID?.toString() || "");
             }}
             >
-            <Heart className="h-6 w-6 mr-3" />
-            {isAuthenticated ? 'Like This Build' : 'Login to Like'}
+            <Heart className={`w-6 h-6 mr-3 ${currentCar.hasUpvoted ? 'fill-current' : ''}`} />
+            
+            {isAuthenticated ? 'Upvote This Build' : 'Login To Upvote'}
+            {currentCar.upvotes > 0 && <span>({currentCar.upvotes})</span>}
+            {currentCar.hasUpvoted && <span className="ml-2 text-sm bg-white/20 px-2 py-1 rounded-full">Liked</span>}
             </Button>
 
             <Button 
