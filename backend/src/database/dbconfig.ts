@@ -18,11 +18,12 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: 100,
   queueLimit: 0,
-  multipleStatements: true,
-  acquireTimeout: 60000,
-  timeout: 60000, 
+  acquireTimeout: 5000,           // Fail fast - was 60000
+  timeout: 30000,                 // 30 seconds for query execution
   enableKeepAlive: true,
-  keepAliveInitialDelay: 300000, 
+  keepAliveInitialDelay: 0,       // Start keep-alive immediately
+  maxIdle: 10,                    // Keep idle connections
+  idleTimeout: 28800000,          // 8 hours (don't drop connections)
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 };
 
@@ -37,6 +38,70 @@ console.log('[DB] Using config:', {
 });
 
 const pool = mysql.createPool(dbConfig);
+
+// Connection timing monitoring
+const originalGetConnection = pool.getConnection;
+pool.getConnection = function(...args) {
+  const start = Date.now();
+  console.log('[DB] Requesting connection...');
+  
+  return originalGetConnection.apply(this, args).then(connection => {
+    console.log(`[DB] ⚡ Connection acquired in ${Date.now() - start}ms`);
+    return connection;
+  }).catch(err => {
+    console.log(`[DB] ❌ Connection failed after ${Date.now() - start}ms`);
+    throw err;
+  });
+};
+
+// Monitor connection creation patterns
+let connectionCreationTimes: number[] = [];
+
+pool.on('connection', (connection) => {
+  const now = Date.now();
+  connectionCreationTimes.push(now);
+  console.log(`[DB] 🔗 New connection ${connection.threadId} created`);
+  
+  // Log if we're creating connections frequently (possible pool thrashing)
+  const recentConnections = connectionCreationTimes.filter(time => now - time < 10000);
+  if (recentConnections.length > 5) {
+    console.warn(`[DB] ⚠️  Created ${recentConnections.length} connections in last 10s - possible pool thrashing`);
+  }
+  
+  // Clean up old timestamps (keep only last hour)
+  connectionCreationTimes = connectionCreationTimes.filter(time => now - time < 3600000);
+});
+
+
+
+// Real-time pool monitoring
+setInterval(() => {
+  console.log('[DB] Pool stats:', {
+    totalConnections: (pool as any)._allConnections?.length || 'unknown',
+    freeConnections: (pool as any)._freeConnections?.length || 'unknown',
+    queuedRequests: (pool as any)._connectionQueue?.length || 'unknown'
+  });
+}, 30000); // Every 30 seconds
+
+// Pre-warm connection pool
+(async () => {
+  console.log('[DB] Pre-warming connection pool...');
+  const connections = [];
+  
+  // Create 10 connections upfront
+  for (let i = 0; i < 10; i++) {
+    try {
+      const conn = await pool.getConnection();
+      connections.push(conn);
+    } catch (err) {
+      console.error('[DB] Failed to pre-warm connection:', err);
+    }
+  }
+  
+  // Release them back to pool
+  connections.forEach(conn => conn.release());
+  console.log(`[DB] ✅ Pre-warmed ${connections.length} connections`);
+})();
 
 // Test connection immediately at startup
 (async () => {
