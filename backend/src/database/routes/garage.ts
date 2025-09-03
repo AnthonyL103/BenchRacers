@@ -27,7 +27,7 @@ const processCustomMods = async (connection: any, mods: any[]): Promise<number[]
   
   for (const mod of mods) {
     if (mod.isCustom) {
-      const [result]: any = await connection.query(
+      const [result]: any = await pool.query(
         `INSERT INTO Mods (brand, category, cost, description, link, type, partNumber, isCustom)
          VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
         [
