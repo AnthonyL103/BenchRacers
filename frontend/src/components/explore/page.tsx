@@ -211,9 +211,8 @@ export default function ExplorePage() {
 }, [currentSlide, isAnimating])
   
 
-  const handleLike = async (carId: string) => {
+const handleLike = async (carId: string) => {
   if (!isAuthenticated) {
-    // Redirect to auth page or show modal
     window.location.href = '/auth';
     return;
   }
@@ -228,15 +227,23 @@ export default function ExplorePage() {
       body: JSON.stringify({ carId })
     });
     const data = await response.json();
-    
+
     if (data.success) {
-      setLikedCars(prev => [...prev, carId])
-      dispatch({
-        type: CarActionTypes.UPVOTE_CAR,
-        payload: carId
-      });
+      if (data.hasUpvoted) {
+        dispatch({
+          type: CarActionTypes.UPVOTE_CAR,
+          payload: carId
+        });
+      } else {
+        dispatch({
+          type: CarActionTypes.UNUPVOTE_CAR,
+          payload: carId
+        });
+      }
+      console.log("data"    , data)
+      console.log("just liked/unliked", cars)
     } else {
-        alert(data.message || "Failed to like car");
+      alert(data.message || "Failed to like car");
     }
   } catch (error) {
     console.error(" likeCars error:", error);
@@ -257,6 +264,7 @@ const fetchCars = async () => {
         method: 'POST', 
         headers: {
             'Content-Type': 'application/json',
+            'authorization': `Bearer ${localStorage.getItem('token') || ''}`
         },
         body: JSON.stringify({ 
             swipedCars, 
@@ -474,7 +482,7 @@ const fetchCars = async () => {
             className={`flex-1 text-lg px-10 py-6 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg hover:scale-105 hover:from-pink-600 hover:to-red-600 transition-transform ${
                 !isAuthenticated ? 'opacity-60 cursor-not-allowed' : ''
             } `}
-            disabled={!isAuthenticated || currentCar.hasUpvoted}
+            disabled={!isAuthenticated}
             onClick={() => {
                 if (!isAuthenticated) {
                 window.location.href = '/auth';

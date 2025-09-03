@@ -69,7 +69,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       WHERE u.isVerified = TRUE
     `;
     
-    // Add the user's email as the first parameter for the LEFT JOINdd
+    // Add the user's email as the first parameter for the LEFT JOIN
     const queryParams: any[] = [req.user?.userEmail || null];
     
     // All your existing filter logic stays the same

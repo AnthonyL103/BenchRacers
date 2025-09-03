@@ -99,6 +99,7 @@ export const CarActionTypes = {
   SELECT_CAR: 'SELECT_CAR',
   CLEAR_SELECTED_CAR: 'CLEAR_SELECTED_CAR',
   UPVOTE_CAR: 'UPVOTE_CAR',
+  UNUPVOTE_CAR: 'UNUPVOTE_CAR',
   CLEAR_ERROR: 'CLEAR_ERROR',
   INCREMENT_VIEW_COUNT: 'INCREMENT_VIEW_COUNT'
 };
@@ -213,22 +214,34 @@ function carReducer(state: CarState, action: CarAction): CarState {
         selectedCar: null
       };
     case CarActionTypes.UPVOTE_CAR:
-      return {
+    return {
         ...state,
-        cars: state.cars.map(car => 
-          car.entryID === action.payload 
-            ? { ...car, upvotes: car.upvotes + 1 } 
+        cars: state.cars.map(car =>
+        String(car.entryID) === String(action.payload)
+            ? { ...car, upvotes: car.upvotes + 1, hasUpvoted: true }
             : car
         ),
-        selectedCar: state.selectedCar && state.selectedCar.entryID === action.payload 
-          ? { ...state.selectedCar, upvotes: state.selectedCar.upvotes + 1, hasUpvoted: true } 
-          : state.selectedCar
-      };
-    case CarActionTypes.CLEAR_ERROR:
-      return {
+        selectedCar: state.selectedCar && String(state.selectedCar.entryID) === String(action.payload)
+        ? { ...state.selectedCar, upvotes: state.selectedCar.upvotes + 1, hasUpvoted: true }
+        : state.selectedCar
+    };
+    case CarActionTypes.UNUPVOTE_CAR:
+    return {
         ...state,
-        error: null
-      };
+        cars: state.cars.map(car =>
+        String(car.entryID) === String(action.payload)
+            ? { ...car, upvotes: Math.max(car.upvotes - 1, 0), hasUpvoted: false }
+            : car
+        ),
+        selectedCar: state.selectedCar && String(state.selectedCar.entryID) === String(action.payload)
+        ? { ...state.selectedCar, upvotes: Math.max(state.selectedCar.upvotes - 1, 0), hasUpvoted: false }
+        : state.selectedCar
+    };
+        case CarActionTypes.CLEAR_ERROR:
+        return {
+            ...state,
+            error: null
+        };
     default:
       console.log('🔴 Unknown action type:', action.type);
       return state;
