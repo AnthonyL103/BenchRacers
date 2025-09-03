@@ -46,7 +46,7 @@ export interface Car {
     viewCount: number;
     createdAt: string;
     updatedAt: string;
-    
+    hasLiked: boolean;
 
     tags: string[];              
     mods: Mod[];                 

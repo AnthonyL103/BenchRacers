@@ -44,7 +44,6 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
   const connection = await pool.getConnection();
   
   try {
-    // All your existing parameter processing stays the same
     const { swipedCars = [], likedCars = [], limit = 10, region = null, category = null } = req.body;
     
     console.log('[EXPLORE] Extracted parameters:', {
@@ -55,19 +54,23 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       category
     });
     
+    // Updated base query with LEFT JOIN to EntryUpvotes
     let baseQuery = `
       SELECT 
         e.entryID, e.userEmail as userID, e.carName, e.carMake, e.carModel,
         e.carYear, e.carColor, e.basecost, e.carTrim, e.description, e.totalMods, e.totalCost,
         e.category, e.region, e.upvotes, e.commentCount, e.engine, e.transmission,
         e.drivetrain, e.horsepower, e.torque, e.viewCount, e.createdAt,
-        u.name as userName, u.profilephotokey
+        u.name as userName, u.profilephotokey,
+        CASE WHEN eu.entryUpvoteID IS NOT NULL THEN TRUE ELSE FALSE END as hasUpvoted
       FROM Entries e
       INNER JOIN Users u ON e.userEmail = u.userEmail
+      LEFT JOIN EntryUpvotes eu ON e.entryID = eu.entryID AND eu.userEmail = ?
       WHERE u.isVerified = TRUE
     `;
     
-    const queryParams: any[] = [];
+    // Add the user's email as the first parameter for the LEFT JOIN
+    const queryParams: any[] = [req.user?.userEmail || null];
     
     // All your existing filter logic stays the same
     if (swipedCars.length > 0) {
@@ -97,13 +100,16 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       queryParams.push(req.user.userEmail);
     }
     
-    // Build count query
+    // Updated count query with same LEFT JOIN pattern
     let countQuery = `
       SELECT COUNT(*) as total
       FROM Entries e
       INNER JOIN Users u ON e.userEmail = u.userEmail
       WHERE u.isVerified = TRUE
     `;
+    
+    // Count query uses same parameters except for the initial userEmail for LEFT JOIN
+    const countQueryParams = queryParams.slice(1); // Remove the first userEmail parameter
     
     if (swipedCars.length > 0) {
       const placeholders = swipedCars.map(() => '?').join(',');
@@ -129,8 +135,8 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     
     console.log('[EXPLORE] About to execute count query...');
     
-    // EXECUTE ALL QUERIES ON THE SAME CONNECTION
-    const [countResult]: any = await connection.query(countQuery, queryParams);
+    // Execute count query with appropriate parameters
+    const [countResult]: any = await connection.query(countQuery, countQueryParams);
     console.log('[EXPLORE] Count query result:', countResult);
     
     const totalCount = Number(countResult[0]?.total) || 0;
@@ -155,6 +161,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     
     console.log('[EXPLORE] Main query executed, result count:', cars.length);
     
+    // Rest of your existing code remains the same...
     if (cars.length === 0) {
       return res.status(200).json({
         success: true,
@@ -208,7 +215,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
       ORDER BY em.entryID, m.brand, m.category
     `, entryIds);
 
-    // All your existing processing logic stays the same
+    // Process the data with hasUpvoted already included from the main query
     const photoMap = new Map<number, any>(photos.map((p: any) => [p.entryID, p]));
     const tagMap = new Map<number, any>(tags.map((t: any) => [t.entryID, t]));
     
@@ -240,7 +247,8 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
         allPhotoKeys: photoData?.allPhotoKeys ? photoData.allPhotoKeys.split(',') : [],
         mainPhotoKey: photoData?.mainPhotoKey || null,
         tags: tagData?.tags ? tagData.tags.split(',') : [],
-        mods: modData || []
+        mods: modData || [],
+        hasUpvoted: !!car.hasUpvoted // Convert to boolean, already fetched from main query
       };
     });
     
@@ -311,34 +319,55 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
         });
       }
       
-      const car = cars[0];
+      const [existingUpvotes]: any = await connection.query(
+        'SELECT * FROM EntryUpvotes WHERE entryID = ? AND userEmail = ?',
+        [carId, req.user.userEmail]
+      );
       
-      if (car.userEmail === req.user.userEmail) {
-        await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot like your own car please pass',
-          errorCode: 'SELF_LIKE_FORBIDDEN'
-        });
+      let action: string;
+      
+      let newUpvoteCount: number;
+      
+      if (existingUpvotes.length > 0) {
+        await connection.query(
+            'DELETE FROM EntryUpvotes WHERE entryID = ? AND userEmail = ?',
+            [carId, req.user.userEmail]
+        );
+        
+        await connection.query(
+            'UPDATE Entries SET upvotes = GREATEST(upvotes - 1, 0) WHERE entryID = ?',
+            [carId]
+            );
+        action = 'unupvoted';
+      
+        } else {
+        await connection.query(
+            'INSERT INTO EntryUpvotes (entryID, userEmail) VALUES (?, ?)',
+            [carId, req.user.userEmail]
+        );
+        
+        await connection.query(
+            'UPDATE Entries SET upvotes = upvotes + 1 WHERE entryID = ?',
+            [carId]
+        );
+        action = 'upvoted';
       }
-      
-      
-      await connection.query(
-        'UPDATE Entries SET upvotes = upvotes + 1 WHERE entryID = ?',
+      const updatedUpvotes: any = await connection.query(
+        'SELECT upvotes FROM Entries WHERE entryID = ?',
         [carId]
       );
       
-     
-      //must use commit for update and insert queries, and release for connection.query
-      //if using pool no need to do this as pool handles the operation automatically
+      newUpvoteCount = updatedUpvotes[0].upvotes;
+      
       await connection.commit();
       
       console.log('[EXPLORE] Like processed successfully');
       
       res.status(200).json({
         success: true,
-        message: 'Car liked successfully',
-        newUpvotes: car.upvotes + 1
+        message: `Car ${action} successfully`,
+        newUpvotes: newUpvoteCount,
+        hasUpvoted: action === 'upvoted'
       });
       
     } catch (error) {

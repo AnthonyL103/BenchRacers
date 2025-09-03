@@ -26,13 +26,71 @@ interface CommentsProps {
   className?: string;
 }
 
+//here we create a replybox comoponenet for replying to comments, if we had thiis as a part of the original comment componeent, react loses 
+//track of which render reply text is associated too as its not compartmentalized to a specific comment, causing a race condition where multiple reply boxes open
+//and they all share the same state, so typing in one types in all of them. By making it a separate component with its own state, we avoid this issue.
+//as it renders independently and maintains its own state for each instance of comment.
+
+const ReplyBox = ({ commentID, onSubmit, onCancel }: {
+  commentID: string;
+  onSubmit: (commentID: string, text: string) => void;
+  onCancel: () => void;
+}) => {
+  const [localReplyText, setLocalReplyText] = useState('');
+  const { user } = useUser();
+
+  const handleSubmit = () => {
+    onSubmit(commentID, localReplyText);
+    setLocalReplyText(''); // Clear local state
+  };
+
+  return (
+    <div className="mt-3 ml-4 flex gap-2">
+      <Avatar className="w-8 h-8">
+        <AvatarImage 
+          src={user?.profilephotokey ? getS3ImageUrl(user.profilephotokey) : undefined} 
+          alt="User" 
+        />
+        <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <Textarea
+          placeholder="Write a reply..."
+          value={localReplyText}
+          onChange={(e) => setLocalReplyText(e.target.value)}
+          className="bg-gray-600/50 border-gray-500 text-white placeholder:text-gray-400 rounded-xl resize-none min-h-[35px] text-sm"
+          rows={1}
+          autoFocus // This helps maintain focus
+        />
+        <div className="flex justify-end gap-2 mt-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onCancel}
+            className="text-gray-400 hover:text-white text-xs"
+          >
+            Cancel
+          </Button>
+          <Button 
+            size="sm"
+            onClick={handleSubmit}
+            disabled={!localReplyText.trim()}
+            className="bg-blue-600 hover:bg-blue-700 text-xs"
+          >
+            Reply
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Comments: React.FC<CommentsProps> = ({ entryID, className = "" }) => {
   const { user, isAuthenticated } = useUser();
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState("");
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [replyText, setReplyText] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
 
@@ -163,43 +221,42 @@ const Comments: React.FC<CommentsProps> = ({ entryID, className = "" }) => {
       console.error('Error deleting comment:', error);
     }
   };
+  
 
-  // Handle replying to a comment
-  const handleReplySubmit = async (parentCommentId: string) => {
-    if (!replyText.trim()) return;
+const handleReplySubmit = async (parentCommentId: string, replyText: string) => {
+  if (!replyText.trim()) return;
 
-    try {
-      const response = await fetch('https://api.benchracershq.com/api/explore/addcomments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify({
-          entryID,
-          commentText: replyText.trim(),
-          parentCommentID: parentCommentId
-        })
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setComments(prev => prev.map(comment => {
-          if (comment.commentID === parentCommentId) {
-            return {
-              ...comment,
-              replies: [...(comment.replies || []), data.data]
-            };
-          }
-          return comment;
-        }));
-        setReplyText("");
-        setReplyingTo(null);
-      }
-    } catch (error) {
-      console.error('Error adding reply:', error);
+  try {
+    const response = await fetch('https://api.benchracershq.com/api/explore/addcomments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': `Bearer ${localStorage.getItem('token') || ''}`
+      },
+      body: JSON.stringify({
+        entryID,
+        commentText: replyText.trim(), // Use the parameter, not currentReplyText
+        parentCommentID: parentCommentId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      setComments(prev => prev.map(comment => {
+        if (comment.commentID === parentCommentId) {
+          return {
+            ...comment,
+            replies: [...(comment.replies || []), data.data]
+          };
+        }
+        return comment;
+      }));
+      setReplyingTo(null); // Just close the reply box, ReplyBox handles clearing its own state
     }
-  };
+  } catch (error) {
+    console.error('Error adding reply:', error);
+  }
+};
 
   // Toggle replies visibility
   const toggleReplies = (commentId: string) => {
@@ -293,64 +350,34 @@ const Comments: React.FC<CommentsProps> = ({ entryID, className = "" }) => {
 
         {/* Reply Input */}
         {replyingTo === comment.commentID && (
-          <div className="mt-3 ml-4 flex gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
-            <div className="flex-1">
-              <Textarea
-                placeholder="Write a reply..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                className="bg-gray-600/50 border-gray-500 text-white placeholder:text-gray-400 rounded-xl resize-none min-h-[35px] text-sm"
-                rows={1}
-              />
-              <div className="flex justify-end gap-2 mt-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => {
-                    setReplyingTo(null);
-                    setReplyText("");
-                  }}
-                  className="text-gray-400 hover:text-white text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={() => handleReplySubmit(comment.commentID)}
-                  disabled={!replyText.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 text-xs"
-                >
-                  Reply
-                </Button>
-              </div>
-            </div>
-          </div>
+        <ReplyBox
+            commentID={comment.commentID}
+            onSubmit={handleReplySubmit}
+            onCancel={() => setReplyingTo(null)}
+        />
         )}
 
-        {/* View Replies Button */}
-        {!isReply && comment.replies && comment.replies.length > 0 && (
-          <button
-            onClick={() => toggleReplies(comment.commentID)}
-            className="text-gray-400 hover:text-white text-xs mt-2 ml-4 flex items-center gap-1"
-          >
-            <MessageCircle className="w-3 h-3" />
-            {expandedReplies.has(comment.commentID) ? 'Hide' : 'View'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
-          </button>
-        )}
+                {/* View Replies Button */}
+                {!isReply && comment.replies && comment.replies.length > 0 && (
+                <button
+                    onClick={() => toggleReplies(comment.commentID)}
+                    className="text-gray-400 hover:text-white text-xs mt-2 ml-4 flex items-center gap-1"
+                >
+                    <MessageCircle className="w-3 h-3" />
+                    {expandedReplies.has(comment.commentID) ? 'Hide' : 'View'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                </button>
+                )}
 
-        {/* Replies */}
-        {!isReply && expandedReplies.has(comment.commentID) && comment.replies && (
-          <div className="mt-3 space-y-3">
-            {comment.replies.map((reply) => (
-              <CommentItem key={reply.commentID} comment={reply} isReply={true} />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+                {/* Replies */}
+                {!isReply && expandedReplies.has(comment.commentID) && comment.replies && (
+                <div className="mt-3 space-y-3">
+                    {comment.replies.map((reply) => (
+                    <CommentItem key={reply.commentID} comment={reply} isReply={true} />
+                    ))}
+                </div>
+                )}
+            </div>
+            </div>
   );
 
   return (
