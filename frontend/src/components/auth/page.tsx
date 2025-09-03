@@ -43,6 +43,8 @@ export default function AuthPage() {
   const location = useLocation();
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<"success" | "error" | null>(null);
+  const [pendingFormData, setPendingFormData] = useState<{email: string, name: string} | null>(null);
+
   const passwordValidations = {
         hasLength: password.length >= 8,
         hasCapital: /[A-Z]/.test(password),
@@ -139,89 +141,88 @@ export default function AuthPage() {
     }
   };
   
+const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
   
-  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  setLoading(true);
+  setErrorMessage("");
+  
+  const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+      setErrorMessage("Password must be at least 8 characters long and include at least one number and one special character.");
+      setLoading(false);
+      return;
+  }
+  
+  if (password !== confirmPassword) {
+    setErrorMessage("Passwords do not match");
+    setLoading(false);
+    return;
+  }
+  
+  const formData = new FormData(e.currentTarget);
+  const email = formData.get('signup-email') as string;
+  const name = formData.get('name') as string;
+  
+  if (!hasAcceptedTerms) {
+      setPendingFormData({ email, name }); 
+      setShowTerms(true);
+      return;
+  }
+  
+  await proceedWithSignup(email, name);
+};
+
+const proceedWithSignup = async (email: string, name: string) => {
+  console.log("Signup initiated with password:", password);
+
+  try {
+    const region = await getUserRegion();
+    console.log("User region:", region);
     
-    setLoading(true);
-    setErrorMessage("");
+    const response = await fetch('https://api.benchracershq.com/api/users/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, name, password, region }),
+    });
+
+    const data = await response.json();
+    console.log("Signup response:", data);
     
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
-    if (!passwordRegex.test(password)) {
-        setErrorMessage("Password must be at least 8 characters long and include at least one number and one special character.");
-        return;
-    }
-    
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match");
+    if (!response.ok) {
+      if (data.errorCode === 'USER_EXISTS') {
+        setErrorMessage('An account with this email already exists.');
+      } else if (data.errorCode === 'USER_EXISTS_NOT_VERIFIED') {
+        setErrorMessage('An account with this email already exists but is not verified. A new verification email has been sent.');
+      } else if (data.errorCode === 'WEAK_PASSWORD') {
+        setErrorMessage('Password must be at least 8 characters long.');
+      } else if (data.errorCode === 'MISSING_FIELDS') {
+        setErrorMessage('All fields are required.');
+      } else {
+        setErrorMessage(data.message || 'Signup failed');
+      }
+      setError(data.message || 'Signup failed');
       setLoading(false);
       return;
     }
     
-    if (!hasAcceptedTerms) {
-    setShowTerms(true);
-    return; 
+    if (data.success && data.user && data.token) {
+      login(data.user, data.token);
+      alert("Account created successfully! Please check your email to verify your account.");
+    } else {
+      setErrorMessage('Invalid response from server');
+      setError('Invalid response from server');
     }
-    
-    
-    
-    
-    
-    
-    try {
-      const formData = new FormData(e.currentTarget);
-      const email = formData.get('signup-email') as string;
-      const name = formData.get('name') as string;
-      
-      const region = await getUserRegion();
-      console.log("User region:", region);
-      
-      
-      
-      const response = await fetch('https://api.benchracershq.com/api/users/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, name, password, region }),
-      });
-    
-      const data = await response.json();
-      console.log("Signup response:", data);
-      
-      if (!response.ok) {
-        if (data.errorCode === 'USER_EXISTS') {
-          setErrorMessage('An account with this email already exists.');
-        } else if (data.errorCode === 'USER_EXISTS_NOT_VERIFIED') {
-          setErrorMessage('An account with this email already exists but is not verified. A new verification email has been sent.');
-        } else if (data.errorCode === 'WEAK_PASSWORD') {
-          setErrorMessage('Password must be at least 8 characters long.');
-        } else if (data.errorCode === 'MISSING_FIELDS') {
-          setErrorMessage('All fields are required.');
-        } else {
-          setErrorMessage(data.message || 'Signup failed');
-        }
-        setError(data.message || 'Signup failed');
-        setLoading(false);
-        return;
-      }
-      
-      if (data.success && data.user && data.token) {
-        login(data.user, data.token);
-        
-        alert("Account created successfully! Please check your email to verify your account.");
-      } else {
-        setErrorMessage('Invalid response from server');
-        setError('Invalid response from server');
-      }
-    } catch (error) {
-      console.error("Signup error:", error);
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
-      setError(error instanceof Error ? error.message : 'An unknown error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error("Signup error:", error);
+    setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
+    setError(error instanceof Error ? error.message : 'An unknown error occurred');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex flex-col min-h-screen bg-black">
@@ -553,17 +554,32 @@ export default function AuthPage() {
         </DialogDescription>
       </DialogHeader>
 
-      <DialogFooter>
-        <DialogTitle>By clicking complete, you agree to our Terms and Conditions and Privacy Policy.</DialogTitle>
-        <Button
-        onClick={() => sethasAcceptedTerms(true)}
-        disabled={hasAcceptedTerms}
-        >
-        {hasAcceptedTerms ? "Accepted" : "Accept"}
-        </Button>
+    <DialogFooter>
+    <DialogTitle>By clicking "Accept & Complete Signup", you agree to our Terms and Conditions and Privacy Policy.</DialogTitle>
+    <Button
+        onClick={async () => {
+        sethasAcceptedTerms(true);
+        setShowTerms(false);
+        
+        // Automatically continue with signup using stored form data
+        if (pendingFormData) {
+            await proceedWithSignup(pendingFormData.email, pendingFormData.name);
+            setPendingFormData(null);
+        }
+        }}
+        className="bg-blue-600 hover:bg-blue-700"
+    >
+        Accept & Complete Signup
+    </Button>
 
-        <Button variant="secondary" onClick={() => setShowTerms(false)}>Complete</Button>
-      </DialogFooter>
+    <Button variant="secondary" onClick={() => {
+        setShowTerms(false);
+        setPendingFormData(null);
+        setLoading(false);
+    }}>
+        Cancel
+    </Button>
+    </DialogFooter>
     </DialogContent>
   </Dialog>
 )}

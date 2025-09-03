@@ -500,7 +500,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
        (userEmail, carName, carMake, carModel, carYear, carColor, basecost, carTrim, description,
         totalMods, totalCost, category, region, engine, transmission, drivetrain,
         horsepower, torque)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         user.userEmail, carName, carMake, carModel, carYear || null, carColor || null, basecost || null, carTrim || null,
         description || null, totalMods || 0, totalCost || 0, category, region,
