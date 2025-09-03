@@ -161,7 +161,6 @@ router.post('/signup', async (req: Request, res: Response) => {
       if (!email || !name || !password || !region) {
         console.warn('[SIGNUP] Missing required fields');
         
-        connection.release();
         
         return res.status(400).json({ 
           success: false,
@@ -177,7 +176,6 @@ router.post('/signup', async (req: Request, res: Response) => {
       }
   
       if (password.length < 8) {
-        connection.release();
         return res.status(400).json({
           success: false,
           message: 'Password must be at least 8 characters long',
@@ -224,7 +222,6 @@ router.post('/signup', async (req: Request, res: Response) => {
             console.error('[SIGNUP] Email resend failed');
           }
           
-          connection.release();
           
           return res.status(409).json({ 
             success: false,
@@ -236,7 +233,6 @@ router.post('/signup', async (req: Request, res: Response) => {
         console.warn('[SIGNUP] User already exists:', email);
         
         await connection.rollback();
-        connection.release();
         
         return res.status(409).json({ 
           success: false,
@@ -293,7 +289,6 @@ router.post('/signup', async (req: Request, res: Response) => {
   
       console.log('[SIGNUP] JWT generated, returning success');
       
-      connection.release();
       
       res.status(201).json({
         success: true,
@@ -303,7 +298,6 @@ router.post('/signup', async (req: Request, res: Response) => {
       });
     } catch (error) {
       await connection.rollback();
-      connection.release();
       
       console.error('[SIGNUP] Error occurred:', error);
       res.status(500).json({ 
@@ -311,6 +305,8 @@ router.post('/signup', async (req: Request, res: Response) => {
         message: 'Server error during signup',
         errorCode: 'SERVER_ERROR'
       });
+    } finally {
+        connection.release();
     }
 });
   
@@ -350,25 +346,21 @@ router.put('/change-password', authenticateUser, async (req: AuthenticatedReques
         
         if (!userEmail) {
             await connection.rollback();
-            connection.release();
             return res.status(401).json({ message: 'User authentication failed' });
         }
         
         if (!currentPassword) {
             await connection.rollback();
-            connection.release();
             return res.status(400).json({ message: 'Current password is required' });
         }
         
         if (!newPassword) {
             await connection.rollback();
-            connection.release();
             return res.status(400).json({ message: 'New password is required' });
         }
         
         if (newPassword.length < 8) {
             await connection.rollback();
-            connection.release();
             return res.status(400).json({ message: 'New password must be at least 8 characters long' });
         }
         
@@ -379,7 +371,6 @@ router.put('/change-password', authenticateUser, async (req: AuthenticatedReques
         
         if (users.length === 0) {
             await connection.rollback();
-            connection.release();
             return res.status(404).json({ message: 'User not found' });
         }
         
@@ -389,7 +380,6 @@ router.put('/change-password', authenticateUser, async (req: AuthenticatedReques
         
         if (!isCurrentPasswordValid) {
             await connection.rollback();
-            connection.release();
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
         
@@ -401,7 +391,6 @@ router.put('/change-password', authenticateUser, async (req: AuthenticatedReques
         );
 
         await connection.commit();
-        connection.release();
 
         res.status(200).json({ 
             success: true,
@@ -410,13 +399,14 @@ router.put('/change-password', authenticateUser, async (req: AuthenticatedReques
         
     } catch (error) {
         await connection.rollback();
-        connection.release();
         
         console.error('Change password error:', error);
         res.status(500).json({ 
             success: false,
             message: 'Server error during password change' 
         });
+    } finally {
+        connection.release();
     }
 });
 
@@ -481,7 +471,6 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     
     const { token, newPassword } = req.body;
     if (!token || !newPassword) {
-      connection.release();
       return res.status(400).json({ message: 'Token and password required' });
     }
 
@@ -492,7 +481,6 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     
     if (users.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
 
@@ -504,15 +492,15 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     );
 
     await connection.commit();
-    connection.release();
 
     res.status(200).json({ message: 'Password has been reset. You can now login.' });
   } catch (error) {
     await connection.rollback();
-    connection.release();
     
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Server error during password reset' });
+  } finally {
+    connection.release();
   }
 });
 
@@ -529,7 +517,6 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     
     if (!userEmail) {
       await connection.rollback();
-      connection.release();
       return res.status(401).json({ 
         success: false,
         message: 'User authentication failed' 
@@ -552,7 +539,6 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
       
       if (existingUsers.length > 0) {
         await connection.rollback();
-        connection.release();
         return res.status(409).json({
           success: false,
           message: 'Email already in use by another account'
@@ -570,7 +556,6 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     
     if (updates.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'No valid fields to update'
@@ -593,7 +578,6 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     
     if (updatedUsers.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'User not found after update'
@@ -601,7 +585,6 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     }
     
     await connection.commit();
-    connection.release();
     
     const updatedUser = updatedUsers[0];
     
@@ -623,13 +606,14 @@ router.put('/profile/update', authenticateUser, async (req: AuthenticatedRequest
     
   } catch (error) {
     await connection.rollback();
-    connection.release();
     
     console.error('Profile update error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error during profile update'
     });
+  } finally {
+    connection.release();
   }
 });
 

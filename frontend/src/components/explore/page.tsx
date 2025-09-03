@@ -12,7 +12,7 @@ import { useCarState, useCarDispatch, CarActionTypes, Comment} from "../contexts
 import { getS3ImageUrl } from "../utils/s3helper"
 import { useUser } from '../contexts/usercontext';
 import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
-import { Textarea } from "../ui/textarea"
+import Comments from "../utils/comments"
 
 const SLIDES = [
   { id: 'photo', name: 'Photos' },
@@ -26,12 +26,7 @@ export default function ExplorePage() {
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
   const [swipedCars, setSwipedCars] = useState<string[]>([]);
   const [likedCars, setLikedCars] = useState<string[]>([]);
-  const [showCommentModal, setShowCommentModal] = useState(false);
-  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
-  const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const { cars, isLoading, error } = useCarState()
@@ -205,89 +200,7 @@ export default function ExplorePage() {
   }
 };
 
-const fetchComments = async (entryID: string, page = 1, limit = 20) => {
-  try {
-    const response = await fetch(`https://api.benchracershq.com/api/explore/getcomments/${entryID}?page=${page}&limit=${limit}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch comments');
-    }
-    
-    const data = await response.json();
-    console.log('Fetched comments:', data);
-    return data;
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    throw error;
-  }
-};
 
-const addComment = async (entryID: string, commentText: string, parentCommentID = null) => {
-  try {
-    const response = await fetch('https://api.benchracershq.com/api/explore/addcomments', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': `Bearer ${localStorage.getItem('token') || ''}`
-      },
-      body: JSON.stringify({
-        entryID,
-        commentText,
-        parentCommentID
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to add comment');
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error adding comment:', error);
-    throw error;
-  }
-};
-
-
-
-const handleSubmitComment = async () => {
-  if (!commentText.trim() || !selectedCarId || isSubmittingComment) return;
-  
-  setIsSubmittingComment(true);
-  
-  try {
-    const result = await addComment(selectedCarId, commentText.trim());
-    if (result.success) {
-      // Add new comment to the list
-      setComments(prev => [result.data, ...prev]);
-      setCommentText("");
-      
-      // Update the car's comment count in the local state
-      const updatedCars = cars.map(car => 
-        car.entryID?.toString() === selectedCarId 
-          ? { ...car, commentCount: (car.commentCount || 0) + 1 }
-          : car
-      );
-      
-      dispatch({
-        type: CarActionTypes.FETCH_CARS_SUCCESS,
-        payload: updatedCars
-      });
-    }
-  } catch (error) {
-    console.error('Error submitting comment:', error);
-    alert('Failed to submit comment. Please try again.');
-  } finally {
-    setIsSubmittingComment(false);
-  }
-};
 
 const fetchCars = async () => {
     try {
@@ -542,7 +455,7 @@ const fetchCars = async () => {
             }}
             >
             <MessageCircle className="h-6 w-6 mr-3" />
-            {isAuthenticated ? `Comments (${comments.length})` : 'Login to Comment'}
+            {isAuthenticated ? `Comments (${currentCar.commentCount})` : 'Login to Comment'}
             </Button>
         </div>
         </div>
@@ -733,172 +646,11 @@ const fetchCars = async () => {
 
         {/* Section 4: Comments - Full Screen */}
         <section className="h-screen bg-gray-800 p-8 overflow-hidden">
-  <div className="h-full grid grid-cols-1 grid-rows-12 gap-4 max-w-2xl mx-auto">
-    
-    {/* Header */}
-    <div className="row-span-1 flex justify-between items-center">
-      <h3 className="text-3xl font-bold text-white">
-        Comments
-      </h3>
-      <span className="text-gray-400 text-lg">
-        {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-      </span>
-    </div>
-
-    {/* Comments List - Scrollable */}
-    <div className="row-span-9 overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-      {isLoadingComments ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400">Loading comments...</p>
-        </div>
-      ) : comments.length > 0 ? (
-        comments.map((comment) => (
-          <div key={comment.commentID} className="flex gap-3">
-            {/* Profile Picture */}
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                {comment.userName?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-            </div>
-            
-            {/* Comment Content */}
-            <div className="flex-1 min-w-0">
-              <div className="bg-gray-700/50 rounded-2xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-white text-sm">
-                    {comment.userName}
-                  </span>
-                  <span className="text-gray-400 text-xs">
-                    {new Date(comment.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-gray-200 text-sm leading-relaxed break-words">
-                  {comment.commentText}
-                </p>
-              </div>
-              
-              {/* Comment Actions */}
-              <div className="flex items-center gap-4 mt-2 ml-4">
-                <button className="text-gray-400 hover:text-white text-xs font-medium transition-colors">
-                  Like
-                </button>
-                <button className="text-gray-400 hover:text-white text-xs font-medium transition-colors">
-                  Reply
-                </button>
-                <span className="text-gray-500 text-xs">
-                  {Math.floor(Math.random() * 24) + 1}h
-                </span>
-              </div>
-
-              {/* Replies */}
-              {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-3 ml-4 space-y-3">
-                  {comment.replies.map((reply) => (
-                    <div key={reply.commentID} className="flex gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                        {reply.userName?.charAt(0)?.toUpperCase() || 'U'}
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-600/50 rounded-2xl px-3 py-2">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-white text-xs">
-                              {reply.userName}
-                            </span>
-                            <span className="text-gray-400 text-xs">
-                              {new Date(reply.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="text-gray-200 text-xs leading-relaxed break-words">
-                            {reply.commentText}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 ml-3">
-                          <button className="text-gray-400 hover:text-white text-xs font-medium transition-colors">
-                            Like
-                          </button>
-                          <button className="text-gray-400 hover:text-white text-xs font-medium transition-colors">
-                            Reply
-                          </button>
-                          <span className="text-gray-500 text-xs">
-                            {Math.floor(Math.random() * 12) + 1}h
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <p className="text-gray-400 mb-2">No comments yet</p>
-            <p className="text-gray-500 text-sm">Be the first to share your thoughts!</p>
-          </div>
-        </div>
-      )}
-    </div>
-
-    {/* Comment Input - Fixed at bottom */}
-    <div className="row-span-2">
-      {isAuthenticated ? (
-        <div className="space-y-3">
-          <div className="flex gap-3">
-            {/* User Avatar */}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
-            
-            {/* Input Field */}
-            <div className="flex-1 relative">
-              <Textarea
-                placeholder="Add a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-400 rounded-2xl resize-none min-h-[40px] max-h-[80px] pr-12"
-                rows={1}
-              />
-              {/* Send Button */}
-              <button 
-                onClick={handleSubmitComment}
-                disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSubmittingComment ? (
-                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-          
-          {/* Character count */}
-          <div className="text-right">
-            <span className={`text-xs ${commentText.length > 900 ? 'text-red-400' : 'text-gray-400'}`}>
-              {commentText.length}/1000
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <Button
-            onClick={() => window.location.href = '/auth'}
-            variant="outline"
-            className="text-white border-white/30 hover:bg-white/10"
-          >
-            Login to Comment
-          </Button>
-        </div>
-      )}
-    </div>
-
-  </div>
-</section>
+        <Comments 
+            entryID={currentCar.entryID?.toString() || ""} 
+            className=""
+        />
+        </section>
       </div>
 
     </div>

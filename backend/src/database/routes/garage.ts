@@ -114,7 +114,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     const entryID = parseInt(req.params.entryID);
     
     if (!entryID || isNaN(entryID)) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Invalid entry ID'
@@ -128,7 +127,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     } = req.body;
     
     if (!carName || !carMake || !carModel || !carTrim || !category || !region) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
@@ -136,7 +134,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     }
     
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'At least one photo is required'
@@ -149,7 +146,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     );
     
     if (!existingEntry || existingEntry.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car entry not found or you do not have permission to update it'
@@ -259,8 +255,6 @@ router.put('/update/:entryID', authenticateUser, async (req: AuthenticatedReques
     }
     
     await connection.commit();
-
-    
     
     res.status(200).json({
       success: true,
@@ -488,7 +482,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     } = req.body;
     
     if (!carName || !carMake || !carModel || !carTrim || !category || !region) {
-      connection.release(); 
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
@@ -496,7 +489,6 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res: Respon
     }
     
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
-      connection.release(); 
       return res.status(400).json({
         success: false,
         message: 'At least one photo is required'
@@ -638,7 +630,6 @@ router.delete('/delete', authenticateUser, async (req: AuthenticatedRequest, res
     
     if (existingCars.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to delete this car'
@@ -718,7 +709,6 @@ router.put('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
     
     if (existingCars.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to update this car'
@@ -852,7 +842,6 @@ router.delete('/:entryID', authenticateUser, async (req: AuthenticatedRequest, r
     
     if (existingCars.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Car not found or you do not have permission to delete this car'

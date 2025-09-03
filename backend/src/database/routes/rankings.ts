@@ -32,11 +32,9 @@ const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFu
 
 
 router.get('/top10', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-    const connection = await pool.getConnection();
     
     try {
         
-        await connection.beginTransaction();
         
         //use pool for only single queries, as it is more efficient
         //for multiple queries establish connection so you are performing all without 

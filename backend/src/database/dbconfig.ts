@@ -16,15 +16,14 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 20,
+  connectionLimit: 100,
   queueLimit: 0,
   multipleStatements: true,
   acquireTimeout: 60000,
-  timeout: 30000,
-  reconnect: true,
-  keepAliveInitialDelay: 0,
+  timeout: 60000, 
   enableKeepAlive: true,
-  ssl: undefined,
+  keepAliveInitialDelay: 300000, 
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 };
 
 // Log DB config but hide sensitive info

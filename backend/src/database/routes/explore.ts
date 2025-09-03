@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { config } from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { pool } from '../dbconfig';
+import { connect } from 'http2';
 
 declare global {
   namespace Express {
@@ -405,7 +406,6 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       if (cars.length === 0) {
         //rollback undoes all changes, good for error handling
         await connection.rollback();
-        connection.release();
         return res.status(404).json({
           success: false,
           message: 'Car not found',
@@ -417,7 +417,6 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       
       if (car.userEmail === req.user.userEmail) {
         await connection.rollback();
-        connection.release();
         return res.status(400).json({
           success: false,
           message: 'Cannot like your own car please pass',
@@ -435,7 +434,6 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       //must use commit for update and insert queries, and release for connection.query
       //if using pool no need to do this as pool handles the operation automatically
       await connection.commit();
-      connection.release();
       
       console.log('[EXPLORE] Like processed successfully');
       
@@ -447,8 +445,9 @@ router.post('/like', authenticateToken, async (req: Request, res: Response) => {
       
     } catch (error) {
       await connection.rollback();
-      connection.release();
       throw error;
+    } finally {
+        connection.release();
     }
     
   } catch (error) {
@@ -747,7 +746,6 @@ router.post('/likecomment/:commentID', authenticateToken, async (req: Request, r
 
       if (comments.length === 0) {
         await connection.rollback();
-        connection.release();
         return res.status(404).json({
           success: false,
           message: 'Comment not found',
@@ -801,7 +799,6 @@ router.post('/likecomment/:commentID', authenticateToken, async (req: Request, r
       newLikeCount = updatedComment[0].likes;
 
       await connection.commit();
-      connection.release();
 
       console.log(`[COMMENTS] Comment ${action} successfully`);
 
@@ -817,8 +814,9 @@ router.post('/likecomment/:commentID', authenticateToken, async (req: Request, r
 
     } catch (error) {
       await connection.rollback();
-      connection.release();
       throw error;
+    } finally {
+        connection.release();
     }
 
   } catch (error) {
@@ -875,7 +873,6 @@ router.put('/editcomment/:commentID', authenticateToken, async (req: Request, re
 
       if (comments.length === 0) {
         await connection.rollback();
-        connection.release();
         return res.status(404).json({
           success: false,
           message: 'Comment not found',
@@ -886,7 +883,6 @@ router.put('/editcomment/:commentID', authenticateToken, async (req: Request, re
       // Check if user owns the comment
       if (comments[0].userEmail !== req.user.userEmail) {
         await connection.rollback();
-        connection.release();
         return res.status(403).json({
           success: false,
           message: 'You can only edit your own comments',
@@ -901,7 +897,6 @@ router.put('/editcomment/:commentID', authenticateToken, async (req: Request, re
       );
 
       await connection.commit();
-      connection.release();
 
       console.log('[COMMENTS] Comment edited successfully');
 
@@ -912,8 +907,9 @@ router.put('/editcomment/:commentID', authenticateToken, async (req: Request, re
 
     } catch (error) {
       await connection.rollback();
-      connection.release();
       throw error;
+    } finally {
+        connection.release();
     }
   } catch (error) {
     console.error('[COMMENTS] Update error:', error);
@@ -970,7 +966,6 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
 
       if (entries.length === 0) {
         await connection.rollback();
-        connection.release();
         return res.status(404).json({
           success: false,
           message: 'Entry not found',
@@ -987,7 +982,6 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
 
         if (parentComments.length === 0) {
           await connection.rollback();
-          connection.release();
           return res.status(404).json({
             success: false,
             message: 'Parent comment not found',
@@ -997,7 +991,6 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
 
         if (parentComments[0].entryID !== parseInt(entryID)) {
           await connection.rollback();
-          connection.release();
           return res.status(400).json({
             success: false,
             message: 'Parent comment does not belong to this entry',
@@ -1041,7 +1034,6 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
       `, [commentID]);
 
       await connection.commit();
-      connection.release();
 
       console.log('[COMMENTS] Comment created successfully with ID:', commentID);
 
@@ -1056,8 +1048,9 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
 
     } catch (error) {
       await connection.rollback();
-      connection.release();
       throw error;
+    } finally {
+        connection.release();
     }
 
   } catch (error) {
@@ -1067,7 +1060,7 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
       message: 'Server error during comment creation',
       errorCode: 'SERVER_ERROR'
     });
-  }
+  } 
 });
 
 // DELETE /explore/delcomments/:commentID - Delete a comment (soft delete)
@@ -1106,7 +1099,6 @@ router.delete('/delcomments/:commentID', authenticateToken, async (req: Request,
 
       if (comments.length === 0) {
         await connection.rollback();
-        connection.release();
         return res.status(404).json({
           success: false,
           message: 'Comment not found',
@@ -1127,7 +1119,6 @@ router.delete('/delcomments/:commentID', authenticateToken, async (req: Request,
 
       if (!isOwner && !isAdmin) {
         await connection.rollback();
-        connection.release();
         return res.status(403).json({
           success: false,
           message: 'You can only delete your own comments',
@@ -1150,7 +1141,6 @@ router.delete('/delcomments/:commentID', authenticateToken, async (req: Request,
       }
 
       await connection.commit();
-      connection.release();
 
       console.log('[COMMENTS] Comment deleted successfully');
 
@@ -1161,8 +1151,9 @@ router.delete('/delcomments/:commentID', authenticateToken, async (req: Request,
 
     } catch (error) {
       await connection.rollback();
-      connection.release();
       throw error;
+    } finally {
+        connection.release();
     }
 
   } catch (error) {

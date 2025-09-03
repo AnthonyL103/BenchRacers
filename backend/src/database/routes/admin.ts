@@ -148,7 +148,6 @@ router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, re
     const { email, name, password, region, isVerified, isEditor } = req.body;
     
     if (!email || !name || !password || !region) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: email, name, password, and region are required'
@@ -161,7 +160,7 @@ router.post('/addusers', authenticateAdmin, async (req: AuthenticatedRequest, re
     );
     
     if (existingUsers.length > 0) {
-      connection.release();
+      
       return res.status(409).json({
         success: false,
         message: 'User with this email already exists'
@@ -209,7 +208,6 @@ router.put('/updateusers/:email', authenticateAdmin, async (req: AuthenticatedRe
     );
     
     if (existingUsers.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -246,7 +244,6 @@ router.put('/updateusers/:email', authenticateAdmin, async (req: AuthenticatedRe
     }
     
     if (updateFields.length === 0) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'No fields to update'
@@ -291,7 +288,6 @@ router.delete('/delusers/:email', authenticateAdmin, async (req: AuthenticatedRe
     );
     
     if (existingUsers.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -458,7 +454,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
     } = req.body;
     
     if (!email || !carName || !carMake || !carModel || !category || !region) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
@@ -471,7 +466,6 @@ router.post('/addentries', authenticateAdmin, async (req: AuthenticatedRequest, 
     );
     
     if (users.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -590,7 +584,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
     );
     
     if (existingEntries.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Entry not found'
@@ -607,7 +600,6 @@ router.put('/updateentries/:id', authenticateAdmin, async (req: AuthenticatedReq
       );
       
       if (users.length === 0) {
-        connection.release();
         return res.status(404).json({
           success: false,
           message: 'New user not found'
@@ -739,7 +731,6 @@ router.delete('/delentries/:id', authenticateAdmin, async (req: AuthenticatedReq
     );
 
     if (existingEntries.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Entry not found'
@@ -958,7 +949,6 @@ router.delete('/delmods/:id', authenticateAdmin, async (req: AuthenticatedReques
     );
 
     if (existingMods.length === 0) {
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Mod not found'
