@@ -226,20 +226,6 @@ export default function Home() {
 
       
 
-      {/* Slide Indicators */}
-      <div className="fixed left-1/2 bottom-5 transform -translate-x-1/2 z-50 flex space-x-4">
-        {SLIDES.map((slide, index) => (
-          <button
-            key={slide.id}
-            onClick={() => goToSlide(index)}
-            disabled={isAnimating}
-            className={`w-10 h-10 rounded-full slide-indicator transition-all duration-300 ${
-              index === currentSlide ? 'active' : 'bg-white/40'
-            }`}
-            title={slide.name}
-          />
-        ))}
-      </div>
 
       {/* Progress bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-black/20 z-50">
@@ -249,7 +235,7 @@ export default function Home() {
         />
       </div>
 
-      <Navbar />
+      
 
       <div 
         ref={containerRef}
@@ -257,7 +243,8 @@ export default function Home() {
         style={{ height: `${SLIDES.length * 100}vh` }}
       >
         {/* Hero Slide */}
-        <section className="h-screen relative flex">
+        <section className="h-screen relative justify-around">
+            <Navbar />
           <div className="absolute inset-0 z-0">
             <img
               src="/nissan-skyline-r32-5575992_1920.jpg"
@@ -295,7 +282,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="h-screen bg-gray-950 flex overflow-hidden">
+        <section className="h-screen bg-gray-950 flex overflow-hidden justify-around">
           <div className="container px-4 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-12 mt-10 md:mt-60">
             <h2 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-center mb-6 sm:mb-8 md:mb-12 lg:mb-16 text-white ${currentSlide === 1 ? 'stagger-1' : ''}`}>
               How It Works
@@ -339,7 +326,7 @@ export default function Home() {
         </section>
 
         {/* Call to Action Slide */}
-        <section className="h-screen bg-gray-900 flex">
+        <section className="h-screen bg-gray-900 flex flex-col justify-around items-center">
           <div className="container px-4 sm:px-6 lg:px-8 text-center space-y-8 sm:space-y-12 mt-10 md:mt-60">
             <div className={`max-w-4xl mx-auto space-y-6 sm:space-y-8 ${currentSlide === 2 ? 'stagger-1' : ''}`}>
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
@@ -364,7 +351,51 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
+            
+           
           </div>
+          
+           <Button 
+            size="lg" 
+            className="w-full max-w-sm group relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white font-semibold text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0 hover:rotate-1 transform-gpu"
+            onClick={goToSlide.bind(null, 0)}
+            >
+            {/* Animated background overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            {/* Animated shine effect */}
+            <div className="absolute inset-0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            
+            {/* Icon with animation */}
+            <svg 
+                className="w-5 h-5 sm:w-6 sm:h-6 mr-2 transform transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+            >
+                <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M5 10l7-7m0 0l7 7m-7-7v18" 
+                />
+            </svg>
+            
+            {/* Text with subtle animation */}
+            <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide">
+                Back to Top
+            </span>
+            
+            {/* Floating particles effect */}
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-2 left-4 w-1 h-1 bg-white/60 rounded-full animate-ping" style={{animationDelay: '0s'}} />
+                <div className="absolute top-3 right-6 w-1 h-1 bg-white/40 rounded-full animate-ping" style={{animationDelay: '0.5s'}} />
+                <div className="absolute bottom-3 left-8 w-1 h-1 bg-white/50 rounded-full animate-ping" style={{animationDelay: '1s'}} />
+            </div>
+            </Button>
+          
+        
+          
         </section>
       </div>
 

@@ -70,104 +70,145 @@ export default function ExplorePage() {
   }
 
   useEffect(() => {
-    let startY = 0
-    let lastWheelTime = 0
-    let accumulatedDelta = 0
-    const WHEEL_DELAY = 1000
-    const DELTA_THRESHOLD = 100
+  let startY = 0
+  let lastWheelTime = 0
+  let accumulatedDelta = 0
+  const WHEEL_DELAY = 1000
+  const DELTA_THRESHOLD = 100
+  
+  const handleWheel = (e: WheelEvent) => {
+    // Check if the scroll is happening within a scrollable container
+    const target = e.target as HTMLElement
+    const scrollableContainer = target.closest('[class*="overflow-y-auto"]')
     
-    const handleWheel = (e: WheelEvent) => {
+    if (scrollableContainer) {
+      // If we're inside a scrollable container, check if it can still scroll
+      const canScrollUp = scrollableContainer.scrollTop > 0
+      const canScrollDown = scrollableContainer.scrollTop < (scrollableContainer.scrollHeight - scrollableContainer.clientHeight)
+      
+      // If the container can scroll in the direction we're trying to scroll, don't prevent default
+      if ((e.deltaY < 0 && canScrollUp) || (e.deltaY > 0 && canScrollDown)) {
+        return // Allow normal scrolling within the container
+      }
+    }
+    
+    // Only prevent default and handle section navigation if we're not scrolling within a container
+    e.preventDefault()
+    
+    const now = Date.now()
+    
+    if (now - lastWheelTime < WHEEL_DELAY || isAnimating) {
+        return
+    }
+    
+    accumulatedDelta += Math.abs(e.deltaY)
+    
+    if (Math.abs(e.deltaY) > 10 || accumulatedDelta > DELTA_THRESHOLD) {
+        lastWheelTime = now
+        accumulatedDelta = 0
+        
+        if (e.deltaY > 0 && currentSlide < SLIDES.length - 1) {
+            setCurrentSlide(prev => {
+              const nextIndex = prev + 1;
+              if (nextIndex < SLIDES.length) {
+                setIsAnimating(true);
+                if (containerRef.current) {
+                  containerRef.current.style.transform = `translateY(-${nextIndex * 100}vh)`;
+                }
+                setTimeout(() => setIsAnimating(false), 800);
+                return nextIndex;
+              }
+              return prev;
+            });
+        } else if (e.deltaY < 0 && currentSlide > 0) {
+            setCurrentSlide(prev => {
+              const prevIndex = prev - 1;
+              if (prevIndex >= 0) {
+                setIsAnimating(true);
+                if (containerRef.current) {
+                  containerRef.current.style.transform = `translateY(-${prevIndex * 100}vh)`;
+                }
+                setTimeout(() => setIsAnimating(false), 800);
+                return prevIndex;
+              }
+              return prev;
+            });
+        }
+    }
+  }
+
+  const handleTouchStart = (e: TouchEvent) => {
+    // Similar check for touch events
+    const target = e.target as HTMLElement
+    const scrollableContainer = target.closest('[class*="overflow-y-auto"]')
+    
+    if (scrollableContainer) {
+      return // Don't handle touch events within scrollable containers
+    }
+    
+    startY = e.touches[0].clientY
+  }
+  
+  const handleTouchMove = (e: TouchEvent) => {
+    if (isAnimating) return
+    
+    // Check if we're within a scrollable container
+    const target = e.target as HTMLElement
+    const scrollableContainer = target.closest('[class*="overflow-y-auto"]')
+    
+    if (scrollableContainer) {
+      return // Allow normal touch scrolling within containers
+    }
+    
+    const currentY = e.touches[0].clientY
+    const diff = startY - currentY
+    
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && currentSlide < SLIDES.length - 1) {
+        nextSlide()
+      } else if (diff < 0 && currentSlide > 0) {
+        prevSlide()
+      }
+    }
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (isAnimating) return
+    
+    // Check if focus is within a scrollable container or input field
+    const activeElement = document.activeElement as HTMLElement
+    const scrollableContainer = activeElement?.closest('[class*="overflow-y-auto"]')
+    const isInputFocused = activeElement?.tagName === 'TEXTAREA' || activeElement?.tagName === 'INPUT'
+    
+    if (scrollableContainer || isInputFocused) {
+      return // Don't handle keyboard navigation when focused on inputs or scrollable areas
+    }
+    
+    switch(e.key) {
+      case 'ArrowDown':
+      case ' ':
         e.preventDefault()
-        
-        const now = Date.now()
-        
-        if (now - lastWheelTime < WHEEL_DELAY || isAnimating) {
-            return
-        }
-        
-        accumulatedDelta += Math.abs(e.deltaY)
-        
-        if (Math.abs(e.deltaY) > 10 || accumulatedDelta > DELTA_THRESHOLD) {
-            lastWheelTime = now
-            accumulatedDelta = 0
-            
-            if (e.deltaY > 0 && currentSlide < SLIDES.length - 1) {
-                setCurrentSlide(prev => {
-                  const nextIndex = prev + 1;
-                  if (nextIndex < SLIDES.length) {
-                    setIsAnimating(true);
-                    if (containerRef.current) {
-                      containerRef.current.style.transform = `translateY(-${nextIndex * 100}vh)`;
-                    }
-                    setTimeout(() => setIsAnimating(false), 800);
-                    return nextIndex;
-                  }
-                  return prev;
-                });
-            } else if (e.deltaY < 0 && currentSlide > 0) {
-                setCurrentSlide(prev => {
-                  const prevIndex = prev - 1;
-                  if (prevIndex >= 0) {
-                    setIsAnimating(true);
-                    if (containerRef.current) {
-                      containerRef.current.style.transform = `translateY(-${prevIndex * 100}vh)`;
-                    }
-                    setTimeout(() => setIsAnimating(false), 800);
-                    return prevIndex;
-                  }
-                  return prev;
-                });
-            }
-        }
+        nextSlide()
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        prevSlide()
+        break
     }
+  }
 
-    const handleTouchStart = (e: TouchEvent) => {
-      startY = e.touches[0].clientY
-    }
-    
-    const handleTouchMove = (e: TouchEvent) => {
-      if (isAnimating) return
-      
-      const currentY = e.touches[0].clientY
-      const diff = startY - currentY
-      
-      if (Math.abs(diff) > 50) {
-        if (diff > 0 && currentSlide < SLIDES.length - 1) {
-          nextSlide()
-        } else if (diff < 0 && currentSlide > 0) {
-          prevSlide()
-        }
-      }
-    }
+  document.addEventListener('wheel', handleWheel, { passive: false })
+  document.addEventListener('touchstart', handleTouchStart, { passive: true })
+  document.addEventListener('touchmove', handleTouchMove, { passive: true })
+  document.addEventListener('keydown', handleKeyDown)
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isAnimating) return
-      
-      switch(e.key) {
-        case 'ArrowDown':
-        case ' ':
-          e.preventDefault()
-          nextSlide()
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          prevSlide()
-          break
-      }
-    }
-
-    document.addEventListener('wheel', handleWheel, { passive: false })
-    document.addEventListener('touchstart', handleTouchStart, { passive: true })
-    document.addEventListener('touchmove', handleTouchMove, { passive: true })
-    document.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.removeEventListener('wheel', handleWheel)
-      document.removeEventListener('touchstart', handleTouchStart)
-      document.removeEventListener('touchmove', handleTouchMove)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [currentSlide, isAnimating])
+  return () => {
+    document.removeEventListener('wheel', handleWheel)
+    document.removeEventListener('touchstart', handleTouchStart)
+    document.removeEventListener('touchmove', handleTouchMove)
+    document.removeEventListener('keydown', handleKeyDown)
+  }
+}, [currentSlide, isAnimating])
   
 
   const handleLike = async (carId: string) => {
@@ -463,10 +504,10 @@ const fetchCars = async () => {
         </section>
 
         <section className="h-screen bg-gray-950 p-8 overflow-hidden">
-        <div className="h-full grid grid-cols-12 grid-rows-6 gap-6">
+        <div className="h-full flex flex-col gap-6">
             
-            {/* Build Title - Top Row */}
-            <div className="col-span-12 row-span-1 flex justify-between items-center">
+            {/* Build Title - Fixed at top */}
+            <div className="flex justify-between items-center flex-shrink-0">
             <div>
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-2">
                 Build Details
@@ -483,8 +524,8 @@ const fetchCars = async () => {
             </div>
             </div>
 
-            {/* Stats Row */}
-            <div className="col-span-full row-span-1 grid grid-cols-4 gap-4">
+            {/* Stats Row - Fixed */}
+            <div className="grid grid-cols-4 gap-4 flex-shrink-0">
             <div className="text-center p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                 <div className="text-2xl font-bold text-white mb-1">{currentCar.totalMods}</div>
                 <div className="text-sm text-gray-400">Modifications</div>
@@ -517,8 +558,8 @@ const fetchCars = async () => {
             </div>
             </div>
 
-            {/* Description and Tags */}
-            <div className="col-span-full flex flex-col space-y-4">
+            {/* Description and Tags - Fixed */}
+            <div className="flex flex-col space-y-4 flex-shrink-0">
             {/* Tags */}
             <div className="flex gap-3 flex-wrap">
                 <Badge variant="outline" className="text-white border-white/30 bg-white/10 px-4 py-2">
@@ -534,18 +575,18 @@ const fetchCars = async () => {
 
             {/* Description */}
             {currentCar.description && (
-                <div className="flex-1 overflow-y-auto">
+                <div>
                 <h3 className="text-xl font-semibold text-white mb-3">About This Build</h3>
-                <p className="text-gray-300 leading-relaxed text-base pr-4">{currentCar.description}</p>
+                <p className="text-gray-300 leading-relaxed text-base">{currentCar.description}</p>
                 </div>
             )}
             </div>
 
-            {/* Modifications Section */}
-            <div className="col-span-full row-span-12 bg-gray-900/50 rounded-xl p-6 flex flex-col">
+            {/* Modifications Section - Takes remaining space and scrolls */}
+            <div className="bg-gray-900/50 rounded-xl p-6 flex flex-col flex-1 min-h-0">
             {currentCar.mods && currentCar.mods.length > 0 ? (
                 <>
-                <div className="mb-4">
+                <div className="mb-4 flex-shrink-0">
                     <h3 className="text-2xl font-bold text-white flex items-center gap-2">
                     <span className="text-orange-400">🔧</span>
                     Modifications ({currentCar.mods.length})
@@ -553,7 +594,7 @@ const fetchCars = async () => {
                 </div>
                 
                 {/* Scrollable Modifications List */}
-                <div className="flex-1 overflow-y-auto space-y-3 pr-2 mb-4 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 mb-4 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 min-h-0">
                     {currentCar.mods.map((mod, index) => (
                     <div 
                         key={mod.modID || index}
@@ -616,8 +657,8 @@ const fetchCars = async () => {
                     ))}
                 </div>
 
-                {/* Total Footer */}
-                <div className="pt-3 border-t border-gray-700">
+                {/* Total Footer - Fixed at bottom */}
+                <div className="pt-3 border-t border-gray-700 flex-shrink-0">
                     <div className="flex justify-between items-center">
                     <span className="text-gray-300 font-medium">Total Parts:</span>
                     <span className="text-green-400 font-bold text-xl">
@@ -635,22 +676,62 @@ const fetchCars = async () => {
                 </div>
             )}
             </div>
-
-            {/* Bottom Left Space for Additional Info if needed */}
-            <div className="col-span-5 row-span-2 flex items-end">
-            {/* This space can be used for additional build info or left empty for visual balance */}
-            </div>
-
         </div>
         </section>
-
-        {/* Section 4: Comments - Full Screen */}
-        <section className="h-screen bg-gray-800 p-8 overflow-hidden">
-        <Comments 
-            entryID={currentCar.entryID?.toString() || ""} 
-            className=""
-        />
-        </section>
+            {/* Section 4: Comments - Full Screen */}
+            <section className="h-screen bg-gray-950 p-8 overflow-hidden">
+            <div className="h-full flex flex-col gap-6">
+                {/* Comments Component - Takes most of the space */}
+                <div className="flex-1 min-h-0">
+                <Comments 
+                    entryID={currentCar.entryID?.toString() || ""} 
+                    className="h-full"
+                />
+                </div>
+                
+                {/* Back to Top Button - Fixed at bottom */}
+                <div className="flex justify-center flex-shrink-0 pb-4">
+                <Button 
+                    size="lg" 
+                    className="w-full max-w-sm group relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white font-semibold text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0 hover:rotate-1 transform-gpu"
+                    onClick={goToSlide.bind(null, 0)}
+                >
+                    {/* Animated background overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    {/* Animated shine effect */}
+                    <div className="absolute inset-0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                    
+                    {/* Icon with animation */}
+                    <svg 
+                    className="w-5 h-5 sm:w-6 sm:h-6 mr-2 transform transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    >
+                    <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M5 10l7-7m0 0l7 7m-7-7v18" 
+                    />
+                    </svg>
+                    
+                    {/* Text with subtle animation */}
+                    <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide">
+                    Back to Top
+                    </span>
+                    
+                    {/* Floating particles effect */}
+                    <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-2 left-4 w-1 h-1 bg-white/60 rounded-full animate-ping" style={{animationDelay: '0s'}} />
+                    <div className="absolute top-3 right-6 w-1 h-1 bg-white/40 rounded-full animate-ping" style={{animationDelay: '0.5s'}} />
+                    <div className="absolute bottom-3 left-8 w-1 h-1 bg-white/50 rounded-full animate-ping" style={{animationDelay: '1s'}} />
+                    </div>
+                </Button>
+                </div>
+            </div>
+            </section>
       </div>
 
     </div>

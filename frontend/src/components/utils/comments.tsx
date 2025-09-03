@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { Heart, MessageCircle, MoreVertical, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Trash2 } from "lucide-react";
 import { useUser } from '../contexts/usercontext';
+import { getS3ImageUrl } from "../utils/s3helper"
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+
+
 
 interface Comment {
   commentID: string;
@@ -227,9 +231,14 @@ const Comments: React.FC<CommentsProps> = ({ entryID, className = "" }) => {
     <div className={`flex gap-3 ${isReply ? 'ml-6' : ''}`}>
       {/* Profile Picture */}
       <div className="flex-shrink-0">
-        <div className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white ${isReply ? 'text-xs' : 'text-sm'} font-semibold`}>
-          {comment.userName?.charAt(0)?.toUpperCase() || 'U'}
-        </div>
+        <Avatar className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'}`} >
+            <AvatarImage className="w-full h-full object-cover object-center" src={comment?.profilePhotoKey
+                ? getS3ImageUrl(comment?.profilePhotoKey)
+                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(comment?.userName || "User")}`
+                } alt="User" />
+            <AvatarFallback>{comment?.userName?.charAt(0) || 'U'}</AvatarFallback>
+        </Avatar>
+       
       </div>
       
       {/* Comment Content */}
@@ -345,95 +354,99 @@ const Comments: React.FC<CommentsProps> = ({ entryID, className = "" }) => {
   );
 
   return (
-    <div className={`h-full gap-4 mx-auto ${className}`}>
-      
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-3xl font-bold text-white">
-          Comments
-        </h3>
-        <span className="text-gray-400 text-lg">
-          {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-        </span>
-      </div>
-
-      {/* Comments List - Scrollable */}
-      <div className="row-span-9 overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-        {isLoadingComments ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">Loading comments...</p>
-          </div>
-        ) : comments.length > 0 ? (
-          comments.map((comment) => (
-            <CommentItem key={comment.commentID} comment={comment} />
-          ))
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <p className="text-gray-400 mb-2">No comments yet</p>
-              <p className="text-gray-500 text-sm">Be the first to share your thoughts!</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Comment Input - Fixed at bottom */}
-      <div className="row-span-2">
-        {isAuthenticated ? (
-          <div className="space-y-3">
-            <div className="flex gap-3">
-              {/* User Avatar */}
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-              
-              {/* Input Field */}
-              <div className="flex-1 relative">
-                <Textarea
-                  placeholder="Add a comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-400 rounded-2xl resize-none min-h-[40px] max-h-[80px] pr-12"
-                  rows={1}
-                />
-                {/* Send Button */}
-                <button 
-                  onClick={handleSubmitComment}
-                  disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isSubmittingComment ? (
-                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-            
-            {/* Character count */}
-            <div className="text-right">
-              <span className={`text-xs ${commentText.length > 900 ? 'text-red-400' : 'text-gray-400'}`}>
-                {commentText.length}/1000
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <Button
-              onClick={() => window.location.href = '/auth'}
-              variant="outline"
-              className="text-white border-white/30 hover:bg-white/10"
-            >
-              Login to Comment
-            </Button>
-          </div>
-        )}
-      </div>
+  <div className={`h-full flex flex-col gap-4 mx-auto ${className}`}>
+    
+    {/* Header - Fixed size */}
+    <div className="flex justify-between items-center flex-shrink-0">
+      <h3 className="text-3xl mb-5 font-bold text-white">
+        Comments
+      </h3>
+      <span className="text-gray-400 text-lg">
+        {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+      </span>
     </div>
-  );
-};
+
+    {/* Comments List - Scrollable, takes remaining space */}
+    <div className="flex-1 overflow-y-auto bg-gray-900/50 rounded-2xl p-4 space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 min-h-0">
+      {isLoadingComments ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Loading comments...</p>
+        </div>
+      ) : comments.length > 0 ? (
+        comments.map((comment) => (
+          <CommentItem key={comment.commentID} comment={comment} />
+        ))
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No comments yet</p>
+            <p className="text-gray-500 text-sm">Be the first to share your thoughts!</p>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Comment Input - Fixed at bottom */}
+    <div className="flex-shrink-0">
+      {isAuthenticated ? (
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            
+            <Avatar className="w-8 h-8 ">
+                <AvatarImage className="w-full h-full object-cover object-center" src={user?.profilephotokey 
+                        ? getS3ImageUrl(user?.profilephotokey)
+                        : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                    } alt="User" />
+                <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+            
+            {/* Input Field */}
+            <div className="flex-1 relative">
+              <Textarea
+                placeholder="Add a comment..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-400 rounded-2xl resize-none min-h-[40px] max-h-[80px] pr-12"
+                rows={1}
+              />
+              {/* Send Button */}
+              <button 
+                onClick={handleSubmitComment}
+                disabled={!commentText.trim() || isSubmittingComment || commentText.length > 1000}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmittingComment ? (
+                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Character count */}
+          <div className="text-right">
+            <span className={`text-xs ${commentText.length > 900 ? 'text-red-400' : 'text-gray-400'}`}>
+              {commentText.length}/1000
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <Button
+            onClick={() => window.location.href = '/auth'}
+            variant="outline"
+            className="text-white border-white/30 hover:bg-white/10"
+          >
+            Login to Comment
+          </Button>
+        </div>
+      )}
+    </div>
+  </div>
+);
+}
 
 export default Comments;
