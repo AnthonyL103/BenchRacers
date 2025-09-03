@@ -130,7 +130,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     console.log('[EXPLORE] About to execute count query...');
     
     // EXECUTE ALL QUERIES ON THE SAME CONNECTION
-    const [countResult]: any = await connection.execute(countQuery, queryParams);
+    const [countResult]: any = await connection.query(countQuery, queryParams);
     console.log('[EXPLORE] Count query result:', countResult);
     
     const totalCount = Number(countResult[0]?.total) || 0;
@@ -151,7 +151,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     baseQuery += ` ORDER BY e.entryID LIMIT ? OFFSET ?`;
 
     console.log('[EXPLORE] About to execute main query...');
-    const [cars]: any = await connection.execute(baseQuery, mainQueryParams);
+    const [cars]: any = await connection.query(baseQuery, mainQueryParams);
     
     console.log('[EXPLORE] Main query executed, result count:', cars.length);
     
@@ -168,7 +168,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     const photoPlaceholders = entryIds.map(() => '?').join(',');
     
     console.log('[EXPLORE] About to fetch photos...');
-    const [photos]: any = await connection.execute(`
+    const [photos]: any = await connection.query(`
       SELECT 
         entryID,
         GROUP_CONCAT(s3key ORDER BY s3key ASC) as allPhotoKeys,
@@ -179,7 +179,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     `, entryIds);
     
     console.log('[EXPLORE] About to fetch tags...');
-    const [tags]: any = await connection.execute(`
+    const [tags]: any = await connection.query(`
       SELECT 
         et.entryID,
         GROUP_CONCAT(t.tagName ORDER BY t.tagName ASC) as tags
@@ -190,7 +190,7 @@ router.post('/cars', authenticateToken, async (req: Request, res: Response) => {
     `, entryIds);
     
     console.log('[EXPLORE] About to fetch mods...');
-    const [mods]: any = await connection.execute(`
+    const [mods]: any = await connection.query(`
       SELECT 
         em.entryID,
         m.modID,
@@ -417,7 +417,7 @@ router.get('/stats', async (req: Request, res: Response) => {
   try {
     console.log('[EXPLORE] Fetching stats');
     
-    const [stats]: any = await connection.execute(`
+    const [stats]: any = await connection.query(`
       SELECT 
         COUNT(*) as totalCars,
         COUNT(DISTINCT e.userEmail) as totalUsers,
@@ -432,7 +432,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       WHERE u.isVerified = TRUE
     `);
     
-    const [regionStats]: any = await connection.execute(`
+    const [regionStats]: any = await connection.query(`
       SELECT 
         e.region,
         COUNT(*) as count
@@ -443,7 +443,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       ORDER BY count DESC
     `);
     
-    const [categoryStats]: any = await connection.execute(`
+    const [categoryStats]: any = await connection.query(`
       SELECT 
         e.category,
         COUNT(*) as count,
@@ -455,7 +455,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       ORDER BY count DESC
     `);
     
-    const [popularTags]: any = await connection.execute(`
+    const [popularTags]: any = await connection.query(`
       SELECT 
         t.tagName,
         COUNT(*) as count
