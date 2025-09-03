@@ -299,10 +299,11 @@ router.get('/mods', authenticateUser, async (req: AuthenticatedRequest, res: Res
 
 
 router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  const connection = await pool.getConnection();
   try {
     const user = req.user as any;
     
-    const [carsResults]: any = await pool.query(`
+    const [carsResults]: any = await connection.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
         e.carColor, e.basecost, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
@@ -326,7 +327,7 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
     let modsMap = new Map();
     
     if (carIds.length > 0) {
-      const [modsResults]: any = await pool.query(`
+      const [modsResults]: any = await connection.query(`
         SELECT 
           em.entryID, 
           m.modID, m.brand, m.category, m.cost, m.description, m.link
@@ -369,15 +370,18 @@ router.get('/user', authenticateUser, async (req: AuthenticatedRequest, res: Res
       message: 'Failed to fetch cars',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  } finally {
+    connection.release();
   }
 });
 
 router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  const connection = await pool.getConnection();
   try {
     const { entryID } = req.params;
     const user = req.user as any;
     
-    const [results]: any = await pool.query(`
+    const [results]: any = await connection.query(`
       SELECT 
         e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
         e.carColor, e.basecost, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
@@ -439,7 +443,7 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       car.tags = [];
     }
     
-    const [mods]: any = await pool.query(`
+    const [mods]: any = await connection.query(`
       SELECT m.modID, m.brand, m.category, m.cost, m.description, m.link
       FROM EntryMods em
       JOIN Mods m ON em.modID = m.modID
@@ -465,6 +469,8 @@ router.get('/:entryID', authenticateUser, async (req: AuthenticatedRequest, res:
       message: 'Failed to fetch car details',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  } finally {
+    connection.release();
   }
 });
 

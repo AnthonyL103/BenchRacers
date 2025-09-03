@@ -38,6 +38,7 @@ const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFu
 
 router.post('/login', async (req: Request, res: Response) => {
     console.log('[LOGIN] Hit /login route');
+    const connection = await pool.getConnection();
     try {
       const { email, password } = req.body;
       
@@ -49,7 +50,7 @@ router.post('/login', async (req: Request, res: Response) => {
         });
       }
   
-      const [users]: any = await pool.query(
+      const [users]: any = await connection.query(
         'SELECT userEmail, name, password, accountCreated, userIndex, totalEntries, region, isEditor, isVerified, verificationToken, profilephotokey FROM Users WHERE userEmail = ?', 
         [email]
       );
@@ -75,7 +76,7 @@ router.post('/login', async (req: Request, res: Response) => {
       if (!user.isVerified) {
         const verificationToken = uuidv4();
         
-        await pool.query(
+        await connection.query(
           'UPDATE Users SET verificationToken = ? WHERE userEmail = ?',
           [verificationToken, email]
         );
@@ -144,6 +145,8 @@ router.post('/login', async (req: Request, res: Response) => {
         message: 'Server error during login',
         errorCode: 'SERVER_ERROR'
       });
+    } finally {
+        connection.release();
     }
 });
   
@@ -411,13 +414,14 @@ router.put('/change-password', authenticateUser, async (req: AuthenticatedReques
 });
 
 router.post('/forgot-password', async (req: Request, res: Response) => {
+  const connection = await pool.getConnection();
   try {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const [users]: any = await pool.query(
+    const [users]: any = await connection.query(
       'SELECT userEmail FROM Users WHERE userEmail = ?', 
       [email]
     );
@@ -432,7 +436,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     const resetToken = uuidv4();
     const resetTokenExpiration = new Date(Date.now() + 3600000); // 1 hour
 
-    await pool.query(
+    await connection.query(
       'UPDATE Users SET resetToken = ?, resetTokenExpiration = ? WHERE userEmail = ?',
       [resetToken, resetTokenExpiration, email]
     );
