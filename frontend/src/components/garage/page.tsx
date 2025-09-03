@@ -1,18 +1,12 @@
 "use client"
 
-import { Label } from "../ui/label"
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { Navbar } from "../utils/navbar"
-import { Footer } from "../utils/footer"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
-import { Input } from "../ui/input"
-import { Textarea } from "../ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { BarChart3, Camera, Edit, Heart, LineChart, Plus, Settings, Trophy, Upload, X, Trash, Car as CarIcon } from "lucide-react"
 import { getS3ImageUrl } from "../utils/s3helper"
 import { AddCarModal } from "../utils/add-car-modal"
@@ -310,7 +304,6 @@ export default function GaragePage() {
           </div>
         </div>
       </main>
-      <Footer />
         <EditProfileModal open={isEditProfileModalOpen} onOpenChange={setIsEditProfileModal} />
         <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
         {selectedCar && (

@@ -1,3 +1,4 @@
+import { StringToBoolean } from 'class-variance-authority/types';
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
 interface Mod {
@@ -34,7 +35,7 @@ interface Car {
   category: string;
   region: string;
   upvotes: number;
-  commentCount?: number;  // Add this line
+  commentCount?: number;  
   engine?: string;
   transmission?: string;
   drivetrain?: string;
@@ -42,6 +43,22 @@ interface Car {
   torque?: number;
   tags?: string[];
   mods: Mod[];
+}
+
+export interface Comment {
+    commentID: number;
+    commentText: string;
+    createdAt: string;
+    entryID: number;
+    likes: number;
+    hasMoreReplies: boolean;
+    parentCommentID: number | null;
+    replies: Comment[];
+    replyCount: number;
+    updatedAt: string;
+    userEmail: string;
+    userName: string;
+    profilePhotoKey: string;
 }
 
 

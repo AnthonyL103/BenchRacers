@@ -8,19 +8,21 @@ import { Footer } from "./utils/footer"
 import { ArrowRight, Heart, ThumbsUp, Trophy, Upload, ChevronDown, ChevronUp } from "lucide-react"
 import { useEffect, useRef, useState, useCallback } from "react"
 
-export default function Home() {
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  const slides = [
+const SLIDES = [
     { id: 'hero', name: 'Home' },
     { id: 'how-it-works', name: 'How It Works' },
     { id: 'cta', name: 'Get Started' }
   ]
 
+export default function Home() {
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  
+  
+
   const goToSlide = useCallback((slideIndex: number) => {
-    if (isAnimating || slideIndex === currentSlide || slideIndex < 0 || slideIndex >= slides.length) return
+    if (isAnimating || slideIndex === currentSlide || slideIndex < 0 || slideIndex >= SLIDES.length) return
 
     setIsAnimating(true)
     setCurrentSlide(slideIndex)
@@ -32,104 +34,123 @@ export default function Home() {
     setTimeout(() => {
         setIsAnimating(false)
     }, 800)
-  }, [currentSlide, isAnimating, slides.length])
+  }, [currentSlide, isAnimating, SLIDES.length])
 
-  const nextSlide = useCallback(() => {
-    if (currentSlide < slides.length - 1) {
+// we dont need to use use callback here, its way to overkill for such a small function an contributes to too many re renders.
+// Use callback is better for passing function to chil components or when the functiun is massive, its dependancies
+//  are when those change the function re-creates.
+  const nextSlide = () => {
+    if (currentSlide < SLIDES.length - 1) {
       goToSlide(currentSlide + 1)
     }
-  }, [currentSlide, goToSlide, slides.length])
+  }
 
-  const prevSlide = useCallback(() => {
+  const prevSlide = () => {
     if (currentSlide > 0) {
       goToSlide(currentSlide - 1)
     }
-  }, [currentSlide, goToSlide])
+  }
 
   useEffect(() => {
-    let startY = 0
-    let lastWheelTime = 0
-    let accumulatedDelta = 0
-    // set constants for delta because laptop scrolling goes much more delta y (friction effect) than mouse wheel
-    const WHEEL_DELAY = 1000 // 1 second delay between wheel events
-    const DELTA_THRESHOLD = 100 // Accumulated delta threshold for trackpad
-    
-    const handleWheel = (e: WheelEvent) => {
-        e.preventDefault()
-        
-        const now = Date.now()
-        
-        // If too soon after last slide change, ignore
-        if (now - lastWheelTime < WHEEL_DELAY || isAnimating) {
-            return
-        }
-        
-        // Accumulate delta for trackpad scrolling
-        accumulatedDelta += Math.abs(e.deltaY)
-        
-        
-        // Check if we've accumulated enough delta or it's a large single scroll (mouse wheel)
-        if (Math.abs(e.deltaY) > 10 || accumulatedDelta > DELTA_THRESHOLD) {
-            lastWheelTime = now
-            accumulatedDelta = 0 // Reset accumulator
-            
-            if (e.deltaY > 0 && currentSlide < slides.length - 1) {
-                nextSlide()
-            } else if (e.deltaY < 0 && currentSlide > 0) {
-                prevSlide()
-            }
-        }
-    }
-
-    const handleTouchStart = (e: TouchEvent) => {
-      startY = e.touches[0].clientY
-    }
-    
-    const handleTouchMove = (e: TouchEvent) => {
-      if (isAnimating) return
+      let startY = 0
+      let lastWheelTime = 0
+      let accumulatedDelta = 0
+      const WHEEL_DELAY = 1000
+      const DELTA_THRESHOLD = 100
       
-      const currentY = e.touches[0].clientY
-      const diff = startY - currentY
+      const handleWheel = (e: WheelEvent) => {
+          e.preventDefault()
+          
+          const now = Date.now()
+          
+          if (now - lastWheelTime < WHEEL_DELAY || isAnimating) {
+              return
+          }
+          
+          accumulatedDelta += Math.abs(e.deltaY)
+          
+          if (Math.abs(e.deltaY) > 10 || accumulatedDelta > DELTA_THRESHOLD) {
+              lastWheelTime = now
+              accumulatedDelta = 0
+              
+              if (e.deltaY > 0 && currentSlide < SLIDES.length - 1) {
+                  // Call function directly instead of through callback
+                  setCurrentSlide(prev => {
+                    const nextIndex = prev + 1;
+                    if (nextIndex < SLIDES.length) {
+                      setIsAnimating(true);
+                      if (containerRef.current) {
+                        containerRef.current.style.transform = `translateY(-${nextIndex * 100}vh)`;
+                      }
+                      setTimeout(() => setIsAnimating(false), 800);
+                      return nextIndex;
+                    }
+                    return prev;
+                  });
+              } else if (e.deltaY < 0 && currentSlide > 0) {
+                  setCurrentSlide(prev => {
+                    const prevIndex = prev - 1;
+                    if (prevIndex >= 0) {
+                      setIsAnimating(true);
+                      if (containerRef.current) {
+                        containerRef.current.style.transform = `translateY(-${prevIndex * 100}vh)`;
+                      }
+                      setTimeout(() => setIsAnimating(false), 800);
+                      return prevIndex;
+                    }
+                    return prev;
+                  });
+              }
+          }
+      }
+  
+      const handleTouchStart = (e: TouchEvent) => {
+        startY = e.touches[0].clientY
+      }
       
-      if (Math.abs(diff) > 50) {
-        if (diff > 0 && currentSlide < slides.length - 1) {
-          nextSlide()
-        } else if (diff < 0 && currentSlide > 0) {
-          prevSlide()
+      const handleTouchMove = (e: TouchEvent) => {
+        if (isAnimating) return
+        
+        const currentY = e.touches[0].clientY
+        const diff = startY - currentY
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0 && currentSlide < SLIDES.length - 1) {
+            nextSlide()
+          } else if (diff < 0 && currentSlide > 0) {
+            prevSlide()
+          }
         }
       }
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isAnimating) return
-      
-      switch(e.key) {
-        case 'ArrowDown':
-        case ' ':
-          e.preventDefault()
-          nextSlide()
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          prevSlide()
-          break
+  
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (isAnimating) return
+        
+        switch(e.key) {
+          case 'ArrowDown':
+          case ' ':
+            e.preventDefault()
+            nextSlide()
+            break
+          case 'ArrowUp':
+            e.preventDefault()
+            prevSlide()
+            break
+        }
       }
-    }
-
-    // Add event listeners
-    document.addEventListener('wheel', handleWheel, { passive: false })
-    document.addEventListener('touchstart', handleTouchStart, { passive: true })
-    document.addEventListener('touchmove', handleTouchMove, { passive: true })
-    document.addEventListener('keydown', handleKeyDown)
-
-    // Cleanup
-    return () => {
-      document.removeEventListener('wheel', handleWheel)
-      document.removeEventListener('touchstart', handleTouchStart)
-      document.removeEventListener('touchmove', handleTouchMove)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [currentSlide, isAnimating, nextSlide, prevSlide, slides.length])
+  
+      document.addEventListener('wheel', handleWheel, { passive: false })
+      document.addEventListener('touchstart', handleTouchStart, { passive: true })
+      document.addEventListener('touchmove', handleTouchMove, { passive: true })
+      document.addEventListener('keydown', handleKeyDown)
+  
+      return () => {
+        document.removeEventListener('wheel', handleWheel)
+        document.removeEventListener('touchstart', handleTouchStart)
+        document.removeEventListener('touchmove', handleTouchMove)
+        document.removeEventListener('keydown', handleKeyDown)
+      }
+    }, [currentSlide, isAnimating])
 
   return (
     <div className="h-screen overflow-hidden relative">
@@ -207,7 +228,7 @@ export default function Home() {
 
       {/* Slide Indicators */}
       <div className="fixed left-1/2 bottom-5 transform -translate-x-1/2 z-50 flex space-x-4">
-        {slides.map((slide, index) => (
+        {SLIDES.map((slide, index) => (
           <button
             key={slide.id}
             onClick={() => goToSlide(index)}
@@ -224,7 +245,7 @@ export default function Home() {
       <div className="fixed top-0 left-0 w-full h-1 bg-black/20 z-50">
         <div 
           className="h-full bg-primary transition-all duration-800 ease-out"
-          style={{ width: `${((currentSlide + 1) / slides.length) * 100}%` }}
+          style={{ width: `${((currentSlide + 1) / SLIDES.length) * 100}%` }}
         />
       </div>
 
@@ -233,7 +254,7 @@ export default function Home() {
       <div 
         ref={containerRef}
         className="slide-container"
-        style={{ height: `${slides.length * 100}vh` }}
+        style={{ height: `${SLIDES.length * 100}vh` }}
       >
         {/* Hero Slide */}
         <section className="h-screen relative flex">

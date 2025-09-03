@@ -592,6 +592,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 
+// GET /explore/getcomments/:entryID - Get comments for an entry
 router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { entryID } = req.params;
@@ -632,18 +633,22 @@ router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res:
         c.commentText,
         c.parentCommentID,
         c.createdAt,
+        c.likes,
         c.updatedAt,
         c.isDeleted,
         u.name as userName,
-        COUNT(replies.commentID) as replyCount
+        u.profilephotokey as profilePhotoKey,
+        COUNT(replies.commentID) as replyCount,
+        CASE WHEN cl.commentLikeID IS NOT NULL THEN TRUE ELSE FALSE END as hasLiked
       FROM Comments c
       INNER JOIN Users u ON c.userEmail = u.userEmail
       LEFT JOIN Comments replies ON c.commentID = replies.parentCommentID AND replies.isDeleted = FALSE
+      LEFT JOIN CommentLikes cl ON c.commentID = cl.commentID AND cl.userEmail = ?
       WHERE c.entryID = ? AND c.parentCommentID IS NULL AND c.isDeleted = FALSE
       GROUP BY c.commentID
       ORDER BY c.createdAt DESC
       LIMIT ? OFFSET ?
-    `, [entryID, safeLimit, safeOffset]);
+    `, [req.user?.userEmail, entryID, safeLimit, safeOffset]);
 
     const commentsWithReplies = await Promise.all(
       topLevelComments.map(async (comment: any) => {
@@ -655,15 +660,19 @@ router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res:
             c.commentText,
             c.parentCommentID,
             c.createdAt,
+            c.likes,
             c.updatedAt,
             c.isDeleted,
-            u.name as userName
+            u.name as userName,
+            u.profilephotokey as profilePhotoKey,
+            CASE WHEN cl.commentLikeID IS NOT NULL THEN TRUE ELSE FALSE END as hasLiked
           FROM Comments c
           INNER JOIN Users u ON c.userEmail = u.userEmail
+          LEFT JOIN CommentLikes cl ON c.commentID = cl.commentID AND cl.userEmail = ?
           WHERE c.parentCommentID = ? AND c.isDeleted = FALSE
           ORDER BY c.createdAt ASC
           LIMIT 5
-        `, [comment.commentID]);
+        `, [req.user?.userEmail, comment.commentID]);
 
         return {
           ...comment,
@@ -702,11 +711,10 @@ router.get('/getcomments/:entryID', authenticateToken, async (req: Request, res:
   }
 });
 
-// GET /explore/comments/:commentID/replies - Get replies to a specific comment
-router.get('/comments/:commentID/replies', authenticateToken, async (req: Request, res: Response) => {
+// POST /explore/likecomment/:commentID - Like/unlike a comment
+router.post('/likecomment/:commentID', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { commentID } = req.params;
-    const { page = 1, limit = 10 } = req.query;
 
     if (!commentID) {
       return res.status(400).json({
@@ -716,74 +724,208 @@ router.get('/comments/:commentID/replies', authenticateToken, async (req: Reques
       });
     }
 
-    console.log('[COMMENTS] Fetching replies for comment:', commentID);
-
-    const safeLimit = Math.min(Math.max(parseInt(limit as string) || 10, 1), 50);
-    const safeOffset = (Math.max(parseInt(page as string) || 1, 1) - 1) * safeLimit;
-
-    // Verify parent comment exists
-    const [parentComment]: any = await pool.query(
-      'SELECT commentID FROM Comments WHERE commentID = ? AND isDeleted = FALSE',
-      [commentID]
-    );
-
-    if (parentComment.length === 0) {
-      return res.status(404).json({
+    if (!req.user || !req.user.userEmail) {
+      return res.status(401).json({
         success: false,
-        message: 'Parent comment not found',
-        errorCode: 'COMMENT_NOT_FOUND'
+        message: 'Authentication required to like comments',
+        errorCode: 'AUTH_REQUIRED'
       });
     }
 
-    // Get replies
-    const [replies]: any = await pool.query(`
-      SELECT 
-        c.commentID,
-        c.entryID,
-        c.userEmail,
-        c.commentText,
-        c.parentCommentID,
-        c.createdAt,
-        c.updatedAt,
-        u.name as userName
-      FROM Comments c
-      INNER JOIN Users u ON c.userEmail = u.userEmail
-      WHERE c.parentCommentID = ? AND c.isDeleted = FALSE
-      ORDER BY c.createdAt ASC
-      LIMIT ? OFFSET ?
-    `, [commentID, safeLimit, safeOffset]);
+    console.log('[COMMENTS] Toggling like for comment:', commentID, 'by user:', req.user.userEmail);
 
-    // Get total reply count
-    const [totalCount]: any = await pool.query(
-      'SELECT COUNT(*) as total FROM Comments WHERE parentCommentID = ? AND isDeleted = FALSE',
-      [commentID]
-    );
+    const connection = await pool.getConnection();
 
-    res.status(200).json({
-      success: true,
-      message: 'Replies fetched successfully',
-      data: {
-        replies: replies,
-        pagination: {
-          currentPage: parseInt(page as string) || 1,
-          totalPages: Math.ceil(totalCount[0].total / safeLimit),
-          totalReplies: totalCount[0].total,
-          hasMore: safeOffset + replies.length < totalCount[0].total
-        }
+    try {
+      await connection.beginTransaction();
+
+      // Verify comment exists
+      const [comments]: any = await connection.query(
+        'SELECT commentID FROM Comments WHERE commentID = ? AND isDeleted = FALSE',
+        [commentID]
+      );
+
+      if (comments.length === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(404).json({
+          success: false,
+          message: 'Comment not found',
+          errorCode: 'COMMENT_NOT_FOUND'
+        });
       }
-    });
+
+      // Check if user already liked this comment
+      const [existingLikes]: any = await connection.query(
+        'SELECT commentLikeID FROM CommentLikes WHERE commentID = ? AND userEmail = ?',
+        [commentID, req.user.userEmail]
+      );
+
+      let action: string;
+      let newLikeCount: number;
+
+      if (existingLikes.length > 0) {
+        // Unlike - remove like and decrement count
+        await connection.query(
+          'DELETE FROM CommentLikes WHERE commentID = ? AND userEmail = ?',
+          [commentID, req.user.userEmail]
+        );
+        
+        await connection.query(
+          'UPDATE Comments SET likes = GREATEST(likes - 1, 0) WHERE commentID = ?',
+          [commentID]
+        );
+        
+        action = 'unliked';
+      } else {
+        // Like - add like and increment count
+        await connection.query(
+          'INSERT INTO CommentLikes (commentID, userEmail) VALUES (?, ?)',
+          [commentID, req.user.userEmail]
+        );
+        
+        await connection.query(
+          'UPDATE Comments SET likes = likes + 1 WHERE commentID = ?',
+          [commentID]
+        );
+        
+        action = 'liked';
+      }
+
+      // Get updated like count
+      const [updatedComment]: any = await connection.query(
+        'SELECT likes FROM Comments WHERE commentID = ?',
+        [commentID]
+      );
+      
+      newLikeCount = updatedComment[0].likes;
+
+      await connection.commit();
+      connection.release();
+
+      console.log(`[COMMENTS] Comment ${action} successfully`);
+
+      res.status(200).json({
+        success: true,
+        message: `Comment ${action} successfully`,
+        data: {
+          action,
+          likes: newLikeCount,
+          hasLiked: action === 'liked'
+        }
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
 
   } catch (error) {
-    console.error('[COMMENTS] Replies fetch error:', error);
+    console.error('[COMMENTS] Like toggle error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during replies fetch',
+      message: 'Server error during like toggle',
       errorCode: 'SERVER_ERROR'
     });
   }
 });
 
-// POST /explore/comments - Create a new comment
+// PUT /explore/editcomment/:commentID - Edit a comment
+router.put('/editcomment/:commentID', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { commentText } = req.body;
+    const { commentID } = req.params;
+
+    if (!commentText) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment text is required',
+        errorCode: 'MISSING_COMMENT_TEXT'
+      });
+    }
+
+    if (!req.user || !req.user.userEmail) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required to edit comments',
+        errorCode: 'AUTH_REQUIRED'
+      });
+    }
+
+    // Validate comment length
+    if (commentText.trim().length < 1 || commentText.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment must be between 1 and 1000 characters',
+        errorCode: 'INVALID_COMMENT_LENGTH'
+      });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // Verify comment exists and user owns it
+      const [comments]: any = await connection.query(
+        'SELECT commentID, userEmail FROM Comments WHERE commentID = ? AND isDeleted = FALSE',
+        [commentID]
+      );
+
+      if (comments.length === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(404).json({
+          success: false,
+          message: 'Comment not found',
+          errorCode: 'COMMENT_NOT_FOUND'
+        });
+      }
+
+      // Check if user owns the comment
+      if (comments[0].userEmail !== req.user.userEmail) {
+        await connection.rollback();
+        connection.release();
+        return res.status(403).json({
+          success: false,
+          message: 'You can only edit your own comments',
+          errorCode: 'UNAUTHORIZED_EDIT'
+        });
+      }
+
+      // Update the comment text
+      await connection.query(
+        'UPDATE Comments SET commentText = ?, updatedAt = NOW() WHERE commentID = ?',
+        [commentText.trim(), commentID]
+      );
+
+      await connection.commit();
+      connection.release();
+
+      console.log('[COMMENTS] Comment edited successfully');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Comment updated successfully'
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('[COMMENTS] Update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during comment update',
+      errorCode: 'SERVER_ERROR'
+    });
+  }
+});
+
+// POST /explore/addcomments - Create a new comment
 router.post('/addcomments', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { entryID, commentText, parentCommentID = null } = req.body;
@@ -822,7 +964,7 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
 
       // Verify entry exists
       const [entries]: any = await connection.query(
-        'SELECT entryID, userEmail FROM Entries WHERE entryID = ?',
+        'SELECT entryID FROM Entries WHERE entryID = ?',
         [entryID]
       );
 
@@ -866,8 +1008,8 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
 
       // Insert comment
       const [result]: any = await connection.query(`
-        INSERT INTO Comments (entryID, userEmail, commentText, parentCommentID, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, NOW(), NOW())
+        INSERT INTO Comments (entryID, userEmail, commentText, parentCommentID, createdAt, updatedAt, likes)
+        VALUES (?, ?, ?, ?, NOW(), NOW(), 0)
       `, [entryID, req.user.userEmail, commentText.trim(), parentCommentID]);
 
       const commentID = result.insertId;
@@ -890,7 +1032,9 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
           c.parentCommentID,
           c.createdAt,
           c.updatedAt,
-          u.name as userName
+          c.likes,
+          u.name as userName,
+          u.profilephotokey as profilePhotoKey
         FROM Comments c
         INNER JOIN Users u ON c.userEmail = u.userEmail
         WHERE c.commentID = ?
@@ -904,7 +1048,10 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
       res.status(201).json({
         success: true,
         message: 'Comment created successfully',
-        data: newComment[0]
+        data: {
+          ...newComment[0],
+          hasLiked: false // New comment, user hasn't liked it yet
+        }
       });
 
     } catch (error) {
@@ -923,104 +1070,7 @@ router.post('/addcomments', authenticateToken, async (req: Request, res: Respons
   }
 });
 
-// PUT /explore/comments/:commentID - Update a comment
-router.put('/updatecomments/:commentID', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { commentID } = req.params;
-    const { commentText } = req.body;
-
-    if (!commentID || !commentText) {
-      return res.status(400).json({
-        success: false,
-        message: 'Comment ID and text are required',
-        errorCode: 'MISSING_FIELDS'
-      });
-    }
-
-    if (!req.user || !req.user.userEmail) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required to update comments',
-        errorCode: 'AUTH_REQUIRED'
-      });
-    }
-
-    // Validate comment length
-    if (commentText.trim().length < 1 || commentText.length > 1000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Comment must be between 1 and 1000 characters',
-        errorCode: 'INVALID_COMMENT_LENGTH'
-      });
-    }
-
-    console.log('[COMMENTS] Updating comment:', commentID, 'by user:', req.user.userEmail);
-
-    // Check if comment exists and user owns it
-    const [comments]: any = await pool.query(
-      'SELECT commentID, userEmail, commentText FROM Comments WHERE commentID = ? AND isDeleted = FALSE',
-      [commentID]
-    );
-
-    if (comments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Comment not found',
-        errorCode: 'COMMENT_NOT_FOUND'
-      });
-    }
-
-    const comment = comments[0];
-
-    if (comment.userEmail !== req.user.userEmail) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only edit your own comments',
-        errorCode: 'UNAUTHORIZED_EDIT'
-      });
-    }
-
-    // Update comment
-    await pool.query(
-      'UPDATE Comments SET commentText = ?, updatedAt = NOW() WHERE commentID = ?',
-      [commentText.trim(), commentID]
-    );
-
-    // Get updated comment with user info
-    const [updatedComment]: any = await pool.query(`
-      SELECT 
-        c.commentID,
-        c.entryID,
-        c.userEmail,
-        c.commentText,
-        c.parentCommentID,
-        c.createdAt,
-        c.updatedAt,
-        u.name as userName
-      FROM Comments c
-      INNER JOIN Users u ON c.userEmail = u.userEmail
-      WHERE c.commentID = ?
-    `, [commentID]);
-
-    console.log('[COMMENTS] Comment updated successfully');
-
-    res.status(200).json({
-      success: true,
-      message: 'Comment updated successfully',
-      data: updatedComment[0]
-    });
-
-  } catch (error) {
-    console.error('[COMMENTS] Update error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during comment update',
-      errorCode: 'SERVER_ERROR'
-    });
-  }
-});
-
-// DELETE /explore/comments/:commentID - Delete a comment (soft delete)
+// DELETE /explore/delcomments/:commentID - Delete a comment (soft delete)
 router.delete('/delcomments/:commentID', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { commentID } = req.params;
