@@ -90,7 +90,7 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
 }, [Mods, carDetails.basecost]); 
   
 
-    const fetchAvailableMods = async () => {
+const fetchAvailableMods = async () => {
         
     try {
         

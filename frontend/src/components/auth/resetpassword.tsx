@@ -84,92 +84,111 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
+    <div className="flex flex-col h-screen overflow-hidden bg-black">
       <main className="flex-1 py-12">
-        <div className="container max-w-md">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <Car className="h-12 w-12 text-primary" />
-            </div>
-            <h1 className="text-3xl font-bold">Reset Your Password</h1>
-            <p className="text-gray-400 mt-2">Create a new password for your account</p>
-          </div>
+        <div className="absolute inset-0 z-0">
+          <img
+            src="miata-6564096_1920.jpg"
+            alt="Featured car"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0" />
+        </div>
+        <div className="relative z-20 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md space-y-8">
 
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-              <CardDescription>
-                Please enter your new password below.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!token ? (
-                <div className="bg-red-900 text-red-100 border border-red-800 p-3 rounded text-sm">
-                  Invalid or missing token. Please request a new password reset link.
-                  <div className="mt-4">
-                    <Link to="/forgot-password" className="text-primary hover:underline">
-                      Go to Forgot Password
+            <Card className="
+              absolute fixed z-10 
+              top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+              w-[calc(100vw-2rem)] max-w-md sm:w-[calc(100vw-3rem)] sm:max-w-lg md:w-[calc(100vw-4rem)] md:max-w-xl lg:max-w-2xl
+              bg-gray-950 border border-gray-950
+              rounded-xl shadow-lg 
+              max-h-[90vh] overflow-y-auto
+              transition-all duration-200
+            ">
+              <CardHeader className="p-4">
+                <div className="text-center mb-2">
+                  <div className="flex mb-2 flex-row justify-between gap-2 align-left">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                      Reset Your Password
+                    </h1>
+                    <Link to="/">
+                      <Car className="h-12 w-12 text-primary hover:text-white" />
                     </Link>
                   </div>
+                  <p className="text-gray-400">Create a new password for your account</p>
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2 text-white">
-                    <Label htmlFor="new-password">New Password</Label>
-                    <Input 
-                      id="new-password" 
-                      name="new-password" 
-                      type="password"
-                      className="text-black" 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                  
-                  <div className="space-y-2 text-white">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input 
-                      id="confirm-password" 
-                      name="confirm-password" 
-                      type="password"
-                      className="text-black" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-
-                  {message && (
-                    <div className={`p-3 rounded text-sm ${
-                      message.type === "success" 
-                        ? "bg-green-800 text-green-100 border border-green-700" 
-                        : "bg-red-900 text-red-100 border border-red-800"
-                    }`}>
-                      {message.text}
+              </CardHeader>
+              <CardContent>
+                {!token ? (
+                  <div className="bg-red-900 text-red-100 border border-red-800 p-3 rounded text-sm">
+                    Invalid or missing token. Please request a new password reset link.
+                    <div className="mt-4">
+                      <Link to="/forgot-password" className="text-primary hover:underline">
+                        Go to Forgot Password
+                      </Link>
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2 text-white">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input 
+                        id="new-password" 
+                        name="new-password" 
+                        type="password"
+                        className="text-black" 
+                        placeholder="Enter new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
+                    
+                    <div className="space-y-2 text-white">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input 
+                        id="confirm-password" 
+                        name="confirm-password" 
+                        type="password"
+                        className="text-black" 
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Resetting..." : "Reset Password"}
-                  </Button>
-                </form>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-center">
-              <div className="text-center text-sm text-gray-400">
-                <p>
-                  Remember your password?{" "}
-                  <Link to="/auth" className="text-primary hover:underline">
-                    Back to Login
-                  </Link>
-                </p>
-              </div>
-            </CardFooter>
-          </Card>
+                    {message && (
+                      <div className={`p-3 rounded text-sm ${
+                        message.type === "success" 
+                          ? "bg-green-800 text-green-100 border border-green-700" 
+                          : "bg-red-900 text-red-100 border border-red-800"
+                      }`}>
+                        {message.text}
+                      </div>
+                    )}
+
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? "Resetting..." : "Reset Password"}
+                    </Button>
+                  </form>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-center">
+                <div className="text-center text-sm text-gray-400">
+                  <p>
+                    Remember your password?{" "}
+                    <Link to="/auth" className="text-primary hover:underline">
+                      Back to Login
+                    </Link>
+                  </p>
+                </div>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

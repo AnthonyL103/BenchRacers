@@ -151,7 +151,7 @@ export function GarageProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (response.data.success) {
-        setCars(prevCars => [...prevCars, response.data.car]);
+        await fetchUserCars(); 
       } else {
         throw new Error(response.data.message || 'Failed to add car');
       }

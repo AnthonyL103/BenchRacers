@@ -7,28 +7,49 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
-import { BarChart3, Camera, Edit, Heart, LineChart, Plus, Settings, Trophy, Upload, X, Trash, Car as CarIcon } from "lucide-react"
+import { BarChart3, Camera, Edit, Heart, LineChart, Plus, Settings, Trophy, Upload, X, Trash, Car, Zap, TrendingUp, Target, DollarSign, Award } from "lucide-react"
 import { getS3ImageUrl } from "../utils/s3helper"
 import { AddCarModal } from "../utils/add-car-modal"
 import { EditCarModal } from "../utils/edit-car-modal"
 import { useUser } from '../contexts/usercontext'
-import { useGarage } from '../contexts/garagecontext'
+import { Car as GarageCar, useGarage } from '../contexts/garagecontext'
 import { useNavigate } from 'react-router-dom'
 import {EditProfileModal} from '../utils/edit-profile-modal'
 
 export default function GaragePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedCar, setSelectedCar] = useState(null);
+  const [selectedCar, setSelectedCar] = useState<GarageCar | null>(null);
   const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false)
   const [isEditProfileModalOpen, setIsEditProfileModal] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   
   const { user, isAuthenticated } = useUser();
-  
   const { cars, isLoading, error, fetchUserCars, deleteCar } = useGarage();
-  
-  
+  const validCars = cars.filter(car => car && typeof car === 'object');
   const navigate = useNavigate();
-  
+
+  // Mouse parallax effect
+  useEffect(() => {
+    interface MousePosition {
+        x: number;
+        y: number;
+    }
+
+    interface MouseMoveEvent extends MouseEvent {
+        clientX: number;
+        clientY: number;
+    }
+
+    const handleMouseMove = (e: MouseMoveEvent) => {
+        setMousePosition({
+            x: (e.clientX / window.innerWidth) * 100,
+            y: (e.clientY / window.innerHeight) * 100,
+        })
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -42,277 +63,396 @@ export default function GaragePage() {
     }
   }, [isAuthenticated, fetchUserCars]);
 
-  
-  
   const handleDeleteCar = async (entryID: number) => {
     if (window.confirm("Are you sure you want to delete this car?")) {
       await deleteCar(entryID);
     }
   }
   
-  const handleEditCar = (car: any) => {
-  setSelectedCar(car);
-  setIsEditModalOpen(true);
+  const handleEditCar = (car: GarageCar) => {
+    setSelectedCar(car);
+    setIsEditModalOpen(true);
   };
 
   if (!isAuthenticated) {
     return null; 
   }
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-950">
+  if (isLoading && validCars.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="relative">
+          <div className="w-32 h-32 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-t-cyan-400 rounded-full animate-spin animation-delay-150"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-bold text-lg">
+            Loading...
+          </div>
+        </div>
+      </div>
+    )
+  }
+return (
+    <div className="min-h-screen bg-gray-950 overflow-x-hidden">
+      {/* Animated background */}
+      <div 
+        className="fixed inset-0 opacity-5"
+        style={{
+          background: `radial-gradient(circle at ${mousePosition.x}% ${mousePosition.y}%, rgba(221, 28, 73, 0.3) 0%, transparent 50%),
+                      radial-gradient(circle at ${100 - mousePosition.x}% ${100 - mousePosition.y}%, rgba(107, 114, 128, 0.2) 0%, transparent 50%)`
+        }}
+      />
+      
+      {/* Floating particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-primary rounded-full animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 10}s`,
+              animationDuration: `${10 + Math.random() * 20}s`
+            }}
+          />
+        ))}
+      </div>
+
       <Navbar />
-      <main className="flex-1 py-12">
-        <div className="container">
-          <div className="flex flex-col md:flex-row gap-8 mb-12">
-            <div className="w-full md:w-1/3">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage className="w-full h-full object-cover object-center" src={user?.profilephotokey 
-                                ? getS3ImageUrl(user?.profilephotokey)
-                                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
-                            } alt="User" />
-                      <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
+      
+      <main className="relative z-10 min-h-screen">
+        <div className="w-full mx-auto px-6 py-12">
+          {/* Hero Header */}
+          <div className="text-center mb-16">
+            <h1 className="text-6xl md:text-8xl font-bold text-white mb-6">
+              My Garage
+            </h1>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Your personal automotive sanctuary. Build, modify, and showcase your dream machines.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            {/* Profile Card - Enhanced */}
+            <div className="xl:col-span-1">
+              <div className="bg-black/40 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 sticky top-24">
+                {/* Profile Header */}
+                <div className="text-center mb-8">
+                  <div className="relative inline-block mb-6">
+                    <Avatar className="h-32 w-32 ring-4 ring-primary/50 ring-offset-4 ring-offset-gray-950">
+                      <AvatarImage 
+                        className="w-full h-full object-cover" 
+                        src={user?.profilephotokey 
+                          ? getS3ImageUrl(user?.profilephotokey)
+                          : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                        } 
+                        alt="User" 
+                      />
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-red-700 text-white font-bold text-2xl">
+                        {user?.name?.charAt(0) || 'U'}
+                      </AvatarFallback>
                     </Avatar>
+                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-gray-950 flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
                   </div>
-                  <CardTitle className="text-2xl">{user?.name || "User"}</CardTitle>
-                  <div className="text-gray-400">{user?.userEmail}</div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between text-center">
-                    <div>
-                      <div className="text-2xl text-white font-bold">{cars.length}</div>
-                      <div className="text-xs text-gray-400">Cars</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl text-white font-bold">{cars.reduce((total, car) => total + car.upvotes, 0)}</div>
-                      <div className="text-xs text-gray-400">Votes</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl text-white font-bold">-</div>
-                      <div className="text-xs text-gray-400">Trophies</div>
-                    </div>
+                  
+                  <h2 className="text-3xl font-bold text-white mb-2">{user?.name || "User"}</h2>
+                  <p className="text-gray-400 text-lg">{user?.userEmail}</p>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-4 mb-8">
+                  <div className="text-center p-4 bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl">
+                    <div className="text-3xl font-black text-primary mb-1">{validCars.length}</div>
+                    <div className="text-xs text-gray-400 font-semibold">Cars</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl">
+                    <div className="text-3xl font-black text-white mb-1">{validCars.reduce((total, car) => total + car.upvotes, 0)}</div>
+                    <div className="text-xs text-gray-400 font-semibold">Votes</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl">
+                    <div className="text-3xl font-black text-yellow-500 mb-1">-</div>
+                    <div className="text-xs text-gray-400 font-semibold">Trophies</div>
+                  </div>
+                </div>
+
+                {/* Profile Info */}
+                <div className="space-y-6 mb-8">
+                  <div className="bg-gray-900/30 rounded-xl p-4">
+                    <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      Region
+                    </h3>
+                    <p className="text-gray-300">{user?.region || "Unknown"}</p>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-800">
-                    <h3 className="font-medium mb-2 text-white">Region</h3>
-                    <p className="text-sm text-gray-400">
-                      {user?.region || "Unknown"}
-                    </p>
-                  </div>
-
-                  <div className="pt-4 border-t text-white">
-                    <h3 className="font-medium mb-2">Joined</h3>
-                    <p className="text-sm text-gray-400">
+                  <div className="bg-gray-900/30 rounded-xl p-4">
+                    <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                      <Award className="h-4 w-4 text-green-400" />
+                      Member Since
+                    </h3>
+                    <p className="text-gray-300">
                       {user?.accountCreated ? new Date(user.accountCreated).toLocaleDateString() : "Unknown"}
                     </p>
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full gap-2" onClick={() => setIsEditProfileModal(true)}>
-                    <Settings className="h-4 w-4" />
-                    Edit Profile
-                  </Button>
-                </CardFooter>
-              </Card>
+                </div>
+
+                {/* Edit Profile Button */}
+                <Button 
+                  className="w-full bg-primary hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all duration-300 hover:scale-105"
+                  onClick={() => setIsEditProfileModal(true)}
+                >
+                  <Settings className="h-5 w-5 mr-2" />
+                  Edit Profile
+                </Button>
+              </div>
             </div>
 
-            <div className="w-full md:w-2/3">
-              <Tabs defaultValue="my-cars">
-                <TabsList className="grid grid-cols-2 mb-8 bg-gray-900 text-white">
-                  <TabsTrigger value="my-cars">My Cars</TabsTrigger>
-                
-                  <TabsTrigger value="stats">My Stats</TabsTrigger>
+            {/* Main Content */}
+            <div className="xl:col-span-3">
+              <Tabs defaultValue="my-cars" className="space-y-8">
+                <TabsList className="grid grid-cols-2 bg-black/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-2 h-16">
+                  <TabsTrigger 
+                    value="my-cars" 
+                    className="data-[state=active]:bg-primary data-[state=active]:text-white text-gray-400 rounded-xl font-bold text-lg h-12 transition-all duration-300"
+                  >
+                    <Car className="h-5 w-5 mr-2" />
+                    My Cars
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="stats" 
+                    className="data-[state=active]:bg-primary data-[state=active]:text-white text-gray-400 rounded-xl font-bold text-lg h-12 transition-all duration-300"
+                  >
+                    <BarChart3 className="h-5 w-5 mr-2" />
+                    My Stats
+                  </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="my-cars" className="space-y-6">
+                <TabsContent value="my-cars" className="space-y-8">
+                  {/* Header with Add Button */}
                   <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">My Cars</h2>
-                    <Button size="sm" className="gap-2" onClick={() => setIsAddCarModalOpen(true)}>
-                      <Plus className="h-4 w-4" />
+                    <h2 className="text-4xl font-bold text-white">Collection</h2>
+                    <Button 
+                      size="lg" 
+                      className="bg-primary hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+                      onClick={() => setIsAddCarModalOpen(true)}
+                    >
+                      <Plus className="h-5 w-5 mr-2" />
                       Add New Car
                     </Button>
                   </div>
 
-                  {isLoading ? (
-                    <div className="flex justify-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-                    </div>
-                  ) : error ? (
-                    <div className="bg-red-900 text-red-100 border border-red-800 p-4 rounded mb-6">
+                  {error && (
+                    <div className="bg-red-900/50 backdrop-blur-xl border border-red-500/30 text-red-100 p-6 rounded-2xl">
                       {error}
                     </div>
-                  ) : cars.length === 0 ? (
-                    <Card className="bg-gray-900 border-gray-800 text-center p-12">
-                      <div className="flex flex-col items-center gap-4">
-                        <CarIcon className="h-16 w-16 text-gray-600" />
-                        <h2 className="text-2xl font-bold text-white">Your garage is empty</h2>
-                        <p className="text-gray-400 max-w-md mx-auto">
-                          You haven't added any cars to your garage yet. Click the "Add Car" button to get started.
+                  )}
+
+                  {validCars.length === 0 ? (
+                    <div className="bg-black/40 backdrop-blur-xl border border-gray-800 rounded-3xl p-16 text-center">
+                      <div className="flex flex-col items-center gap-6">
+                        <div className="relative">
+                          <Car className="h-32 w-32 text-gray-600" />
+                          <div className="absolute -top-2 -right-2 w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                            <Plus className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                        <h3 className="text-4xl font-bold text-white">Your garage awaits</h3>
+                        <p className="text-gray-400 text-xl max-w-md">
+                          Ready to showcase your automotive passion? Add your first build and start your journey.
                         </p>
-                        <Button onClick={() => setIsAddCarModalOpen(true)} className="mt-4">
+                        <Button 
+                          size="lg"
+                          className="bg-primary hover:bg-red-700 text-white font-bold px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105"
+                          onClick={() => setIsAddCarModalOpen(true)}
+                        >
+                          <Zap className="h-5 w-5 mr-2" />
                           Add Your First Car
                         </Button>
                       </div>
-                    </Card>
+                    </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {cars.map((car) => (
-                        <Card key={car.entryID} className="bg-gray-900 border-gray-800">
-                          <div className="relative h-48">
-                          <img
-                            src={car.mainPhotoKey 
-                            ? getS3ImageUrl(car.mainPhotoKey) 
-                            : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(car.carName)}`
-                            }
-                            alt={car.carName}
-                            className="absolute inset-0 w-full h-full object-cover"
-                        />
-                            <div className="absolute top-2 right-2">
-                              <Badge className="bg-primary">{car.category}</Badge>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {validCars.map((car) => (
+                        <div key={car.entryID} className="group relative bg-black/40 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-300">
+                          {/* Car Image */}
+                          <div className="relative h-64 overflow-hidden">
+                            <img
+                              src={car.mainPhotoKey 
+                                ? getS3ImageUrl(car.mainPhotoKey) 
+                                : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(car.carName)}`
+                              }
+                              alt={car.carName}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                            
+                            {/* Category Badge */}
+                            <div className="absolute top-4 right-4">
+                              <Badge className="bg-primary text-white px-4 py-2 font-bold">
+                                {car.category}
+                              </Badge>
+                            </div>
+
+                            {/* Likes */}
+                            <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-gray-700 rounded-full px-3 py-2">
+                              <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
+                              <span className="text-white font-bold text-sm">{car.upvotes}</span>
                             </div>
                           </div>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start">
+
+                          {/* Car Info */}
+                          <div className="p-6">
+                            <div className="flex justify-between items-start mb-4">
                               <div>
-                                <h3 className="font-bold text-white">{car.carName}</h3>
-                                <p className="text-sm text-gray-400">
-                                  {car.carMake} {car.carColor && `· ${car.carColor}`}
+                                <h3 className="text-2xl font-bold text-white mb-2">{car.carName}</h3>
+                                <p className="text-gray-400 text-lg">
+                                  {car.carMake} {car.carModel}
+                                  {car.carColor && <span className="text-primary"> • {car.carColor}</span>}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Heart className="h-4 w-4 text-primary text-white" fill="currentColor" />
-                                <span className="text-sm text-white">{car.upvotes}</span>
+                            </div>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                              <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                                <div className="text-lg font-bold text-green-400">${car.totalCost?.toLocaleString() || '0'}</div>
+                                <div className="text-xs text-gray-400">Investment</div>
+                              </div>
+                              <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                                <div className="text-lg font-bold text-primary">{car.totalMods || 0}</div>
+                                <div className="text-xs text-gray-400">Modifications</div>
                               </div>
                             </div>
-                          </CardContent>
-                          <CardFooter className="flex gap-2 p-4 pt-0">
-                            <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 gap-2"
-                            onClick={() => handleEditCar(car)} // Pass the entire car object
-                            >
-                            <Edit className="h-4 w-4" />
-                            Edit
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1 gap-2 text-red-500" 
-                              onClick={() => handleDeleteCar(car.entryID)}
-                            >
-                              <Trash className="h-4 w-4" />
-                              Delete
-                            </Button>
-                          </CardFooter>
-                        </Card>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                              <Button 
+                                className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-all duration-300"
+                                onClick={() => handleEditCar(car)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-500 font-bold py-3 rounded-xl transition-all duration-300"
+                                onClick={() => handleDeleteCar(car.entryID)}
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
                 </TabsContent>
 
-                <TabsContent value="stats" className="space-y-6">
-                  <h2 className="text-xl font-bold">My Stats</h2>
+                <TabsContent value="stats" className="space-y-8">
+                  <h2 className="text-4xl font-bold text-white">Analytics</h2>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <Card className="bg-gray-900 border-gray-800">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-lg">Total Votes</CardTitle>
-                        <BarChart3 className="h-4 w-4 text-gray-400" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold text-white">{cars.reduce((total, car) => total + car.upvotes, 0)}</div>
-                        <p className="text-sm text-gray-400">Across all your cars</p>
-                      </CardContent>
-                    </Card>
+                  {/* Main Stats Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-700 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold text-white">Total Votes</h3>
+                        <TrendingUp className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="text-4xl font-black text-primary mb-2">
+                        {validCars.reduce((total, car) => total + (car?.upvotes || 0), 0)}
+                      </div>
+                      <p className="text-gray-400">Across all builds</p>
+                    </div>
 
-                    <Card className="bg-gray-900 border-gray-800">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-lg">Total Cars</CardTitle>
-                        <LineChart className="h-4 w-4 text-gray-400" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold text-white">{cars.length}</div>
-                        <p className="text-sm text-gray-400">In your garage</p>
-                      </CardContent>
-                    </Card>
+                    <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-700 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold text-white">Total Cars</h3>
+                        <Car className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="text-4xl font-black text-white mb-2">{validCars.length}</div>
+                      <p className="text-gray-400">In your collection</p>
+                    </div>
 
-                    <Card className="bg-gray-900 border-gray-800">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-lg">Total Mods</CardTitle>
-                        <Trophy className="h-4 w-4 text-gray-400" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold text-white">{cars.reduce((total, car) => total + car.totalMods, 0)}</div>
-                        <p className="text-sm text-gray-400">Across all your cars</p>
-                      </CardContent>
-                    </Card>
+                    <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-700 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold text-white">Total Mods</h3>
+                        <Settings className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="text-4xl font-black text-white mb-2">
+                        {validCars.reduce((total, car) => total + (car?.totalMods || 0), 0)}
+                      </div>
+                      <p className="text-gray-400">Modifications</p>
+                    </div>
                   </div>
 
-                  <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader>
-                      <CardTitle>Performance Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                        <Card className="bg-gray-800 border-gray-700">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Total Cost</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-bold text-white">${cars.reduce((total, car) => total + Number(car.totalCost), 0).toLocaleString()}</div>
-                            <p className="text-xs text-gray-400">Total investment</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-gray-800 border-gray-700">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Average Cost</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-bold text-white">
-                              ${cars.length > 0 
-                                ? Math.round(cars.reduce((total, car) => total + Number(car.totalCost), 0) / cars.length).toLocaleString()
-                                : 0
-                              }
-                            </div>
-                            <p className="text-xs text-gray-400">Per car</p>
-                          </CardContent>
-                        </Card>
-                        <Card className="bg-gray-800 border-gray-700">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Most Popular Car</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-lg font-bold truncate text-white">
-                              {cars.length > 0 
-                                ? cars.reduce((prev, current) => (prev.upvotes > current.upvotes) ? prev : current).carName
-                                : 'None'}
-                            </div>
-                            <p className="text-xs text-gray-400">Based on upvotes</p>
-                          </CardContent>
-                        </Card>
+                  {/* Detailed Performance Card */}
+                  <div className="bg-black/40 backdrop-blur-xl">
+                    <h3 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
+                      <DollarSign className="h-8 w-8 text-green-400" />
+                      Financial Overview
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+                        <h4 className="text-lg font-bold text-white mb-2">Total Investment</h4>
+                        <div className="text-3xl font-black text-green-400 mb-2">
+                          ${validCars.reduce((total, car) => total + Number(car?.totalCost || 0), 0).toLocaleString()}
+                        </div>
+                        <p className="text-green-400 text-sm">All builds combined</p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      
+                      <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+                        <h4 className="text-lg font-bold text-white mb-2">Average Cost</h4>
+                        <div className="text-3xl font-black text-primary mb-2">
+                          ${validCars.length > 0 
+                            ? Math.round(validCars.reduce((total, car) => total + Number(car?.totalCost || 0), 0) / validCars.length).toLocaleString()
+                            : 0
+                          }
+                        </div>
+                        <p className="text-primary text-sm">Per build</p>
+                      </div>
+                      
+                      <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+                        <h4 className="text-lg font-bold text-white mb-2">Most Popular</h4>
+                        <div className="text-lg font-bold text-white mb-2 truncate">
+                          {validCars.length > 0 
+                            ? validCars.filter(car => car).reduce((prev, current) => (prev?.upvotes > current?.upvotes) ? prev : current)?.carName || 'None'
+                            : 'None'}
+                        </div>
+                        <p className="text-gray-400 text-sm">Most upvoted</p>
+                      </div>
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
           </div>
         </div>
       </main>
-        <EditProfileModal open={isEditProfileModalOpen} onOpenChange={setIsEditProfileModal} />
-        <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
-        {selectedCar && (
+
+      {/* Modals */}
+      <EditProfileModal open={isEditProfileModalOpen} onOpenChange={setIsEditProfileModal} />
+      <AddCarModal open={isAddCarModalOpen} onOpenChange={setIsAddCarModalOpen} />
+      {selectedCar && (
         <EditCarModal 
-            open={isEditModalOpen} 
-            onOpenChange={setIsEditModalOpen} 
-            car={selectedCar} 
+          open={isEditModalOpen} 
+          onOpenChange={setIsEditModalOpen} 
+          car={selectedCar} 
         />
-        )}
+      )}
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.7; }
+          50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+        }
+        
+        .animate-float {
+          animation: float linear infinite;
+        }
+      `}</style>
     </div>
-  )
-}
+  );}

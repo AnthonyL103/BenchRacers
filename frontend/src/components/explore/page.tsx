@@ -234,11 +234,13 @@ const handleLike = async (carId: string) => {
           type: CarActionTypes.UPVOTE_CAR,
           payload: carId
         });
+        setLikedCars(prev => [...prev, carId])
       } else {
         dispatch({
           type: CarActionTypes.UNUPVOTE_CAR,
           payload: carId
         });
+        setLikedCars(prev => prev.filter(id => id !== carId))
       }
       console.log("data"    , data)
       console.log("just liked/unliked", cars)
