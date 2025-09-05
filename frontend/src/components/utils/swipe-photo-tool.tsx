@@ -4,6 +4,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface SwipeablePhotoGalleryProps {
   photos: string[];
   carName: string;
+  userPhoto?: string;
+  username?: string;
+  region?: string;
   getS3ImageUrl: (key: string) => string;
   className?: string;
   hideControls?: boolean;

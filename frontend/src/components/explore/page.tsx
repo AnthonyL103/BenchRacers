@@ -401,71 +401,74 @@ const fetchCars = async () => {
             <SwipeablePhotoGallery
               photos={currentCar.allPhotoKeys}
               carName={currentCar.carName || "Car"}
+              userPhoto={currentCar.profilephotokey}
+              username={currentCar.userName}
+              region={currentCar.region}
               getS3ImageUrl={getS3ImageUrl}
               hideControls={false}
               className="w-full h-full"
             />
           </div>
           
-          {/* User info overlay - top left */}
-          <div className="absolute top-4 left-4 flex flex-col gap-3 z-20">
-            <div className="flex items-center gap-3 bg-black/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg hover:bg-black/70 transition-all duration-200">
-              <div className="relative group">
-                <Avatar className="h-12 w-12 ring-2 ring-white/20 ring-offset-2 ring-offset-transparent transition-all duration-200 group-hover:ring-white/40 group-hover:scale-105">
-                  <AvatarImage 
-                    className="w-full h-full object-cover object-center" 
-                    src={currentCar.profilephotokey 
-                      ? getS3ImageUrl(currentCar.profilephotokey)
-                      : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
-                    } 
-                    alt={`${currentCar.userName}'s profile`}
-                  />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                    {currentCar.userName?.charAt(0)?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              <div className="flex flex-col justify-center min-w-0">
-                <p className="text-white/90 text-sm font-medium leading-tight drop-shadow-sm truncate">
-                  By @{currentCar.userName}
-                </p>
-                <p className="text-white/60 text-xs leading-tight">
-                  {currentCar.region}
-                </p>
-              </div>
-            </div>
-          </div>
           
-          {/* Likes overlay - top right */}
-          <div className="absolute top-4 right-4 flex flex-col gap-3 z-20">
-            <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 shadow-lg hover:bg-black/70 transition-all duration-200 hover:scale-105">
-              <div className="relative">
-                <Heart 
-                  className="h-5 w-5 text-red-500 drop-shadow-sm transition-transform duration-200 hover:scale-110" 
-                  fill="currentColor" 
-                />
-                <div className="absolute inset-0 h-5 w-5 text-red-500/30 blur-sm">
-                  <Heart className="h-5 w-5" fill="currentColor" />
-                </div>
-              </div>
-              <span className="text-sm font-medium text-white drop-shadow-sm">
-                {currentCar.upvotes.toLocaleString()}
-              </span>
-            </div>
-          </div>
 
           {/* Car title overlay - bottom */}
-          <div className="absolute mt-5 left-1/2 transform -translate-x-1/2 z-20">
-            <div className="text-center bg-black/30 backdrop-blur-sm border border-white/10 rounded-2xl px-6 py-4 shadow-lg">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
+        <div className="absolute mt-5 left-5 z-20">
+        <div className="align-left bg-gradient-to-br from-black/70 via-black/60 to-black/50  border border-white/20 rounded-3xl px-8 py-6 shadow-2xl shadow-black/50 hover:shadow-3xl hover:shadow-purple-500/20 transition-all duration-500 group">
+            
+            {/* Animated gradient border */}
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm"></div>
+            
+            {/* Main content */}
+            <div className="relative z-10">
+            {/* Car name with gradient text */}
+            <h1 className="text-lg sm:text-xl md:text-2xl font-black bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent mb-3 tracking-tight drop-shadow-2xl">
                 {currentCar.carName}
-              </h1>
-              <p className="text-lg text-gray-300">
+            </h1>
+            
+            {/* Car make/model with subtle glow */}
+            <p className="text-lg text-gray-200/90 mb-4 font-medium tracking-wide drop-shadow-lg">
                 {currentCar.carMake} {currentCar.carModel}
-              </p>
+            </p>
+            
+            {/* User info section with enhanced layout */}
+            <div className="flex space-x-4 pt-2">
+                <Avatar className="h-14 w-14 ring-2 ring-gradient-to-r ring-white/30 ring-offset-2 ring-offset-black/20 transition-all duration-300 group-hover:ring-blue-400/60 group-hover:ring-4 group-hover:scale-110 shadow-xl">
+                <AvatarImage 
+                    className="w-full h-full object-cover object-center transition-all duration-300 group-hover:brightness-110" 
+                    src={currentCar.profilephotokey 
+                    ? getS3ImageUrl(currentCar.profilephotokey)
+                    : `/placeholder.svg?height=400&width=600&text=${encodeURIComponent(user?.name || "User")}`
+                    } 
+                    alt={`${currentCar.userName}'s profile`}
+                />
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white font-bold text-lg shadow-inner">
+                    {currentCar.userName?.charAt(0)?.toUpperCase() || 'U'}
+                </AvatarFallback>
+                </Avatar>
+                
+                <div className="flex flex-col justify-center min-w-0">
+                <p className="text-white text-sm font-bold leading-tight drop-shadow-lg truncate bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                    By @{currentCar.userName}
+                </p>
+                <div className="flex items-center space-x-1 mt-1">
+                    <div className="w-1.5 h-1.5 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
+                    <p className="text-white/70 text-xs leading-tight font-medium">
+                    {currentCar.region}
+                    </p>
+                </div>
+                </div>
             </div>
-          </div>
+            </div>
+            
+            {/* Subtle animated particles effect */}
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+            <div className="absolute top-2 left-4 w-1 h-1 bg-white/30 rounded-full animate-ping"></div>
+            <div className="absolute bottom-3 right-6 w-1 h-1 bg-blue-400/40 rounded-full animate-ping" style={{animationDelay: '1s'}}></div>
+            <div className="absolute top-1/2 right-3 w-0.5 h-0.5 bg-purple-400/50 rounded-full animate-ping" style={{animationDelay: '2s'}}></div>
+            </div>
+        </div>
+        </div>
           
           {/* Bottom Action Buttons */}
         <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20">
@@ -599,11 +602,11 @@ const fetchCars = async () => {
             </div>
 
             {/* Modifications Section - Takes remaining space and scrolls */}
-            <div className="bg-gray-900/50 rounded-xl p-6 flex flex-col flex-1 min-h-0">
+            <div className="flex flex-col flex-1 min-h-0">
             {currentCar.mods && currentCar.mods.length > 0 ? (
                 <>
                 <div className="mb-4 flex-shrink-0">
-                    <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h3 className="text-3xl font-bold text-white flex items-center gap-2">
                     <span className="text-orange-400">🔧</span>
                     Modifications ({currentCar.mods.length})
                     </h3>
