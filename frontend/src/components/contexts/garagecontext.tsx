@@ -6,7 +6,7 @@ export interface Mod {
   id?: number;
   modID?: number;
   brand: string;
-  cost: number;
+  cost?: number;
   description: string;
   category: string;
   link: string;
