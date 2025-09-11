@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Navbar } from "../utils/navbar"
 import { Button } from "../ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
@@ -15,6 +14,7 @@ import { useUser } from '../contexts/usercontext'
 import { Car as GarageCar, useGarage } from '../contexts/garagecontext'
 import { useNavigate } from 'react-router-dom'
 import {EditProfileModal} from '../utils/edit-profile-modal'
+import TireLoadingAnimation from "../utils/tire-spinner"
 
 export default function GaragePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -77,20 +77,10 @@ export default function GaragePage() {
   if (!isAuthenticated) {
     return null; 
   }
+  
+  
 
-  if (isLoading && validCars.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="relative">
-          <div className="w-32 h-32 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"></div>
-          <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-t-cyan-400 rounded-full animate-spin animation-delay-150"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-bold text-lg">
-            Loading...
-          </div>
-        </div>
-      </div>
-    )
-  }
+  
 return (
     <div className="min-h-screen bg-gray-950 overflow-x-hidden">
       {/* Animated background */}
@@ -98,7 +88,7 @@ return (
         className="fixed inset-0 opacity-5"
         style={{
           background: `radial-gradient(circle at ${mousePosition.x}% ${mousePosition.y}%, rgba(221, 28, 73, 0.3) 0%, transparent 50%),
-                      radial-gradient(circle at ${100 - mousePosition.x}% ${100 - mousePosition.y}%, rgba(107, 114, 128, 0.2) 0%, transparent 50%)`
+            radial-gradient(circle at ${100 - mousePosition.x}% ${100 - mousePosition.y}%, rgba(107, 114, 128, 0.2) 0%, transparent 50%)`
         }}
       />
       
@@ -120,6 +110,13 @@ return (
 
       <Navbar />
       
+      {isLoading && validCars.length === 0 ? (
+        <div className="flex justify-center items-start">
+            <TireLoadingAnimation />
+        </div>
+        
+      ) : (
+        
       <main className="relative z-10 min-h-screen">
         <div className="w-full mx-auto px-6 py-12">
           {/* Hero Header */}
@@ -131,11 +128,13 @@ return (
               Your personal automotive sanctuary. Build, modify, and showcase your dream machines.
             </p>
           </div>
+          
+          
 
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
             {/* Profile Card - Enhanced */}
-            <div className="xl:col-span-1">
-              <div className="bg-black/40 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 sticky top-24">
+            <div className="xl:col-span-1 xl:row-start-1">
+              <div className="bg-black/40 backdrop-blur-xl border border-gray-800 rounded-3xl p-8">
                 {/* Profile Header */}
                 <div className="text-center mb-8">
                   <div className="relative inline-block mb-6">
@@ -209,7 +208,7 @@ return (
               </div>
             </div>
 
-            {/* Main Content */}
+           
             <div className="xl:col-span-3">
               <Tabs defaultValue="my-cars" className="space-y-8">
                 <TabsList className="grid grid-cols-2 bg-black/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-2 h-16">
@@ -429,9 +428,13 @@ return (
                 </TabsContent>
               </Tabs>
             </div>
+
+        
           </div>
         </div>
       </main>
+      )}
+      
 
       {/* Modals */}
       <EditProfileModal open={isEditProfileModalOpen} onOpenChange={setIsEditProfileModal} />

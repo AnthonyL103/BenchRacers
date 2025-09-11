@@ -8,6 +8,8 @@ import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { ArrowUp, Heart, Trophy, Loader2, Crown, Medal, Award, TrendingUp, Star } from "lucide-react"
 import { getS3ImageUrl } from "../utils/s3helper"
+import TireLoadingAnimation from "../utils/tire-spinner"
+
 import axios from 'axios';
 
 interface RankingsCar {
@@ -40,7 +42,6 @@ export default function RankingsPage() {
   const [topCars, setTopCars] = useState<RankingsCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     fetchTopCars();
@@ -76,27 +77,12 @@ export default function RankingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950">
-        <Navbar />
-        <div className="border-b border-gray-800 bg-gray-900">
-          <div className="container mx-auto px-4 py-6">
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Trophy className="h-8 w-8 text-yellow-500" />
-              Rankings
-            </h1>
-            <p className="text-gray-400 mt-2">See how car builds stack up against each other</p>
-          </div>
+       <div className="flex flex-col bg-gray-950 min-h-screen">
+              <Navbar />
+              <div className="flex justify-center items-start">
+                  <TireLoadingAnimation />
+              </div>
         </div>
-        <main className="flex-1 py-12">
-          <div className="container mx-auto px-4">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-yellow-500" />
-              <p className="text-gray-400">Loading rankings...</p>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
     );
   }
 

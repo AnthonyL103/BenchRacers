@@ -13,6 +13,8 @@ import { getS3ImageUrl } from "../utils/s3helper"
 import { useUser } from '../contexts/usercontext';
 import SwipeablePhotoGallery from "../utils/swipe-photo-tool"
 import Comments from "../utils/comments"
+import TireLoadingAnimation from "../utils/tire-spinner"
+
 
 const SLIDES = [
   { id: 'photo', name: 'Photos' },
@@ -311,53 +313,48 @@ export default function ExplorePage() {
   
   if (isLoading && cars.length === 0) {
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col bg-gray-950 min-h-screen">
         <Navbar />
-        <main className="flex-1 flex justify-center items-center px-4">
-          <div className="text-center">
-            <div className={`${isMobile ? 'text-base' : 'text-lg md:text-xl'}`}>Loading cars...</div>
-          </div>
-        </main>
-        <Footer />
+        <div className="flex justify-center items-start">
+            <TireLoadingAnimation />
+        </div>
       </div>
     )
   }
   
   if (error && cars.length === 0) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-1 flex justify-center items-center px-4">
-          <div className="text-center">
-            <div className={`mb-4 ${isMobile ? 'text-sm' : 'text-sm md:text-base'}`}>
-              Error loading cars: {error}
-            </div>
-            <Button onClick={fetchCars} className={`${isMobile ? 'text-sm px-4 py-2' : 'text-sm md:text-base px-4 py-2'}`}>
-              Retry
-            </Button>
+  return (
+    <div className="flex flex-col bg-gray-950 min-h-screen">
+      <Navbar />
+      <main className="flex-1 flex justify-center items-center px-4">
+        <div className="text-center">
+          <div className="mb-4 text-white text-lg">
+            Error loading cars: {error}
           </div>
-        </main>
-        <Footer />
-      </div>
-    )
-  }
-  
-  if (cars.length === 0 && !isLoading) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-1 flex justify-center items-center px-4">
-          <div className="text-center">
-            <div className={`mb-4 ${isMobile ? 'text-sm' : 'text-sm md:text-base'}`}>No cars found.</div>
-            <Button onClick={fetchCars} className={`${isMobile ? 'text-sm px-4 py-2' : 'text-sm md:text-base px-4 py-2'}`}>
-              Refresh
-            </Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    )
-  }
+          <Button onClick={fetchCars} className="bg-primary hover:bg-red-700 text-white px-4 py-2">
+            Retry
+          </Button>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+if (cars.length === 0 && !isLoading) {
+  return (
+    <div className="flex flex-col bg-gray-950 min-h-screen">
+      <Navbar />
+      <main className="flex-1 flex justify-center items-center px-4">
+        <div className="text-center">
+          <div className="mb-4 text-white text-lg">No cars found.</div>
+          <Button onClick={fetchCars} className="bg-primary hover:bg-red-700 text-white px-4 py-2">
+            Refresh
+          </Button>
+        </div>
+      </main>
+    </div>
+  )
+}
 
   return (
     <div className="h-screen overflow-hidden relative bg-gray-950">
