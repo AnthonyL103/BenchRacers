@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Badge } from "../ui/badge";
-import { Loader2, Plus, X, Search } from "lucide-react";
+import { Loader2, Plus, X, Search, Check, AlertTriangle, Info } from "lucide-react";
 import { Textarea } from "../ui/textarea";
 import { DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
-import { Mod } from "../contexts/garagecontext"; 
+import { Mod } from "../contexts/garagecontext";
 
 interface CustomMod {
   category: string;
@@ -51,19 +51,38 @@ export function ModsTabContent({
   const [showTypeDropdown, setShowTypeDropdown] = useState<boolean>(false);
   const [showBrandDropdown, setShowBrandDropdown] = useState<boolean>(false);
   
-  // Custom mod state
-  const [showCustomForm, setShowCustomForm] = useState<boolean>(false);
-  const [customMod, setCustomMod] = useState<CustomMod>({
-    category: "",
-    type: "",
-    brand: "",
-    partNumber: "",
-    description: "",
-    cost: ""
-  });
+  // Custom mod states
+  const [customModAdded, setCustomModAdded] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [showError, setShowError] = useState<boolean>(false);
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
 
   const modsCost = selectedMods.reduce((sum, mod) => sum + (mod.cost ?? 0), 0);
   const totalCost = baseCost + modsCost;
+  
+  // Clear success state when user starts new selection
+  useEffect(() => {
+    if (customModAdded && (selectedCategory || selectedType || selectedBrand || typeSearch || brandSearch)) {
+      setCustomModAdded(false);
+      setIsCustomMode(false);
+    }
+  }, [selectedCategory, selectedType, selectedBrand, typeSearch, brandSearch, customModAdded]);
+
+  // Clear error message after 5 seconds
+  useEffect(() => {
+    if (showError) {
+      const timer = setTimeout(() => {
+        setShowError(false);
+        setErrorMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showError]);
+
+  const showErrorMessage = (message: string) => {
+    setErrorMessage(message);
+    setShowError(true);
+  };
   
   const getModIdentifier = (mod: Mod): string => {
     if (mod.id) return `id-${mod.id}`;
@@ -162,30 +181,47 @@ export function ModsTabContent({
     return filtered;
   };
 
+  const validateCustomMod = (): string | null => {
+    if (!selectedCategory) {
+      return "Please select a category first";
+    }
+    if (!typeSearch.trim() && !selectedType) {
+      return "Please enter a custom type (since you're creating something new!)";
+    }
+    if (!brandSearch.trim() && !selectedBrand) {
+      return "Please enter a custom brand name";
+    }
+    if (!descriptionSearch.trim()) {
+      return "Please add a description to help identify this mod";
+    }
+    return null;
+  };
+
   const addCustomMod = (): void => {
-    if (!customMod.brand || !customMod.category || !customMod.cost) return;
+    const validationError = validateCustomMod();
+    if (validationError) {
+      showErrorMessage(validationError);
+      return;
+    }
     
     const newMod: Mod = {
-      brand: customMod.brand,
-      cost: parseFloat(customMod.cost) || 0,
-      description: customMod.description,
-      category: customMod.category,
+      brand: brandSearch.trim(),
+      cost: 0,
+      description: descriptionSearch.trim(),
+      category: selectedCategory,
       link: "",
-      type: customMod.type,
-      partNumber: customMod.partNumber,
+      type: typeSearch.trim(),
+      partNumber: partNumber.trim() || undefined,
       isCustom: true
     };
     
     onAddMod(newMod);
-    setCustomMod({
-      category: "",
-      type: "",
-      brand: "",
-      partNumber: "",
-      description: "",
-      cost: ""
-    });
-    setShowCustomForm(false);
+    setCustomModAdded(true);
+    
+    // Clear form for next entry
+    setTimeout(() => {
+      resetFilters();
+    }, 1500);
   };
 
   const resetFilters = () => {
@@ -200,17 +236,56 @@ export function ModsTabContent({
     setShowBrandDropdown(false);
   };
 
+  const handleAddRegularMod = (mod: Mod) => {
+    // Check if we have partial selections that might confuse the user
+    if (selectedCategory && !selectedType && !selectedBrand && !descriptionSearch) {
+      showErrorMessage("Tip: Select Type and Brand for more specific results, or use the description filter to search within this category.");
+      return;
+    }
+    onAddMod(mod);
+  };
+
+  // Check if user is in custom mod creation mode
+  
+
   const availableCategories = getAvailableCategories();
   const filteredTypes = getFilteredTypes();
   const filteredBrands = getFilteredBrands();
   const filteredMods = getFilteredMods();
+  
+  const isInCustomMode = filteredTypes.length === 0 && typeSearch || filteredBrands.length === 0 && brandSearch || filteredMods.length === 0;
 
   return (
     <div className="space-y-4 py-4">
       <DialogHeader>
         <DialogTitle className="text-xl text-white">Parts / Mods Input</DialogTitle>
-        <DialogDescription>Left-to-right cascading selects: Category → Type → Brand → Part# (optional). Description filter below.</DialogDescription>
+        <DialogDescription>
+          Left-to-right cascading selects: Category → Type → Brand → Part# (optional). Description filter below.
+          {isInCustomMode && (
+            <div className="flex items-center gap-2 mt-2 text-blue-400">
+              <Info className="h-4 w-4" />
+              <span className="text-sm">Custom mod mode: You're creating a new entry!</span>
+            </div>
+          )}
+        </DialogDescription>
       </DialogHeader>
+
+      {/* Error Message */}
+      {showError && (
+        <div className={`bg-red-900/30 border border-red-700 rounded-lg p-3 flex items-start gap-3 transition-all duration-300 ${showError ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+          <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-red-400 text-sm font-medium">Heads up!</p>
+            <p className="text-red-300 text-sm">{errorMessage}</p>
+          </div>
+          <button
+            onClick={() => setShowError(false)}
+            className="text-red-400 hover:text-red-300"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Cascading Filters Form */}
       <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700 space-y-4">
@@ -225,6 +300,7 @@ export function ModsTabContent({
                 setSelectedBrand("");
                 setTypeSearch("");
                 setBrandSearch("");
+                setCustomModAdded(false);
               }}
             >
               <SelectTrigger className="mt-1">
@@ -241,21 +317,27 @@ export function ModsTabContent({
           </div>
 
           <div>
-            <Label className="text-white text-sm">Type</Label>
+            <Label className="text-white text-sm">
+              Type 
+              {isInCustomMode && typeSearch && !selectedType && (
+                <span className="text-blue-400 text-xs ml-1">(Creating new)</span>
+              )}
+            </Label>
             <div className="relative mt-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder={selectedCategory ? "Search types..." : "Select category first"}
+                  placeholder={selectedCategory ? "Search Types" : "Select category first"}
                   value={selectedType || typeSearch}
                   onChange={(e) => {
                     setTypeSearch(e.target.value);
                     setSelectedType("");
                     setShowTypeDropdown(true);
+                    setCustomModAdded(false);
                   }}
                   onFocus={() => setShowTypeDropdown(true)}
                   onBlur={() => setTimeout(() => setShowTypeDropdown(false), 200)}
-                  className="pl-10"
+                  className={`pl-10 ${isInCustomMode && typeSearch && !selectedType ? 'border-blue-500 text-white bg-blue-950/20' : ''}`}
                   disabled={!selectedCategory}
                 />
               </div>
@@ -270,6 +352,7 @@ export function ModsTabContent({
                         setSelectedBrand("");
                         setBrandSearch("");
                         setShowTypeDropdown(false);
+                        setCustomModAdded(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 focus:bg-gray-700 focus:outline-none"
                     >
@@ -282,21 +365,27 @@ export function ModsTabContent({
           </div>
 
           <div>
-            <Label className="text-white text-sm">Brand</Label>
+            <Label className="text-white text-sm">
+              Brand
+              {isInCustomMode && brandSearch && !selectedBrand && (
+                <span className="text-blue-400 text-xs ml-1">(Creating new)</span>
+              )}
+            </Label>
             <div className="relative mt-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder={selectedCategory ? "Search brands..." : "Select category first"}
+                  placeholder={selectedCategory ? "Search brands" : "Select category first"}
                   value={selectedBrand || brandSearch}
                   onChange={(e) => {
                     setBrandSearch(e.target.value);
                     setSelectedBrand("");
                     setShowBrandDropdown(true);
+                    setCustomModAdded(false);
                   }}
                   onFocus={() => setShowBrandDropdown(true)}
                   onBlur={() => setTimeout(() => setShowBrandDropdown(false), 200)}
-                  className="pl-10"
+                  className={`pl-10 ${isInCustomMode && brandSearch && !selectedBrand ? 'border-blue-500 text-white bg-blue-950/20' : ''}`}
                   disabled={!selectedCategory}
                 />
               </div>
@@ -309,6 +398,7 @@ export function ModsTabContent({
                         setSelectedBrand(brand);
                         setBrandSearch("");
                         setShowBrandDropdown(false);
+                        setCustomModAdded(false);
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gray-700 focus:bg-gray-700 focus:outline-none"
                     >
@@ -325,7 +415,10 @@ export function ModsTabContent({
             <Input
               placeholder="e.g., 1K0-615-301AA"
               value={partNumber}
-              onChange={(e) => setPartNumber(e.target.value)}
+              onChange={(e) => {
+                setPartNumber(e.target.value);
+                setCustomModAdded(false);
+              }}
               className="mt-1"
             />
           </div>
@@ -333,14 +426,19 @@ export function ModsTabContent({
 
         {/* Description Search Bar */}
         <div>
-          <Label className="text-white text-sm">Description Filter</Label>
+          <Label className="text-white text-sm">
+            Description {isInCustomMode ? "(Required for custom mod)" : "Filter"}
+          </Label>
           <div className="relative mt-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search descriptions and part numbers..."
+              placeholder={isInCustomMode ? "Describe your custom mod..." : "Search descriptions and part numbers..."}
               value={descriptionSearch}
-              onChange={(e) => setDescriptionSearch(e.target.value)}
-              className="pl-10"
+              onChange={(e) => {
+                setDescriptionSearch(e.target.value);
+                setCustomModAdded(false);
+              }}
+              className={`pl-10 ${isInCustomMode ? 'border-blue-500 bg-blue-950/20 text-white' : ''}`}
             />
           </div>
         </div>
@@ -356,114 +454,34 @@ export function ModsTabContent({
               Clear Filters
             </Button>
           )}
+          
           <Button
-            variant="outline"
+            variant={customModAdded ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowCustomForm(!showCustomForm)}
-            className="ml-auto flex items-center gap-2"
+            onClick={addCustomMod}
+            disabled={customModAdded}
+            className={`ml-auto flex items-center gap-2 transition-all duration-500 ${
+              customModAdded 
+                ? 'bg-green-600 hover:bg-green-700 text-white scale-105' 
+                : isInCustomMode 
+                  ? 'border-blue-500 text-blue-400 hover:text-white hover:bg-blue-950/20' 
+                  : ''
+            }`}
           >
-            <Plus className="h-4 w-4" />
-            {showCustomForm ? 'Cancel Custom' : 'Add Custom Mod'}
+            {customModAdded ? (
+              <>
+                <Check className="h-4 w-4 text-white animate-pulse" />
+                Custom Mod Added!
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Add Custom Mod
+              </>
+            )}
           </Button>
         </div>
       </div>
-
-      {/* Custom Mod Form */}
-      {showCustomForm && (
-        <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 space-y-4">
-          <h3 className="text-white font-medium text-lg">Add Custom Modification</h3>
-          
-          <div className="space-y-3">
-            <div>
-              <Label className="text-white text-sm">Category *</Label>
-              <Select 
-                value={customMod.category} 
-                onValueChange={(value) => setCustomMod({...customMod, category: value})}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCategories.map(cat => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label className="text-white text-sm">Brand *</Label>
-              <Input
-                placeholder="e.g. Pandem, HKS, BC Racing"
-                value={customMod.brand}
-                onChange={(e) => setCustomMod({...customMod, brand: e.target.value})}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label className="text-white text-sm">Type</Label>
-              <Input
-                placeholder="e.g. Widebody Kit, Turbocharger"
-                value={customMod.type}
-                onChange={(e) => setCustomMod({...customMod, type: e.target.value})}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label className="text-white text-sm">Part Number</Label>
-              <Input
-                placeholder="e.g. GTR-001, TK-V1"
-                value={customMod.partNumber}
-                onChange={(e) => setCustomMod({...customMod, partNumber: e.target.value})}
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-white text-sm">Cost *</Label>
-              <Input
-                type="number"
-                placeholder="0"
-                value={customMod.cost}
-                onChange={(e) => setCustomMod({...customMod, cost: e.target.value})}
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label className="text-white text-sm">Description</Label>
-              <Textarea
-                placeholder="Describe the modification and its benefits..."
-                value={customMod.description}
-                onChange={(e) => setCustomMod({...customMod, description: e.target.value})}
-                className="min-h-[80px] mt-1"
-              />
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button 
-              onClick={addCustomMod} 
-              disabled={!customMod.brand || !customMod.category || !customMod.cost}
-              className="flex-1"
-              size="sm"
-            >
-              Add Custom Modification
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowCustomForm(false)}
-              size="sm"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Live Filtered Results */}
       <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700">
@@ -471,12 +489,27 @@ export function ModsTabContent({
           <h3 className="text-white font-medium">
             Found Mods {filteredMods.length > 0 && `(${filteredMods.length})`}
           </h3>
+          {isInCustomMode && (
+            <Badge variant="outline" className="text-blue-400 border-blue-500">
+              Custom Mode Active
+            </Badge>
+          )}
         </div>
         
         {isLoadingMods ? (
           <div className="text-center py-8">
             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
             <p className="text-gray-400 text-sm">Loading modifications...</p>
+          </div>
+        ) : isInCustomMode ? (
+          <div className="text-center py-8">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-4">
+              <Info className="h-6 w-6 text-blue-400 mx-auto mb-2" />
+              <p className="text-blue-400 font-medium text-sm mb-1">Creating Custom Mod</p>
+              <p className="text-blue-300 text-xs">
+                You're creating something new! Fill out all fields above and click "Add Custom Mod"
+              </p>
+            </div>
           </div>
         ) : filteredMods.length === 0 ? (
           <div className="text-center py-8">
@@ -534,7 +567,7 @@ export function ModsTabContent({
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => onAddMod(mod)}
+                          onClick={() => handleAddRegularMod(mod)}
                           className="h-8 w-8 p-0"
                         >
                           <Plus className="h-4 w-4" />
@@ -554,9 +587,6 @@ export function ModsTabContent({
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-medium">Current Entries ({selectedMods.length})</h3>
-            <Button variant="outline" size="sm" className="text-xs">
-              Copy Entries as JSON
-            </Button>
           </div>
         </div>
         
@@ -585,7 +615,16 @@ export function ModsTabContent({
                   const modIdentifier = getModIdentifier(mod);
                   return (
                     <tr key={modIdentifier} className="border-b border-gray-700/50 hover:bg-gray-700/20">
-                      <td className="p-3 text-sm text-gray-300 capitalize">{mod.category}</td>
+                      <td className="p-3 text-sm text-gray-300 capitalize">
+                        <div className="flex items-center gap-2">
+                          {mod.category}
+                          {mod.isCustom && (
+                            <Badge variant="outline" className="text-xs text-blue-400 border-blue-500">
+                              Custom
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-3 text-sm text-gray-300">{mod.type || '-'}</td>
                       <td className="p-3 text-sm text-white font-medium">{mod.brand}</td>
                       <td className="p-3 text-sm text-gray-300">{mod.partNumber || '-'}</td>

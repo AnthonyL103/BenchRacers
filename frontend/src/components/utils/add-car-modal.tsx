@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Textarea } from "../ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Badge } from "../ui/badge"
-import { Camera, Loader2, Plus, Search, X, Upload, ChevronsUpDown, Check } from "lucide-react"
+import { Camera, Loader2, Plus, Search, X, Upload, ChevronsUpDown, Check, AlertTriangle, Info } from "lucide-react"
 import { Alert, AlertDescription } from "../ui/alert"
 import { useGarage } from "../contexts/garagecontext"
 import { useUser } from "../contexts/usercontext"
@@ -59,9 +59,11 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   
+  const [showError, setShowError] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string>("")
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-
 
   const [carDetails, setCarDetails] = useState({
     make: "",
@@ -79,11 +81,26 @@ export function AddCarModal({ open, onOpenChange }: AddCarModalProps) {
   })
 
   useEffect(() => {
+    if (showError) {
+      const timer = setTimeout(() => {
+        setShowError(false);
+        setErrorMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showError]);
+
+  const showErrorMessage = (message: string) => {
+    setErrorMessage(message);
+    setShowError(true);
+  };
+
+  useEffect(() => {
     fetchAvailableMods();
   }, []);
   
   useEffect(() => {
-  const modsCost = Mods.reduce((sum, mod) => sum + mod.cost, 0);
+  const modsCost = Mods.reduce((sum, mod) => sum + (mod.cost || 0), 0);
   const total = parseFloat(carDetails.basecost) + modsCost;
   
   setTotalCost(total);
@@ -191,7 +208,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   const remainingSlots = 6 - photos.length;
   
   if (remainingSlots <= 0) {
-    alert("You can upload a maximum of 6 images");
+    showErrorMessage("You can upload a maximum of 6 images. Remove some photos first to add new ones.");
     return;
   }
 
@@ -236,6 +253,7 @@ const removePhoto = (index: number) => {
     }))
   );
   };
+  
   const uploadToS3 = async (file: File): Promise<string> => {
     try {
       const presignedUrlResponse = await axios.get('https://api.benchracershq.com/api/garage/s3/presigned-url', {
@@ -268,22 +286,77 @@ const removePhoto = (index: number) => {
     }
   };
 
+  // Validation functions
+  const validateBasicInfo = (): string | null => {
+    if (!carDetails.make.trim()) return "Make is required to identify your car";
+    if (!carDetails.model.trim()) return "Model is required to complete basic information";
+    if (!carDetails.category) return "Category helps others find cars like yours - please select one";
+    if (!carDetails.color.trim()) return "Color is required to showcase your car properly";
+    return null;
+  };
+
+  const validatePhotos = (): string | null => {
+    if (photos.length === 0) {
+      return "At least one photo is required to showcase your car";
+    }
+    return null;
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
     if (!carDetails.make) newErrors.make = "Car make is required";
     if (!carDetails.model) newErrors.model = "Car model is required";
     if (!carDetails.category) newErrors.category = "Category is required";
-    if (photos.length === 0) newErrors.photos = "At least one photo is required";
     if (!carDetails.color) newErrors.color = "Color is required";
+    if (photos.length === 0) newErrors.photos = "At least one photo is required";
 
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Tab change handler with validation
+  const handleTabChange = (newTab: string) => {
+    // Validate current tab before allowing navigation
+    if (activeTab === "basic") {
+      const error = validateBasicInfo();
+      if (error) {
+        showErrorMessage(error);
+        return;
+      }
+    } else if (activeTab === "photos") {
+      const error = validatePhotos();
+      if (error && newTab !== "basic") { // Allow going back to basic
+        showErrorMessage(error);
+        return;
+      }
+    }
+    
+    setActiveTab(newTab);
+  };
+
+  const handleNextFromBasic = () => {
+    const error = validateBasicInfo();
+    if (error) {
+      showErrorMessage(error);
+      return;
+    }
+    setActiveTab("photos");
+  };
+
+  const handleNextFromPhotos = () => {
+    const error = validatePhotos();
+    if (error) {
+      showErrorMessage(error);
+      return;
+    }
+    setActiveTab("mods");
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
+      showErrorMessage("Please complete all required fields before submitting");
       return;
     }
 
@@ -335,9 +408,7 @@ const removePhoto = (index: number) => {
       
     } catch (error) {
       console.error("Error submitting car:", error);
-      setErrors({
-        submit: "Failed to submit car. Please try again."
-      });
+      showErrorMessage("Failed to submit car. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -351,6 +422,8 @@ const removePhoto = (index: number) => {
     setMods([]);
     setTotalCost(0);
     setErrors({});
+    setShowError(false);
+    setErrorMessage("");
     setCarDetails({
       make: "",
       model: "",
@@ -370,7 +443,13 @@ const removePhoto = (index: number) => {
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
-      if (!newOpen) resetForm(); 
+      if (!newOpen) {
+        // Reset error states when closing
+        setShowError(false);
+        setErrorMessage("");
+        setErrors({});
+        resetForm();
+      }
       onOpenChange(newOpen);
     }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -378,6 +457,23 @@ const removePhoto = (index: number) => {
           <DialogTitle className="text-2xl text-white">Add New Car</DialogTitle>
           <DialogDescription>Enter your car details and modifications to showcase your build</DialogDescription>
         </DialogHeader>
+
+        {/* Error Message */}
+        {showError && (
+          <div className={`bg-red-900/30 border border-red-700 rounded-lg p-3 flex items-start gap-3 transition-all duration-300 ${showError ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+            <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-red-400 text-sm font-medium">Please complete this step</p>
+              <p className="text-red-300 text-sm">{errorMessage}</p>
+            </div>
+            <button
+              onClick={() => setShowError(false)}
+              className="text-red-400 hover:text-red-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         <input
           type="file"
@@ -388,21 +484,43 @@ const removePhoto = (index: number) => {
           className="hidden"
         />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-4">
           <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="photos">
+            <TabsTrigger value="basic" className="relative">
+              Basic Info
+              {!carDetails.make || !carDetails.model || !carDetails.category || !carDetails.color ? (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></div>
+              ) : (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="relative">
               Photos
+              {photos.length === 0 ? (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></div>
+              ) : (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="mods">
+            <TabsTrigger value="mods" className="relative">
               Modifications
+              <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
             </TabsTrigger>
-            <TabsTrigger value="details">
+            <TabsTrigger value="details" className="relative">
               Details
+              <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="basic" className="space-y-6 py-4">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-3 flex items-start gap-3 mb-4">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-blue-400 text-sm font-medium">Required Information</p>
+                <p className="text-blue-300 text-xs">Make, Model, Category, and Color are required to proceed. Other fields help showcase your car better.</p>
+              </div>
+            </div>
+
             <div className="space-y-4">
                 <VinLookup
                 onDataFound={(vinData) => {
@@ -429,36 +547,45 @@ const removePhoto = (index: number) => {
                 {/* Car Details Form - Fields will be populated by VIN lookup */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="make" className="text-white">Make *</Label>
+                    <Label htmlFor="make" className="text-white flex items-center gap-1">
+                      Make <span className="text-red-400">*</span>
+                    </Label>
                     <Input
                     id="make"
                     placeholder="e.g. Toyota"
                     value={carDetails.make}
                     onChange={(e) => setCarDetails({ ...carDetails, make: e.target.value })}
-                    className={errors.make ? "border-red-500" : ""}
+                    className={!carDetails.make.trim() ? "border-red-500" : "border-green-500"}
                     />
                     {errors.make && <p className="text-xs text-red-500">{errors.make}</p>}
                 </div>
                 
                 <div className="space-y-2">
-                    <Label htmlFor="model" className="text-white">Model *</Label>
+                    <Label htmlFor="model" className="text-white flex items-center gap-1">
+                      Model <span className="text-red-400">*</span>
+                    </Label>
                     <Input
                     id="model"
                     placeholder="e.g. Supra"
                     value={carDetails.model}
                     onChange={(e) => setCarDetails({ ...carDetails, model: e.target.value })}
-                    className={errors.model ? "border-red-500" : ""}
+                    className={!carDetails.model.trim() ? "border-red-500" : "border-green-500"}
                     />
                     {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
                 </div>
                 
                 <div className="space-y-2">
-                    <Label htmlFor="Category" className="text-white">Category *</Label>
+                    <Label htmlFor="Category" className="text-white flex items-center gap-1">
+                      Category <span className="text-red-400">*</span>
+                    </Label>
                     <Select
                     value={carDetails.category}
                     onValueChange={(value) => setCarDetails({ ...carDetails, category: value })}
                     >
-                    <SelectTrigger id="category" className={errors.category ? "border-red-500" : ""}>
+                    <SelectTrigger 
+                      id="category" 
+                      className={!carDetails.category ? "border-red-500" : "border-green-500"}
+                    >
                         <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -503,13 +630,15 @@ const removePhoto = (index: number) => {
                 </div>
                 
                 <div className="space-y-2">
-                    <Label htmlFor="color" className="text-white">Color *</Label>
+                    <Label htmlFor="color" className="text-white flex items-center gap-1">
+                      Color <span className="text-red-400">*</span>
+                    </Label>
                     <Input
                     id="color"
                     placeholder="e.g. Midnight Black"
                     value={carDetails.color}
                     onChange={(e) => setCarDetails({ ...carDetails, color: e.target.value })}
-                    className={errors.color ? "border-red-500" : ""}
+                    className={!carDetails.color.trim() ? "border-red-500" : "border-green-500"}
                     />
                     {errors.color && <p className="text-xs text-red-500">{errors.color}</p>}
                     <p className="text-xs text-gray-500">VIN doesn't contain color - please enter manually</p>
@@ -597,16 +726,29 @@ const removePhoto = (index: number) => {
                         
             </div>
             <DialogFooter>
-             <Button onClick={() => setActiveTab("photos")}>
-               Next: Add Photos
-             </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleNextFromBasic}>
+                Next: Photos
+              </Button>
            </DialogFooter>
             </TabsContent>
 
 
           <TabsContent value="photos" className="space-y-6 py-4">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-3 flex items-start gap-3 mb-4">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-blue-400 text-sm font-medium">Photo Requirements</p>
+                <p className="text-blue-300 text-xs">At least one photo is required. Upload up to 6 high-quality images to showcase your car.</p>
+              </div>
+            </div>
+
             <div>
-              <Label className="block mb-4 text-white">Car Photos</Label>
+              <Label className="block mb-4 text-white flex items-center gap-1">
+                Car Photos <span className="text-red-400">*</span>
+              </Label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 {photos.map((photo, index) => (
                 <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
@@ -619,7 +761,7 @@ const removePhoto = (index: number) => {
                     onClick={() => removePhoto(index)}
                     className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80"
                     >
-                    <X className="h-4 w-4 bg-red-500 hover:bg-red-400" />
+                    <X className="h-4 w-4 text-red-500 hover:text-red-400" />
                     </button>
                     
                     {photo.isMainPhoto && (
@@ -638,7 +780,7 @@ const removePhoto = (index: number) => {
                 </div>
                 ))}
 
-                {photoPreview.length < 6 && (
+                {photos.length < 6 && (
                     <button
                     onClick={triggerFileInput}
                     className={`aspect-square rounded-md border-2 border-dashed ${
@@ -660,8 +802,8 @@ const removePhoto = (index: number) => {
              <Button variant="outline" onClick={() => setActiveTab("basic")}>
                Back
              </Button>
-             <Button onClick={() => setActiveTab("mods")}>
-               Next: Add Modifications
+             <Button onClick={handleNextFromPhotos}>
+               Next: Modifications
              </Button>
            </DialogFooter>
          </TabsContent>
@@ -679,6 +821,14 @@ const removePhoto = (index: number) => {
         </TabsContent>
 
          <TabsContent value="details" className="space-y-6 py-4">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-3 flex items-start gap-3 mb-4">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-blue-400 text-sm font-medium">Final Details</p>
+                <p className="text-blue-300 text-xs">Add tags and a description to help others discover and learn about your build.</p>
+              </div>
+            </div>
+
            <div>
              <Label htmlFor="tags" className="block mb-2 text-white">
                Tags
@@ -712,9 +862,9 @@ const removePhoto = (index: number) => {
                  "NA",
                  "AWD",
                  "RWD",
-               ].map(
-                 (tag) =>
-                   !selectedTags.includes(tag) && (
+               ].map((tag) => {
+                const isSelected = selectedTags.includes(tag);
+                return !isSelected ? (
                      <Button
                        key={tag}
                        variant="outline"
@@ -725,8 +875,8 @@ const removePhoto = (index: number) => {
                        <Plus className="h-3 w-3" />
                        {tag}
                      </Button>
-                   ),
-               )}
+                   ) : null;
+                })}
              </div>
            </div>
 
@@ -766,7 +916,7 @@ const removePhoto = (index: number) => {
                ) : (
                  <>
                    <Upload className="h-4 w-4" />
-                   Submit Build
+                   Add Build
                  </>
                )}
              </Button>

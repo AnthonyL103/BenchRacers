@@ -20,13 +20,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Textarea } from "../ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Badge } from "../ui/badge"
-import { Camera, Loader2, Plus, Search, X, Upload, ChevronsUpDown, Check } from "lucide-react"
+import { Camera, Loader2, Plus, Search, X, Upload, ChevronsUpDown, Check, AlertTriangle, Info } from "lucide-react"
 import { Alert, AlertDescription } from "../ui/alert"
 import { useGarage } from "../contexts/garagecontext"
 import { useUser } from "../contexts/usercontext"
 import axios from "axios"
 import { getS3ImageUrl } from "../utils/s3helper"
-
 
 interface EditCarModalProps {
   open: boolean;
@@ -45,11 +44,8 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   const [photoPreview, setPhotoPreview] = useState<string[]>([])
   const [description, setDescription] = useState("")
   
-  
   const [existingPhotos, setExistingPhotos] = useState<any[]>([])
-  
   const [Mods, setMods] = useState<Mod[]>([])
-  
   const [availableMods, setAvailableMods] = useState<Mod[]>([])
   
   const [isLoadingMods, setIsLoadingMods] = useState(false)
@@ -57,6 +53,8 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   const [uploadProgress, setUploadProgress] = useState(0)
   
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showError, setShowError] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string>("")
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -77,6 +75,22 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   })
   
   const [totalCost, setTotalCost] = useState(0)
+
+  // Clear error message after 5 seconds
+  useEffect(() => {
+    if (showError) {
+      const timer = setTimeout(() => {
+        setShowError(false);
+        setErrorMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showError]);
+
+  const showErrorMessage = (message: string) => {
+    setErrorMessage(message);
+    setShowError(true);
+  };
 
   useEffect(() => {
     if (car && open) {
@@ -128,7 +142,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
         }));
   
         setMods(formattedMods);
-}
+      }
     }
   }, [car, open]);
 
@@ -137,10 +151,10 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
   }, []);
   
   useEffect(() => {
-    const modsCost = Mods.reduce((sum, Mod) => sum + Mod.cost, 0);
+    const modsCost = Mods.reduce((sum, Mod) => sum + (Mod.cost || 0), 0);
     const total = parseFloat(carDetails.basecost) + modsCost;
     setTotalCost(total);
-}, [Mods, carDetails.basecost]);
+  }, [Mods, carDetails.basecost]);
 
   const fetchAvailableMods = async () => {
     try {
@@ -157,7 +171,6 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
       if (Array.isArray(modsResponse.data.mods)) {
         setAvailableMods(modsResponse.data.mods);
       } else {
-        
         const flatMods = Object.entries(modsResponse.data.mods as Record<string, any[]>).flatMap(([category, mods]) => 
           mods.map(mod => ({...mod, category}))
         );
@@ -171,76 +184,66 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
     }
   };
 
- 
+  const addTag = (tag: string) => {
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags([...selectedTags, tag]);
+    } else {
+      console.log(`Tag "${tag}" is already added`);
+    }
+  };
 
-const addTag = (tag: string) => {
-  if (!selectedTags.includes(tag)) {
-    setSelectedTags([...selectedTags, tag]);
-  } else {
-    
-    console.log(`Tag "${tag}" is already added`);
-  }
-};
-
-const removeTag = (tag: string) => {
+  const removeTag = (tag: string) => {
     setSelectedTags(selectedTags.filter((t) => t !== tag));
   };
   
+  const getModIdentifier = (mod: Mod): string => {
+    if (mod.id) {
+      return `id-${mod.id}`;
+    }
+    if (mod.modID) {
+      return `modID-${mod.modID}`;
+    }
+    
+    const brand = mod.brand || 'unknown';
+    const category = mod.category || 'unknown';
+    const cost = mod.cost || 0;
+    const type = mod.type || 'no-type';
+    const partNumber = mod.partNumber || 'no-part';
+    const description = (mod.description || '').substring(0, 20);
+    
+    const identifier = `custom-${brand}-${category}-${type}-${partNumber}-${cost}-${description}`.toLowerCase().replace(/\s+/g, '-');
+    return identifier;
+  };
 
-  
-const getModIdentifier = (mod: Mod): string => {
+  const addMod = (modToAdd: Mod) => {
+    const newModIdentifier = getModIdentifier(modToAdd);
+    const isAlreadySelected = Mods.some(Mod => getModIdentifier(Mod) === newModIdentifier);
+    
+    if (!isAlreadySelected) {
+      setMods(prevMods => [...prevMods, modToAdd]);
+    }
+  };
 
-  if (mod.id) {
-    return `id-${mod.id}`;
-  }
-  if (mod.modID) {
-    return `modID-${mod.modID}`;
-  }
+  const removeMod = (modToRemove: Mod) => {
+    const modToRemoveIdentifier = getModIdentifier(modToRemove);
+    
+    setMods(prevMods => 
+      prevMods.filter(Mod => getModIdentifier(Mod) !== modToRemoveIdentifier)
+    );
+  };
   
-  const brand = mod.brand || 'unknown';
-  const category = mod.category || 'unknown';
-  const cost = mod.cost || 0;
-  const type = mod.type || 'no-type';
-  const partNumber = mod.partNumber || 'no-part';
-  const description = (mod.description || '').substring(0, 20);
-  
-  const identifier = `custom-${brand}-${category}-${type}-${partNumber}-${cost}-${description}`.toLowerCase().replace(/\s+/g, '-');
-  return identifier;
-};
-
-const addMod = (modToAdd: Mod) => {
-  
-  const newModIdentifier = getModIdentifier(modToAdd);
-  const isAlreadySelected = Mods.some(Mod => getModIdentifier(Mod) === newModIdentifier);
-  
-  if (!isAlreadySelected) {
-    setMods(prevMods => [...prevMods, modToAdd]);
-  }
-};
-
-const removeMod = (modToRemove: Mod) => {
-  
-  const modToRemoveIdentifier = getModIdentifier(modToRemove);
-  
-  setMods(prevMods => 
-    prevMods.filter(Mod => getModIdentifier(Mod) !== modToRemoveIdentifier)
-  );
-};
-  
-
-  
-const triggerFileInput = () => {
+  const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
-const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
   
     const remainingSlots = 6 - (photoFiles.length + existingPhotos.length);
     
     if (remainingSlots <= 0) {
-      alert("You can upload a maximum of 6 images");
+      showErrorMessage("You can upload a maximum of 6 images. Remove some photos first to add new ones.");
       return;
     }
   
@@ -285,13 +288,13 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       }));
       setExistingPhotos(newExistingPhotos);
     } else {
-      
-      alert("New photos will be set as main when you save changes.");
+      showErrorMessage("New photos will be set as main when you save changes.");
     }
   };
 
   const uploadToS3 = async (file: File): Promise<string> => {
-    try {      const presignedUrlResponse = await axios.get('https://api.benchracershq.com/api/garage/s3/presigned-url', {
+    try {
+      const presignedUrlResponse = await axios.get('https://api.benchracershq.com/api/garage/s3/presigned-url', {
         params: { 
           fileName: file.name,
           fileType: file.type
@@ -321,6 +324,21 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
+  const validateBasicInfo = (): string | null => {
+    if (!carDetails.make.trim()) return "Make is required to identify your car";
+    if (!carDetails.model.trim()) return "Model is required to complete basic information";
+    if (!carDetails.category) return "Category helps others find cars like yours - please select one";
+    if (!carDetails.color.trim()) return "Color is required to showcase your car properly";
+    return null;
+  };
+
+  const validatePhotos = (): string | null => {
+    if (existingPhotos.length === 0 && photoFiles.length === 0) {
+      return "At least one photo is required to showcase your car";
+    }
+    return null;
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -335,8 +353,46 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleTabChange = (newTab: string) => {
+    // Validate current tab before allowing navigation
+    if (activeTab === "basic") {
+      const error = validateBasicInfo();
+      if (error) {
+        showErrorMessage(error);
+        return;
+      }
+    } else if (activeTab === "photos") {
+      const error = validatePhotos();
+      if (error && newTab !== "basic") { // Allow going back to basic
+        showErrorMessage(error);
+        return;
+      }
+    }
+    
+    setActiveTab(newTab);
+  };
+
+  const handleNextFromBasic = () => {
+    const error = validateBasicInfo();
+    if (error) {
+      showErrorMessage(error);
+      return;
+    }
+    setActiveTab("photos");
+  };
+
+  const handleNextFromPhotos = () => {
+    const error = validatePhotos();
+    if (error) {
+      showErrorMessage(error);
+      return;
+    }
+    setActiveTab("mods");
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
+      showErrorMessage("Please complete all required fields before submitting");
       return;
     }
 
@@ -395,9 +451,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       
     } catch (error) {
       console.error("Error updating car:", error);
-      setErrors({
-        submit: "Failed to update car. Please try again."
-      });
+      showErrorMessage("Failed to update car. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -406,7 +460,10 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
       if (!newOpen) {
-        
+        // Reset error states when closing
+        setShowError(false);
+        setErrorMessage("");
+        setErrors({});
       }
       onOpenChange(newOpen);
     }}>
@@ -415,6 +472,23 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
           <DialogTitle className="text-2xl text-white">Edit Car</DialogTitle>
           <DialogDescription>Update your car details and modifications</DialogDescription>
         </DialogHeader>
+
+        {/* Error Message */}
+        {showError && (
+          <div className={`bg-red-900/30 border border-red-700 rounded-lg p-3 flex items-start gap-3 transition-all duration-300 ${showError ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'}`}>
+            <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-red-400 text-sm font-medium">Please complete this step</p>
+              <p className="text-red-300 text-sm">{errorMessage}</p>
+            </div>
+            <button
+              onClick={() => setShowError(false)}
+              className="text-red-400 hover:text-red-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         <input
           type="file"
@@ -425,52 +499,83 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
           className="hidden"
         />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-4">
           <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="photos">
+            <TabsTrigger value="basic" className="relative">
+              Basic Info
+              {!carDetails.make || !carDetails.model || !carDetails.category ? (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></div>
+              ) : (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="relative">
               Photos
+              {existingPhotos.length === 0 && photoFiles.length === 0 ? (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></div>
+              ) : (
+                <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="mods">
+            <TabsTrigger value="mods" className="relative">
               Modifications
+              <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
             </TabsTrigger>
-            <TabsTrigger value="details">
+            <TabsTrigger value="details" className="relative">
               Details
+              <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full"></div>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-6 py-4">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-3 flex items-start gap-3 mb-4">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-blue-400 text-sm font-medium">Required Information</p>
+                <p className="text-blue-300 text-xs">Make, Model, and Category are required to proceed. Other fields help showcase your car better.</p>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="make" className="text-white">Make</Label>
+                  <Label htmlFor="make" className="text-white flex items-center gap-1">
+                    Make <span className="text-red-400">*</span>
+                  </Label>
                   <Input
                     id="make"
                     placeholder="e.g. Toyota"
                     value={carDetails.make}
                     onChange={(e) => setCarDetails({ ...carDetails, make: e.target.value })}
-                    className={errors.make ? "border-red-500" : ""}
+                    className={!carDetails.make.trim() ? "border-red-500" : "border-green-500"}
                   />
                   {errors.make && <p className="text-xs text-red-500">{errors.make}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-white">Model</Label>
+                  <Label htmlFor="model" className="text-white flex items-center gap-1">
+                    Model <span className="text-red-400">*</span>
+                  </Label>
                   <Input
                     id="model"
                     placeholder="e.g. Supra"
                     value={carDetails.model}
                     onChange={(e) => setCarDetails({ ...carDetails, model: e.target.value })}
-                    className={errors.model ? "border-red-500" : ""}
+                    className={!carDetails.model.trim() ? "border-red-500" : "border-green-500"}
                   />
                   {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="Category" className="text-white">Category</Label>
+                  <Label htmlFor="Category" className="text-white flex items-center gap-1">
+                    Category <span className="text-red-400">*</span>
+                  </Label>
                   <Select
                     value={carDetails.category}
                     onValueChange={(value) => setCarDetails({ ...carDetails, category: value })}
                   >
-                    <SelectTrigger id="category" className={errors.category ? "border-red-500" : ""}>
+                    <SelectTrigger 
+                      id="category" 
+                      className={!carDetails.category ? "border-red-500" : "border-green-500"}
+                    >
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -479,12 +584,10 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                       <SelectItem value="Drift">Drift</SelectItem>
                       <SelectItem value="Street">Street</SelectItem>
                       <SelectItem value="Sleeper">Sleeper</SelectItem>
-                      
                       <SelectItem value="Off-Road">Trail</SelectItem>
                       <SelectItem value="Off-Road">Overland</SelectItem>
                       <SelectItem value="Off-Road">Crawler</SelectItem>
                       <SelectItem value="Off-Road">Desert</SelectItem>
-                      
                       <SelectItem value="Vintage">Vintage</SelectItem>
                       <SelectItem value="Restomod">Restomod</SelectItem>
                       <SelectItem value="Hotrod">Hotrod</SelectItem>
@@ -515,7 +618,9 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="color" className="text-white">Color</Label>
+                    <Label htmlFor="color" className="text-white flex items-center gap-1">
+                        Color <span className="text-red-400">*</span>
+                    </Label>
                   <Input
                     id="color"
                     placeholder="Red"
@@ -608,15 +713,25 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setActiveTab("photos")}>
+              <Button onClick={handleNextFromBasic}>
                 Next: Photos
               </Button>
             </DialogFooter>
           </TabsContent>
 
           <TabsContent value="photos" className="space-y-6 py-4">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-3 flex items-start gap-3 mb-4">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-blue-400 text-sm font-medium">Photo Requirements</p>
+                <p className="text-blue-300 text-xs">At least one photo is required. Upload up to 6 high-quality images to showcase your car.</p>
+              </div>
+            </div>
+
             <div>
-                <Label className="block mb-4 text-white">Car Photos</Label>
+                <Label className="block mb-4 text-white flex items-center gap-1">
+                  Car Photos <span className="text-red-400">*</span>
+                </Label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 {photoPreview.map((photo, index) => (
                     <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-800">
@@ -674,7 +789,7 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <Button variant="outline" onClick={() => setActiveTab("basic")}>
                 Back
                 </Button>
-                <Button onClick={() => setActiveTab("mods")}>
+                <Button onClick={handleNextFromPhotos}>
                 Next: Modifications
                 </Button>
             </DialogFooter>
@@ -694,6 +809,14 @@ const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         
 
           <TabsContent value="details" className="space-y-6 py-4">
+            <div className="bg-blue-950/30 border border-blue-700 rounded-lg p-3 flex items-start gap-3 mb-4">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-blue-400 text-sm font-medium">Final Details</p>
+                <p className="text-blue-300 text-xs">Add tags and a description to help others discover and learn about your build.</p>
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="tags" className="block mb-2 text-white">
                 Tags
