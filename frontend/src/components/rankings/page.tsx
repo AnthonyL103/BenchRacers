@@ -12,23 +12,52 @@ import TireLoadingAnimation from "../utils/tire-spinner"
 
 import axios from 'axios';
 
+export interface Mod {
+  id?: number;
+  modID?: number;
+  brand: string;
+  cost?: number;
+  description: string;
+  category: string;
+  link: string;
+  type?: string;
+  partNumber?: string;
+  isCustom: boolean;
+}
 interface RankingsCar {
   entryID: number;
-  carName: string;
-  carMake: string;
-  carModel: string;
-  upvotes: number;
-  allPhotoKeys: string[];
-  mainPhotoKey?: string;
-  userName: string;
-  profilephotokey?: string;
-  userID: string;
-  totalMods?: number;
-  totalCost?: number;
-  region?: string;
-  category?: string;
-  horsepower?: number;
-  torque?: number;
+      userEmail: string;
+      carName: string;
+      carMake: string;
+      carModel: string;
+      carYear?: string;
+      carColor?: string;
+      basecost?: string; 
+      carTrim?: string; 
+      description?: string;
+      totalMods: number;
+      totalCost: number;
+      category: string;
+      region: string;
+      upvotes: number;
+      engine?: string;
+      transmission?: string;
+      drivetrain?: string;
+      horsepower?: number;
+      torque?: number;
+      viewCount: number;
+      createdAt: string;
+      updatedAt: string;
+      profilePhotokey?: string;
+      userName?: string;
+      
+  
+      tags: string[];              
+      mods: Mod[];                 
+      
+      mainPhotoKey?: string;       
+      allPhotoKeys: string[];     
+      photos?: { s3Key: string; isMainPhoto: boolean }[];
 }
 
 interface ApiResponse {
@@ -61,6 +90,8 @@ export default function RankingsPage() {
         });
 
         const { success, data, message } = response.data;
+        
+        console.log('Rankings API response:', response.data);
 
         if (!success) {
         throw new Error(message || 'Failed to fetch rankings');
@@ -216,7 +247,7 @@ export default function RankingsPage() {
                         <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-white/20 rounded-full px-3 py-2">
                           <Avatar className="h-8 w-8 ring-2 ring-white/30">
                             <AvatarImage 
-                              src={top3[1]?.profilephotokey ? getS3ImageUrl(top3[1]?.profilephotokey) : undefined}
+                              src={top3[1]?.profilePhotokey ? getS3ImageUrl(top3[1]?.profilePhotokey) : undefined}
                               alt={`${top3[1]?.userName}'s profile`}
                             />
                             <AvatarFallback className="bg-gray-600 text-white text-sm">
@@ -277,7 +308,7 @@ export default function RankingsPage() {
                           <div className="flex items-center gap-3 bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-full px-4 py-3">
                             <Avatar className="h-10 w-10 ring-2 ring-yellow-500/50">
                               <AvatarImage 
-                                src={top3[0]?.profilephotokey ? getS3ImageUrl(top3[0]?.profilephotokey) : undefined}
+                                src={top3[0]?.profilePhotokey ? getS3ImageUrl(top3[0]?.profilePhotokey) : undefined}
                                 alt={`${top3[0]?.userName}'s profile`}
                               />
                               <AvatarFallback className="bg-yellow-600 text-black font-bold">
@@ -337,7 +368,7 @@ export default function RankingsPage() {
                         <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm border border-white/20 rounded-full px-3 py-2">
                           <Avatar className="h-8 w-8 ring-2 ring-white/30">
                             <AvatarImage 
-                              src={top3[2]?.profilephotokey ? getS3ImageUrl(top3[2]?.profilephotokey) : undefined}
+                              src={top3[2]?.profilePhotokey ? getS3ImageUrl(top3[2]?.profilePhotokey) : undefined}
                               alt={`${top3[2]?.userName}'s profile`}
                             />
                             <AvatarFallback className="bg-gray-600 text-white text-sm">
@@ -412,7 +443,7 @@ export default function RankingsPage() {
                             <div className="flex items-center gap-2 mt-1">
                               <Avatar className="h-6 w-6 ring-1 ring-gray-600">
                                 <AvatarImage 
-                                  src={car?.profilephotokey ? getS3ImageUrl(car?.profilephotokey) : undefined}
+                                  src={car?.profilePhotokey ? getS3ImageUrl(car?.profilePhotokey) : undefined}
                                   alt={`${car?.userName}'s profile`}
                                 />
                                 <AvatarFallback className="bg-gray-600 text-white text-xs">
