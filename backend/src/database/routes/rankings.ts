@@ -48,7 +48,7 @@ router.get('/top10', authenticateUser, async (req: AuthenticatedRequest, res: Re
               GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
               GROUP_CONCAT(DISTINCT t.tagName) as tagNames
             FROM Entries e
-            JOIN Users u ON e.userEmail = u.email
+            JOIN Users u ON e.userEmail = u.userEmail
             LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
             LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
             LEFT JOIN EntryTags et ON e.entryID = et.entryID
