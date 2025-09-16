@@ -32,58 +32,88 @@ const authenticateUser = (req: AuthenticatedRequest, res: Response, next: NextFu
 
 
 router.get('/top10', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
-    
+    const connection = await pool.getConnection();
     try {
-        
-        
         //use pool for only single queries, as it is more efficient
         //for multiple queries establish connection so you are performing all without 
         //closing connections in between
         
-        const [top10result]: any = await pool.query(
-            `SELECT e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.upvotes,
-                u.name as userName, u.profilephotokey,
-                (SELECT GROUP_CONCAT(s3key ORDER BY s3key ASC) 
-                FROM EntryPhotos ep1 WHERE ep1.entryID = e.entryID) as allPhotoKeys,
-                (SELECT s3key FROM EntryPhotos ep2 
-                WHERE ep2.entryID = e.entryID AND ep2.isMainPhoto = TRUE LIMIT 1) as mainPhotoKey
+        const [top10result]: any = await connection.query(
+            `SELECT 
+              e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
+              e.carColor, e.basecost, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
+              e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
+              e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+              p.s3Key as mainPhotoKey,
+              GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
+              GROUP_CONCAT(DISTINCT t.tagName) as tagNames
             FROM Entries e
-            INNER JOIN Users u ON e.userEmail = u.userEmail
+            LEFT JOIN EntryPhotos p ON e.entryID = p.entryID AND p.isMainPhoto = TRUE
+            LEFT JOIN EntryPhotos ap ON e.entryID = ap.entryID
+            LEFT JOIN EntryTags et ON e.entryID = et.entryID
+            LEFT JOIN Tags t ON et.tagID = t.tagID
             WHERE u.isVerified = TRUE 
+            GROUP BY e.entryID
             ORDER BY e.upvotes DESC
             LIMIT 10
             `);
+        
+        const carIds = top10result.map((car: any) => car.entryID);
+        
+        let modsMap = new Map();
+        
+        if (carIds.length > 0) {
+        const [modsResults]: any = await connection.query(`
+            SELECT 
+            em.entryID, 
+            m.modID, m.brand, m.category, m.cost, m.description, m.link
+            FROM EntryMods em
+            JOIN Mods m ON em.modID = m.modID
+            WHERE em.entryID IN (?)
+        `, [carIds]);
             
-        const processedtop10 = top10result.map((car: any ) => ({
-            carName: car.carName,
-            carMake: car.carMake,
-            carModel: car.Model,
-            upvotes: car.upvotes,
-            allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
-            mainPhotoKey: car.mainPhotoKey,
-            profilephotokey: car.profilephotokey,
-        }))
+        modsResults.forEach((mod: any) => {
+        if (!modsMap.has(mod.entryID)) {
+          modsMap.set(mod.entryID, []);
+        }
+        modsMap.get(mod.entryID).push({
+          modID: mod.modID,
+          brand: mod.brand,
+          category: mod.category,
+          cost: mod.cost,
+          description: mod.description,
+          link: mod.link
+        });
+      });
+    }
+        const cars = top10result.map((car: any) => ({
+        ...car,
+        allPhotoKeys: car.allPhotoKeys ? car.allPhotoKeys.split(',') : [],
+        tags: car.tagNames ? car.tagNames.split(',') : [],
+        mods: modsMap.get(car.entryID) || []
+        }));
         
         console.log('SUCCESSFULLY QUERIES TOP 10 Entries');
         
         res.status(200).json({
             success: true,
             message: 'Top 10 Cars fetched successfully',
-            data: processedtop10,
-            count: processedtop10.length
+            data: cars,
+            count: cars.length
         });
         
         
     } catch (error) {
-    console.error('rankings server error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during car rankings fetch',
-      errorCode: 'SERVER_ERROR'
-    });
+        console.error('rankings server error:', error);
+        res.status(500).json({
+        success: false,
+        message: 'Server error during car rankings fetch',
+        errorCode: 'SERVER_ERROR'
+        });
+    } finally {
+        connection?.release();
     }
-    
-})
+});
 
 
 export default router;
