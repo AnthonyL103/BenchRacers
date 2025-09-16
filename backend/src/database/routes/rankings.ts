@@ -43,7 +43,7 @@ router.get('/top10', authenticateUser, async (req: AuthenticatedRequest, res: Re
               e.entryID, e.userEmail, e.carName, e.carMake, e.carModel, e.carYear, 
               e.carColor, e.basecost, e.carTrim, e.description, e.totalMods, e.totalCost, e.category,
               e.region, e.upvotes, e.engine, e.transmission, e.drivetrain,
-              e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt,
+              e.horsepower, e.torque, e.viewCount, e.createdAt, e.updatedAt, u.profilePhotoKey,
               p.s3Key as mainPhotoKey,
               GROUP_CONCAT(DISTINCT ap.s3Key) as allPhotoKeys,
               GROUP_CONCAT(DISTINCT t.tagName) as tagNames
