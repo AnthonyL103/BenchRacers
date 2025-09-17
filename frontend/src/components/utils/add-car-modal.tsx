@@ -645,7 +645,7 @@ const removePhoto = (index: number) => {
                 </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                     <Label htmlFor="engine" className="text-white">Engine</Label>
                         <Input
@@ -655,7 +655,8 @@ const removePhoto = (index: number) => {
                             onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
                         />
                     </div>
-                    <div className="space-y-2">
+                    
+                    {/*<div className="space-y-2">
                     <Label htmlFor="basecost" className="text-white">Base Cost</Label>
                         <Input
                             id="basecost"
@@ -684,11 +685,11 @@ const removePhoto = (index: number) => {
                             value={carDetails.torque}
                             onChange={(e) => setCarDetails({ ...carDetails, torque: e.target.value })}
                         />
-                     </div>
-                </div>
+                     </div>*/}
+                    
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                
+                <div className="space-y-2">
                             <Label htmlFor="transmission" className="text-white">Transmission</Label>
                             <Select
                                 value={carDetails.transmission}
@@ -723,8 +724,7 @@ const removePhoto = (index: number) => {
                             </Select>
                             </div>
                         </div>
-                        
-            </div>
+                    </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel

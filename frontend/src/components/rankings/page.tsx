@@ -375,19 +375,7 @@ export default function RankingsPage() {
               Discover the most loved car builds in the community
             </p>
             
-            {/* Stats Bar */}
-            <div className="flex justify-center gap-6 mt-6">
-              <div className="bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2">
-                <span className="text-yellow-500 font-bold text-lg">{topCars.length}</span>
-                <span className="text-gray-400 text-sm ml-1">Ranked Cars</span>
-              </div>
-              <div className="bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2">
-                <span className="text-red-500 font-bold text-lg">
-                  {topCars.reduce((sum, car) => sum + car.upvotes, 0).toLocaleString()}
-                </span>
-                <span className="text-gray-400 text-sm ml-1">Total Votes</span>
-              </div>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -673,7 +661,7 @@ export default function RankingsPage() {
                           </div>
                           
                           {/* Performance badges */}
-                          <div className="flex gap-1">
+                          {/* <div className="flex gap-1">
                             {car.horsepower && (
                               <Badge variant="outline" className="text-xs px-2 py-0.5 text-orange-300 border-orange-400/30 bg-orange-500/10">
                                 {car.horsepower} HP
@@ -684,7 +672,8 @@ export default function RankingsPage() {
                                 {car.totalMods} mods
                               </Badge>
                             )}
-                          </div>
+                          </div>*/ }
+                          
                         </div>
                         
                         {/* View Button */}
@@ -785,11 +774,11 @@ export default function RankingsPage() {
                 <div className={`bg-gradient-to-br from-black/80 via-black/70 to-black/60 border border-white/20 shadow-2xl shadow-black/50 hover:shadow-3xl hover:shadow-purple-500/20 transition-all duration-500 group ${isMobile ? 'rounded-2xl px-4 py-4' : 'rounded-2xl md:rounded-3xl px-8 py-6'}`}>
                   
                   <div className="relative z-10">
-                    <h1 className={`font-black bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent tracking-tight drop-shadow-2xl ${isMobile ? 'text-lg mb-2' : 'text-xl sm:text-xl md:text-2xl mb-3'}`}>
+                    <h1 className={`font-black bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent tracking-tight drop-shadow-2xl ${isMobile ? 'text-2xl mb-2' : 'text-3xl sm:text-2xl md:text-3xl mb-3'}`}>
                       {selectedCar.carName}
                     </h1>
                     
-                    <p className={`text-gray-200/90 font-medium tracking-wide drop-shadow-lg ${isMobile ? 'text-sm mb-3' : 'text-lg mb-4'}`}>
+                    <p className={`text-gray-200/90 font-medium tracking-wide drop-shadow-lg ${isMobile ? 'text-xl mb-3' : 'text-2xl mb-4'}`}>
                       {selectedCar.carMake} {selectedCar.carModel}
                     </p>
                     
@@ -803,18 +792,18 @@ export default function RankingsPage() {
                           } 
                           alt={`${selectedCar.userName}'s profile`}
                         />
-                        <AvatarFallback className={`bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white font-bold shadow-inner ${isMobile ? 'text-sm' : 'text-lg'}`}>
+                        <AvatarFallback className={`bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white font-bold shadow-inner ${isMobile ? 'text-xl' : 'text-2xl'}`}>
                           {selectedCar.userName?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       
                       <div className="flex flex-col justify-center min-w-0">
-                        <p className={`text-white font-bold leading-tight drop-shadow-lg truncate bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                        <p className={`text-white font-bold leading-tight drop-shadow-lg truncate bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent ${isMobile ? 'text-xl' : 'text-2xl'}`}>
                           By @{selectedCar.userName}
                         </p>
                         <div className="flex items-center space-x-1 mt-1">
                           <div className="w-1.5 h-1.5 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
-                          <p className={`text-white/70 leading-tight font-medium ${isMobile ? 'text-xs' : 'text-xs'}`}>
+                          <p className={`text-white/70 leading-tight font-medium ${isMobile ? 'text-lg' : 'text-lg'}`}>
                             {selectedCar.region}
                           </p>
                         </div>
@@ -934,8 +923,8 @@ export default function RankingsPage() {
 
                   {selectedCar.description && (
                     <div>
-                      <h3 className={`font-semibold text-white mb-3 ${isMobile ? 'text-lg' : 'text-xl'}`}>About This Build</h3>
-                      <p className={`text-gray-300 leading-relaxed ${isMobile ? 'text-sm' : 'text-base'}`}>{selectedCar.description}</p>
+                      <h3 className={`font-semibold text-white mb-3 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>About This Build</h3>
+                      <p className={`text-gray-300 leading-relaxed ${isMobile ? 'text-xl' : 'text-2xl'}`}>{selectedCar.description}</p>
                     </div>
                   )}
                 </div>
@@ -1046,39 +1035,10 @@ export default function RankingsPage() {
                 </div>
                 
                 <div className="flex justify-center flex-shrink-0 pb-4">
-                  <Button 
-                    size={isMobile ? "default" : "lg"}
-                    className={`group relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0 hover:rotate-1 transform-gpu ${isMobile ? 'w-full text-sm px-6 py-3 rounded-xl' : 'w-full max-w-sm text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-xl md:rounded-2xl'}`}
-                    onClick={() => goToSlide(0)}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    
-                    <div className="absolute inset-0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                    
-                    <svg 
-                      className={`transform transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110 ${isMobile ? 'w-4 h-4 mr-2' : 'w-5 h-5 sm:w-6 sm:h-6 mr-2'}`}
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M5 10l7-7m0 0l7 7m-7-7v18" 
-                      />
-                    </svg>
-                    
-                    <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide">
-                      Back to Top
-                    </span>
-                    
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div className="absolute top-2 left-4 w-1 h-1 bg-white/60 rounded-full animate-ping" style={{animationDelay: '0s'}} />
-                      <div className="absolute top-3 right-6 w-1 h-1 bg-white/40 rounded-full animate-ping" style={{animationDelay: '0.5s'}} />
-                      <div className="absolute bottom-3 left-8 w-1 h-1 bg-white/50 rounded-full animate-ping" style={{animationDelay: '1s'}} />
-                    </div>
-                  </Button>
+                  <Button size="lg" variant="outline" onClick={goToSlide.bind(null, 0) }className="w-full text-black sm:w-auto gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 hover:bg-white/80">
+                  Back to Top
+                  <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
+                </Button>
                 </div>
               </div>
             </section>

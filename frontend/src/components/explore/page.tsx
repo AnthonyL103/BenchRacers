@@ -7,7 +7,7 @@ import { Button } from "../ui/button"
 import { Card} from "../ui/card"
 import { Badge } from "../ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
-import { Heart, MessageCircle, X, ExternalLink } from "lucide-react"
+import { Heart, MessageCircle, X, ArrowUp, ExternalLink } from "lucide-react"
 import { useCarState, useCarDispatch, CarActionTypes} from "../contexts/carlistcontext" 
 import { getS3ImageUrl } from "../utils/s3helper"
 import { useUser } from '../contexts/usercontext';
@@ -423,12 +423,12 @@ if (cars.length === 0 && !isLoading) {
               {/* Main content */}
               <div className="relative z-10">
                 {/* Car name with gradient text */}
-                <h1 className={`font-black bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent tracking-tight drop-shadow-2xl ${isMobile ? 'text-lg mb-2' : 'text-xl sm:text-xl md:text-2xl mb-3'}`}>
+                <h1 className={`font-black bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent tracking-tight drop-shadow-2xl ${isMobile ? 'text-2xl mb-2' : 'text-3xl sm:text-2xl md:text-3xl mb-3'}`}>
                   {currentCar.carName}
                 </h1>
                 
                 {/* Car make/model with subtle glow */}
-                <p className={`text-gray-200/90 font-medium tracking-wide drop-shadow-lg ${isMobile ? 'text-sm mb-3' : 'text-lg mb-4'}`}>
+                <p className={`text-gray-200/90 font-medium tracking-wide drop-shadow-lg ${isMobile ? 'text-xl mb-3' : 'text-2xl mb-4'}`}>
                   {currentCar.carMake} {currentCar.carModel}
                 </p>
                 
@@ -443,18 +443,18 @@ if (cars.length === 0 && !isLoading) {
                       } 
                       alt={`${currentCar.userName}'s profile`}
                     />
-                    <AvatarFallback className={`bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white font-bold shadow-inner ${isMobile ? 'text-sm' : 'text-lg'}`}>
+                    <AvatarFallback className={`bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white font-bold shadow-inner ${isMobile ? 'text-xl' : 'text-2xl'}`}>
                       {currentCar.userName?.charAt(0)?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="flex flex-col justify-center min-w-0">
-                    <p className={`text-white font-bold leading-tight drop-shadow-lg truncate bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <p className={`text-white font-bold leading-tight drop-shadow-lg truncate bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent ${isMobile ? 'text-xl' : 'text-2xl'}`}>
                       By @{currentCar.userName}
                     </p>
                     <div className="flex items-center space-x-1 mt-1">
                       <div className="w-1.5 h-1.5 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse"></div>
-                      <p className={`text-white/70 leading-tight font-medium ${isMobile ? 'text-xs' : 'text-xs'}`}>
+                      <p className={`text-white/70 leading-tight font-medium ${isMobile ? 'text-lg' : 'text-lg'}`}>
                         {currentCar.region}
                       </p>
                     </div>
@@ -539,21 +539,24 @@ if (cars.length === 0 && !isLoading) {
                   {currentCar.carMake} {currentCar.carModel}
                 </p>
               </div>
-              <div className={`${isMobile ? 'self-start' : 'text-right'}`}>
+              
+                {/* 
+                <div className={`${isMobile ? 'self-start' : 'text-right'}`}>
                 <div className={`text-gray-400 mb-1 ${isMobile ? 'text-sm' : 'text-lg'}`}>Total Investment</div>
                 <div className={`font-bold text-green-400 ${isMobile ? 'text-2xl' : 'text-4xl md:text-5xl'}`}>
                   ${currentCar.totalCost.toLocaleString()}
                 </div>
-              </div>
+              </div>*/}
+                
             </div>
 
             {/* Stats Row - Mobile responsive grid */}
-            <div className={`grid gap-3 md:gap-4 flex-shrink-0 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+            <div className={`grid gap-2 md:gap-4 flex-shrink-0 ${isMobile ? 'grid-cols-2' : 'grid-cols-2'}`}>
               <div className={`text-center bg-gray-800/50 rounded-xl border border-gray-700 ${isMobile ? 'p-3' : 'p-4'}`}>
                 <div className={`font-bold text-white mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>{currentCar.totalMods}</div>
                 <div className={`text-gray-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>Modifications</div>
               </div>
-              {currentCar.horsepower ? (
+              {/*{currentCar.horsepower ? (
                 <div className={`text-center bg-orange-900/30 rounded-xl border border-orange-800/50 ${isMobile ? 'p-3' : 'p-4'}`}>
                   <div className={`font-bold text-orange-300 mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>{currentCar.horsepower}</div>
                   <div className={`text-orange-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>Horsepower</div>
@@ -563,10 +566,11 @@ if (cars.length === 0 && !isLoading) {
                   <div className={`font-bold text-gray-500 mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>-</div>
                   <div className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>Horsepower</div>
                 </div>
-              )}
+              )}*/}
+              
               
               {/* Torque and Likes - Always show but adjust layout */}
-              {currentCar.torque ? (
+              {/* {currentCar.torque ? (
                 <div className={`text-center bg-blue-900/30 rounded-xl border border-blue-800/50 ${isMobile ? 'p-3' : 'p-4'}`}>
                   <div className={`font-bold text-blue-300 mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>{currentCar.torque}</div>
                   <div className={`text-blue-400 ${isMobile ? 'text-xs' : 'text-sm'}`}>{isMobile ? 'Torque' : 'Torque (lb-ft)'}</div>
@@ -576,7 +580,8 @@ if (cars.length === 0 && !isLoading) {
                   <div className={`font-bold text-gray-500 mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>-</div>
                   <div className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>Torque</div>
                 </div>
-              )}
+              )}*/}
+              
               
               <div className={`text-center bg-purple-900/30 rounded-xl border border-purple-800/50 ${isMobile ? 'p-3' : 'p-4'}`}>
                 <div className={`font-bold text-purple-300 mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>{currentCar.upvotes}</div>
@@ -602,8 +607,8 @@ if (cars.length === 0 && !isLoading) {
               {/* Description */}
               {currentCar.description && (
                 <div>
-                  <h3 className={`font-semibold text-white mb-3 ${isMobile ? 'text-lg' : 'text-xl'}`}>About This Build</h3>
-                  <p className={`text-gray-300 leading-relaxed ${isMobile ? 'text-sm' : 'text-base'}`}>{currentCar.description}</p>
+                  <h3 className={`font-semibold text-white mb-3 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>About This Build</h3>
+                  <p className={`text-gray-300 leading-relaxed ${isMobile ? 'text-xl' : 'text-2xl'}`}>Description: {currentCar.description}</p>
                 </div>
               )}
             </div>
@@ -718,44 +723,10 @@ if (cars.length === 0 && !isLoading) {
             
             {/* Back to Top Button - Mobile responsive */}
             <div className="flex justify-center flex-shrink-0 pb-4">
-              <Button 
-                size={isMobile ? "default" : "lg"}
-                className={`group relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0 hover:rotate-1 transform-gpu ${isMobile ? 'w-full text-sm px-6 py-3 rounded-xl' : 'w-full max-w-sm text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-xl md:rounded-2xl'}`}
-                onClick={goToSlide.bind(null, 0)}
-              >
-                {/* Animated background overlay */}
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                {/* Animated shine effect */}
-                <div className="absolute inset-0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                
-                {/* Icon with animation */}
-                <svg 
-                  className={`transform transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110 ${isMobile ? 'w-4 h-4 mr-2' : 'w-5 h-5 sm:w-6 sm:h-6 mr-2'}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M5 10l7-7m0 0l7 7m-7-7v18" 
-                  />
-                </svg>
-                
-                {/* Text with subtle animation */}
-                <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide">
+              <Button size="lg" variant="outline" onClick={goToSlide.bind(null, 0) }className="w-full text-black sm:w-auto gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 hover:bg-white/80">
                   Back to Top
-                </span>
-                
-                {/* Floating particles effect */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-2 left-4 w-1 h-1 bg-white/60 rounded-full animate-ping" style={{animationDelay: '0s'}} />
-                  <div className="absolute top-3 right-6 w-1 h-1 bg-white/40 rounded-full animate-ping" style={{animationDelay: '0.5s'}} />
-                  <div className="absolute bottom-3 left-8 w-1 h-1 bg-white/50 rounded-full animate-ping" style={{animationDelay: '1s'}} />
-                </div>
-              </Button>
+                  <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
+                </Button>
             </div>
           </div>
         </section>

@@ -640,7 +640,7 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                     onChange={(e) => setCarDetails({ ...carDetails, engine: e.target.value })}
                    />
                 </div>
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                     <Label htmlFor="basecost" className="text-white">Base Cost</Label>
                      <Input
                         id="basecost"
@@ -671,7 +671,8 @@ export function EditCarModal({ open, onOpenChange, car }: EditCarModalProps) {
                             onChange={(e) => setCarDetails({ ...carDetails, torque: e.target.value })}
                         />
                         </div>
-                    </div>
+                    </div>*/}
+                
                 <div className="space-y-2">
                   <Label htmlFor="transmission" className="text-white">Transmission</Label>
                   <Select

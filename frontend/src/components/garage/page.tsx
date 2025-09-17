@@ -301,11 +301,12 @@ return (
 
                             {/* Stats */}
                             <div className="grid grid-cols-2 gap-4 mb-6">
-                              <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                                {/*<div className="bg-gray-900/50 rounded-lg p-3 text-center">
                                 <div className="text-lg font-bold text-green-400">${car.totalCost?.toLocaleString() || '0'}</div>
                                 <div className="text-xs text-gray-400">Investment</div>
-                              </div>
-                              <div className="bg-gray-900/50 rounded-lg p-3 text-center">
+                              </div> */}
+                              
+                              <div className="bg-gray-900/100 col-span-full rounded-lg p-3 text-center">
                                 <div className="text-lg font-bold text-primary">{car.totalMods || 0}</div>
                                 <div className="text-xs text-gray-400">Modifications</div>
                               </div>
@@ -374,12 +375,12 @@ return (
                   </div>
 
                   {/* Detailed Performance Card */}
+                  
                   <div className="bg-black/40 backdrop-blur-xl">
-                    <h3 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
+                  {/*  <h3 className="text-3xl font-bold text-white mb-8 flex items-center gap-3">
                       <DollarSign className="h-8 w-8 text-green-400" />
                       Financial Overview
                     </h3>
-                    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
                         <h4 className="text-lg font-bold text-white mb-2">Total Investment</h4>
@@ -410,6 +411,20 @@ return (
                         <p className="text-gray-400 text-sm">Most upvoted</p>
                       </div>
                     </div>
+                    
+                    */}
+                     <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+                        <h4 className="text-lg font-bold text-white mb-2">Most Popular</h4>
+                        <div className="text-lg font-bold text-white mb-2 truncate">
+                          {validCars.length > 0 
+                            ? validCars.filter(car => car).reduce((prev, current) => (prev?.upvotes > current?.upvotes) ? prev : current)?.carName || 'None'
+                            : 'None'}
+                        </div>
+                        <p className="text-gray-400 text-sm">Most upvoted</p>
+                    </div>
+                   
+                    
+                    
                   </div>
                 </TabsContent>
               </Tabs>

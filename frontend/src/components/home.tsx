@@ -5,7 +5,7 @@ import { Card, CardContent } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { Navbar } from "./utils/navbar"
 import { Footer } from "./utils/footer"
-import { ArrowRight, Heart, ThumbsUp, Trophy, Upload, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowRight,ArrowUp, Heart, ThumbsUp, Trophy, Upload, ChevronDown, ChevronUp } from "lucide-react"
 import { useEffect, useRef, useState, useCallback } from "react"
 
 const SLIDES = [
@@ -344,55 +344,24 @@ export default function Home() {
                   Upload Your Car
                 </Button>
               </Link>
+               <Button size="lg" variant="outline" onClick={goToSlide.bind(null, 0) }className="w-full text-black sm:w-auto gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 hover:bg-white/80">
+                  Back to Top
+                  <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
+                </Button>
               <Link href="/explore" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="w-full text-black sm:w-auto gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 hover:bg-white/80">
+                <Button size="lg" className="w-full sm:w-auto gap-2 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4">
                   Explore Builds
                   <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" />
                 </Button>
               </Link>
+             
+            
             </div>
             
            
           </div>
           
-           <Button 
-            size="lg" 
-            className="w-full max-w-sm group relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-600 text-white font-semibold text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0 hover:rotate-1 transform-gpu"
-            onClick={goToSlide.bind(null, 0)}
-            >
-            {/* Animated background overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            {/* Animated shine effect */}
-            <div className="absolute inset-0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-            
-            {/* Icon with animation */}
-            <svg 
-                className="w-5 h-5 sm:w-6 sm:h-6 mr-2 transform transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-            >
-                <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M5 10l7-7m0 0l7 7m-7-7v18" 
-                />
-            </svg>
-            
-            {/* Text with subtle animation */}
-            <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide">
-                Back to Top
-            </span>
-            
-            {/* Floating particles effect */}
-            <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-2 left-4 w-1 h-1 bg-white/60 rounded-full animate-ping" style={{animationDelay: '0s'}} />
-                <div className="absolute top-3 right-6 w-1 h-1 bg-white/40 rounded-full animate-ping" style={{animationDelay: '0.5s'}} />
-                <div className="absolute bottom-3 left-8 w-1 h-1 bg-white/50 rounded-full animate-ping" style={{animationDelay: '1s'}} />
-            </div>
-            </Button>
+           
           
         
           

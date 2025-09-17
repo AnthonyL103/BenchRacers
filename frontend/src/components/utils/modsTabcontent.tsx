@@ -548,9 +548,11 @@ export function ModsTabContent({
                         <p className="text-gray-400 text-xs mb-2 line-clamp-2">{mod.description}</p>
                       )}
                       
-                      <span className="text-green-400 font-medium text-sm">
+                      {/*<span className="text-green-400 font-medium text-sm">
                         ${(mod.cost ?? 0).toLocaleString()}
                       </span>
+                       */}
+                      
                     </div>
                     
                     <div className="flex-shrink-0">
@@ -599,7 +601,6 @@ export function ModsTabContent({
                 <th className="text-left p-3 text-sm font-medium text-gray-300">Brand</th>
                 <th className="text-left p-3 text-sm font-medium text-gray-300">Part #</th>
                 <th className="text-left p-3 text-sm font-medium text-gray-300">Description</th>
-                <th className="text-left p-3 text-sm font-medium text-gray-300">Cost</th>
                 <th className="text-left p-3 text-sm font-medium text-gray-300">Actions</th>
               </tr>
             </thead>
@@ -629,7 +630,6 @@ export function ModsTabContent({
                       <td className="p-3 text-sm text-white font-medium">{mod.brand}</td>
                       <td className="p-3 text-sm text-gray-300">{mod.partNumber || '-'}</td>
                       <td className="p-3 text-sm text-gray-400 max-w-48 truncate">{mod.description || '-'}</td>
-                      <td className="p-3 text-sm text-green-400 font-medium">${(mod.cost ?? 0).toLocaleString()}</td>
                       <td className="p-3">
                         <Button
                           variant="ghost"
@@ -650,7 +650,7 @@ export function ModsTabContent({
       </div>
 
       {/* Total Cost Summary */}
-      <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+      {/*<div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-white font-medium">Total Build Cost</h3>
@@ -667,7 +667,8 @@ export function ModsTabContent({
             </p>
           </div>
         </div>
-      </div>
+      </div>*/}
+      
 
       <DialogFooter className="flex-col sm:flex-row gap-2">
         <Button variant="outline" onClick={() => setActiveTab("photos")} className="w-full sm:w-auto">
