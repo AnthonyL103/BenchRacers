@@ -307,7 +307,7 @@ return (
                               </div> */}
                               
                               <div className="bg-gray-900/100 col-span-full rounded-lg p-3 text-center">
-                                <div className="text-lg font-bold text-primary">{car.totalMods || 0}</div>
+                                <div className="text-lg font-bold text-primary">{car.mods.length || 0}</div>
                                 <div className="text-xs text-gray-400">Modifications</div>
                               </div>
                             </div>
